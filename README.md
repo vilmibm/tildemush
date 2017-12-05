@@ -11,7 +11,8 @@ programming languages, HTTP APIs). I put old and new in quotes since things
 aren't so sequential nor cut and dry; ideas flow into each other over time and
 take on new forms.
 
-This project, _tildemush_, is another combination of the "old" (MUSH, command
+This project, _tildemush_, is another combination of the "old"
+([MUSH](https://en.wikipedia.org/wiki/MUSH), command
 line interfaces), and the "new" (modern scripting languages, advances in UX,
 HTTP APIs, relational databases).
 
