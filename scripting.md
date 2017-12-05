@@ -77,7 +77,7 @@ that I have mostly no experience writing a new language).
 _witch_'s runtime is just Python with some important caveats. For one, the
 special state section of a _witch_ program causes the runtime to initiate,
 access, or update the program's state as stored in an RDBMS. Further, the
-documentation sections of a _witch** program are pulled out and stored as well
+documentation sections of a _witch_ program are pulled out and stored as well
 for retrieving help about a program.
 
 ## Serialization
