@@ -1,6 +1,6 @@
 # tildemush
 
-## purpose and goals
+## Purpose and Goals
 
 An original guiding principle of tilde.town is to re-examine "old" ideas using
 newer technology and new perspectives on society.
@@ -123,3 +123,12 @@ report on the state of the world via a website.
 - <3 to All the MU*ers who have come before
 - <3 to the tilde.town community
 - <3 to my computer science cohorts from my college days; your _autonomy_ project has always been a huge inspiration to me
+
+## Author
+
+the _tildemush_ project is lead by [vilmibm](https://tilde.town/~vilmibm).
+
+## Licensing
+
+All code licensed under the terms of the GPLv3. All documentation and other
+artifacts are licensed CC-BY-NC.
