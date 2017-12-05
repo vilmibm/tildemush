@@ -23,7 +23,7 @@ are not constrained by low bandwidth (ie, a few bytes per second) or hourly
 internet costs. They're building interfaces that are more intuitive and natural
 to contemporary users.
 
-The urgency of this project struck me while I was reading Howard Rheingold's __The
+The urgency of this project struck me while I was reading Howard Rheingold's _The
 Virtual Community_ after dealing with some frustrating IRC administration. IRC
 serves a purpose and has utility, but as a small social community with a fairly
 high level of trust we use approximately 10% of IRC's features. Meanwhile, I see users
@@ -41,10 +41,10 @@ Thus, the goals of _tildemush_:
 
 - A MUSH built with contemporary tooling (Python or Go)
 - Extensible by users, even those unused to programming
-- A beautiful, intuitive text-based UI
+- A beautiful, intuitive, and text-based UI
 - A graphical (web based) administrative interface
 
-## guiding quotes
+## Guiding Quotes
 
 > Let's have a little thought experiment here. All right, you're playing in a virtual world. And it's got these pictures, they're looking pretty good. And you think, "Oh, that's pretty good." And you think, "I like these pictures and that's pretty good." And it's a--and it's a 3D world, but I'm only seeing it in 2D on a screen so maybe if I got like a little headset on and put it on, now I can see it in 3D. But if I move my head a bit too much--oh well, maybe if we put little sensors on, so I can move my head. Yes, now, I can see it properly, yes. It's all here. But I'm still only seeing things and maybe I could have maybe some feeling as well. So I put a little data glove on and, "Oh, yes. Oh, it feels warm. Oh, that's good." But I'm still--I'm not hearing things. I'll put some goggles on. And I haven't got this sense of being in a place. I maybe--I want to be able to move. So I say, "Well, let's get these big like-coffin things and fill them full of these gels. And I'll take off all my clothes and put on all of these different devices and I'll lie down on it and it pull it--these electric currents through and make it feel hard or soft. So, it gives me the impression that I'm actually walking through grass because it's generating. And now, I'm beginning to feel I'm really in one of these places. But of course, really what's all that's happening here is that my senses are being fooled into this. What would happen if I was maybe cut out the whole business with the fingers and they stick a little jack in the back of your head and it goes right into the spinal cord and then you're talking straight to the brain there? All the senses that come into your brain, they're all filtered and they're used to create a world model inside your head and your imagination. But if you could talk straight to that imagination and cut out all the senses, then you would--it would be impossible to ignore it. You couldn't say, "Oh, that's just an image of a dragon." That would be a dragon. And if there was some kind of technology which could enable you to talk straight to the imagination, well, there is. 
 >
@@ -78,7 +78,11 @@ While it's entirely possible that _tildemush_ will have the features of a MUD
 (ie hitpoints and combat), the priority of the program is to encourage
 socialization and expression.
 
-### Why not script tildemush with <insert language here>?
+### What is the official expansion of MUSH for this project?
+
+Multi User Shared Hallucination
+
+### Why not script tildemush with $language?
 
 _tildemush_'s scripting engine is geared towards beginner programmers. The
 ultimate goal is for someone to script the behavior of some object without even
@@ -91,7 +95,8 @@ this to create more sophisticated things.
 
 ### Text is too old fashioned. Why not a GUI?
 
-Text is liberating. Text is accessible. Text leaves room for your imagination to fill in the blanks
+Text is liberating. Text is accessible. Text leaves room for your imagination to
+fill in the blanks. There is no virtual reality more real than your own imagination.
 
 ### tildemush is a long word, is there a shorter one?
 
@@ -111,6 +116,7 @@ HTTP is, at this point, a lingua franca we are stuck with. It has many, many
 shortcomings, but it is understood by many and easy to reason about. Further,
 while _tildemush_ itself will not have a GUI, an HTTP API means we can easily
 report on the state of the world via a website.
+
 
 ## Acknowledgements
 
