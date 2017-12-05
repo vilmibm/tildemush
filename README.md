@@ -23,7 +23,7 @@ are not constrained by low bandwidth (ie, a few bytes per second) or hourly
 internet costs. They're building interfaces that are more intuitive and natural
 to contemporary users.
 
-The urgency of this project struck me while I was reading Howard Reinghold's __The
+The urgency of this project struck me while I was reading Howard Rheingold's __The
 Virtual Community_ after dealing with some frustrating IRC administration. IRC
 serves a purpose and has utility, but as a small social community with a fairly
 high level of trust we use approximately 10% of IRC's features. Meanwhile, I see users
@@ -58,7 +58,7 @@ Thus, the goals of _tildemush_:
 
 > ...artifacts have politics. The change in the software encouraged different styles of interaction, and attracted a different type of person. The ethics of community _emerged_. The design of the software was a strong factor in shaping what emerged.
 >
-> -- <cite>Amy Bruckman, as quoted in The Virtual Community by Howard Reinghold
+> -- <cite>Amy Bruckman, as quoted in The Virtual Community by Howard Rheingold
 
 > This perpetual toggling between nothing being new, under the sun, and everything having very recently changed, absolutely, is perhaps the central driving tension of my work.
 >
