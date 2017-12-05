@@ -39,7 +39,7 @@ build on a rich foundation of expression.
 
 Thus, the goals of _tildemush_:
 
-- A MUSH built with contemporary tooling (Python or Go)
+- A MUSH built with contemporary tooling (Python)
 - Extensible by users, even those unused to programming
 - A beautiful, intuitive, and text-based UI
 - A graphical (web based) administrative interface
@@ -84,7 +84,7 @@ Multi User Shared Hallucination
 
 ### Why not script tildemush with $language?
 
-_tildemush_'s scripting engine is geared towards beginner programmers. The
+_tildemush_'s [scripting engine](scripting.md) is geared towards beginner programmers. The
 ultimate goal is for someone to script the behavior of some object without even
 realizing they are doing proper programming.
 
