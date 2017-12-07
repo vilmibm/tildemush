@@ -1,5 +1,12 @@
 # tildemush
 
+## TOC
+
+- This document: background, purpose, and high level information
+- [Architecture](architecture.md)
+- [Client design](client.md)
+- [The WITCH in-game scripting language](scripting.md)
+
 ## Purpose and Goals
 
 An original guiding principle of tilde.town is to re-examine "old" ideas using
