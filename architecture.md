@@ -9,11 +9,11 @@ popularity).
 To this end, it is designed with few components:
 
 - a monolithic game server in Python using `asyncio`
- - exposes an HTTP/JSON API for authentication and latency-tolerate read operations
- - exposes a websocket API for receiving client input and sending world events
+  - exposes an HTTP/JSON API for authentication and latency-tolerate read operations
+  - exposes a websocket API for receiving client input and sending world events
 - an administrative Django application for reviewing user account and the state of the world
- - just the django admin
- - possibly a single page usage statistics report
+  - just the django admin
+  - possibly a single page usage statistics report
 - a linux-centric, town-native client written in Python (probably using `asciimatics`)
 
 All state is persisted in PostgreSQL. A caching layer should not be initially necessary.
