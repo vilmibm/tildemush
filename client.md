@@ -4,7 +4,7 @@
 
 ### Principles
 
-The fundamental UX principles of _tildemus_'s TUI are:
+The fundamental UX principles of _tildemush_'s TUI are:
 
 - **discoverability** Users should know, without pressing a single button, how
   to get help or learn more about the interface. the `micro` editor does this
