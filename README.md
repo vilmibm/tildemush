@@ -131,6 +131,7 @@ report on the state of the world via a website.
 - <3 to All the MU*ers who have come before
 - <3 to the tilde.town community
 - <3 to my computer science cohorts from my college days; your _autonomy_ project has always been a huge inspiration to me
+- a lot of my enthusiasm for this project comes from [murepl](https://github.com/vilmibm/murepl), to date one of my proudest projects.
 
 ## Author
 
