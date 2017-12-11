@@ -134,7 +134,7 @@ bracketed blocks that contain various things.
 I went back and forth on how to issue game commands; on the one hand, i like the
 brevity of something like:
 
-   `/do squirms uneasily`
+       `/do squirms uneasily`
    
 I chose the more verbose `this.run` so we have room later to say `player.run`,
 since an aspect of `tildemush` objects is that they should be able to augment
