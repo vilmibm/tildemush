@@ -11,6 +11,7 @@ Incantations To Control Homonculi.
 - Easily comprehensible by newcomers to programming
 - Tight feedback loop (i.e., editing and execution are both tied into _tildemush_'s GUI)
 - Rich set of code templates for seeding new scripts
+- One way to do things
 - Fun
 
 ## Guidelines
@@ -93,4 +94,89 @@ in the same state as they left it (whitespace warts and all).
 
 ## Language and Grammer Spec
 
-**_TODO_**
+### Sketch 1
+
+The following is my first pass at notes for what a _witch_ program might look
+like.
+
+```
+object "squirmghetti" by "vilmibm" {
+  doc { 
+    this object listens for the word 'hungry' and keeps track of how many times 
+    it has heard it. it also emotes when it hears the word. if it hears the question  
+    'squirmghetti how hungry?' it will report on its hungry counter.
+  }
+  
+  describe {
+    A plate of spaghetti.
+  }
+
+  data {
+    "counter": 0
+  }
+
+  hears "hungry" {
+    this.run("/do squirms uneasily...")
+    set("counter", get("counter") + 1)
+  }
+  
+  hears "squirmghetti how hungry?" {
+    this.run("/say $(get("counter"))")
+  }
+}
+```
+
+The above example is fairly simplistic; it doesn't feature any interaction with
+any player nor does it show taking information from the world around it.
+However, it lays out a way of structuring the code: directives followed by
+bracketed blocks that contain various things.
+
+I went back and forth on how to issue game commands; on the one hand, i like the
+brevity of something like:
+
+   `/do squirms uneasily`
+   
+I chose the more verbose `this.run` so we have room later to say `player.run`,
+since an aspect of `tildemush` objects is that they should be able to augment
+their possessor's abilities.
+
+#### Observations / questions
+
+0. **are the various directives too inconsistent?** In this design, each
+   directive has different semantics. On the one hand, the semantics make sense
+   for each directive; on the other, knowing how one works doesn't really clue
+   you into the others. I think I'm okay with this inconsistency; it keeps the
+   number of syntactical elements down (ie if `doc` remains a directive like
+   this we don't need some kind of syntactical indicator for documentation)
+1. **should the data accessors/mutators be namespaced? ie `data.get` and
+   `data.set`?** Dot syntax may be pretty confusing to a beginner, but if we're
+   already going to have `player.run` and `this.run` then it seems like it's
+   good to be consistent here.
+2. **how should wildcarding and capturing be handled?** In this example, it's
+   assumed that the `hears` string occurs anywhere in a message to the object's
+   room. Seems like things should either be: regex support, basic non-greedy \*
+   wildcarding with parenthetical captures. I think regexes are going to be too
+   much to learn; the latter choice seems good enough for most cases.
+3. **The data directive is kind of ugly.** The `0` is an initial value, but I'm
+   not sure if that is clear.
+4. **While not a whitespace delimited language like Python, we use \n instead of ;**
+5. **This is starting to look like a Ruby DSL**. That's probably due to my time
+   at Puppet. I think starting with a Ruby DSL is a bad foundation; while more
+   work up front, compiling to Python AST is going to lead to more reliable
+   compiling and error reporting. I think it's okay to _look_ like a Ruby DSL in
+   some ways but I don't want to implement that way.
+6. **The initial, outer `object` directive is pre-seeded on the first /bless.** A
+   program's name matches the object's name and the author is the player who
+   created the object. I'm imagining a flow like this:
+   
+       /create squirmghetti
+       **The air crackles around you and in your outstretched hand a squirmghetti appears. Whatever that is.**
+       **squirmghetti added to your inventory.**
+       /bless squirmghetti
+7. **The object directive suggests a very tight coupling between WITCH scripting
+   and game objects.** This is intentional. A _witch_ script shouldn't have
+   meaning outside of an object context.
+   
+### Sketch 2
+
+TODO: a more interactive object that uses captures and adds an action for the player to use.
