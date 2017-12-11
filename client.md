@@ -66,7 +66,10 @@ The primary screen users will be staring at needs to be multi-paned, responsive 
 - `/dig` create a new room, assigning its ownership to the user
 - `/destroy` destroy a created object
 - `/create` fabricate a new object
+- `/clone` create a copy of an object to transfer to another user
 - `/bless` open up an object for scripting
+- `/anchor` pins an object to a room. It can only be picked up again by the person who anchored it.
+- `/ignore` ignore a player or object's messages
 - `/say` audibly chat to your current room. default action for entered text.
 - `/yell` be loud; chats to your current room, but other rooms hear indistinct yelling from your room. shortcut is `**`
 - `/emote` use a predefined non-verbal action (potentially at another user) shortcut is `!`
