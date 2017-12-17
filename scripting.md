@@ -180,3 +180,5 @@ their possessor's abilities.
 ### Sketch 2
 
 TODO: a more interactive object that uses captures and adds an action for the player to use.
+
+[Discussion about more interactive objects with ~selfsame](https://gist.github.com/selfsame/c895dc90429c035ea611932c80f30dc2)
