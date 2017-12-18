@@ -179,6 +179,104 @@ their possessor's abilities.
    
 ### Sketch 2
 
-TODO: a more interactive object that uses captures and adds an action for the player to use.
+SEE: [Discussion about more interactive objects with ~selfsame](https://gist.github.com/selfsame/c895dc90429c035ea611932c80f30dc2)
 
-[Discussion about more interactive objects with ~selfsame](https://gist.github.com/selfsame/c895dc90429c035ea611932c80f30dc2)
+
+```
+object "horse" by "vilmibm" {
+	description {
+		A friendly horse you can ride. If angered, it can attack, so be careful. It loves to eat oats.
+	}
+	data {
+		"rider": ""
+		"pestered": 0
+	}
+	every 10 minutes {
+		this.say("Neigh.")
+	}
+	action "get" {
+		# override an attempt to put this object into an inventory
+		stop
+	}
+	action "pester" {
+		# `data` refers to the data store for this object
+		# `this` refers to the object.
+		# `subject` refers to the player or thing that performed the action
+		# `room` refers to the room the object currently exists in
+		if data.get("pestered") > 5:
+			this.do("attack {subject.name}")  # for this to have any effect, 
+											  # the subject must have an attack action defined.
+			room.say("The horse angrily rears up at {subject}. After a moment of huffing, it calms down.")
+			data.set("pestered", 0)
+		else:
+			room.say("The horse glares at you.")
+	}
+	action "examine" {
+	    if data.get("rider") != "":
+	    	room.say("A friendly horse ridden by {data.get('rider')}")
+	    else:
+			room.say("A friendly horse.")
+	}
+	action "ride" {
+		if data.get("rider") != "":
+			room.say("{data.get('rider')} is already on the horse.")
+			stop
+		if data.get("pestered") > 0:
+			this.do("snort")
+			room.say("The horse seems annoyed. Perhaps try again later.")
+			data.set("pestered", 0)
+			stop
+		room.say("{subject.name} climbs up on the horse.")
+		data.set("rider", subject.name)
+	}
+	action "dismount" {
+		if data.get("rider") == "":
+			stop
+		data.set("rider", "")
+		room.say("{subject.name} hops down from the horse.")
+	}
+	action "feed" (thing) {
+		room.say("The horse happily gobbles up {thing}.")
+	}
+}
+```
+
+a session with the horse and a player named _vilmibm_:
+
+```
+*** horse says "Neigh."
+
+/do pester horse
+*** The horse glares at you.
+
+/do pester horse
+*** The horse glares at you.
+
+/do pester horse
+*** The horse glares at you.
+
+/do pester horse
+*** The horse angrily rears up at vilmibm. After a moment of huffing, it calms down.
+
+/do feed horse grains
+*** The horse happily gobbes up grains.
+
+/do ride horse
+*** vilmibm climbs up on the horse.
+
+/do ride horse
+*** vilmibm is already on the horse.
+
+/do examine horse
+*** You see a friendly horse ridden by vilmibm
+
+/do dismount horse
+*** vilmibm hops down from horse.
+
+/do pester horse
+*** The horse glares at you.
+
+/do ride horse
+*** horse says "Snort."
+*** The horse seems annoyed. Perhaps try again later.
+```
