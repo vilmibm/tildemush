@@ -279,3 +279,103 @@ a session with the horse and a player named _vilmibm_:
 *** horse says "Snort."
 *** The horse seems annoyed. Perhaps try again later.
 ```
+
+## Sketch 3
+
+What if we just used Hy macros? Something like:
+
+```hy
+(defobject "horse" by "vilmibm"
+
+  (description 
+    "A friendly horse you can ride. If angered, it can attack,
+    so be careful. It loves to eat oats.")
+
+  (data 
+    {"rider" ""
+    "pestered" 0})
+ 
+  (every (random-number) minutes
+    (script 
+      (self.say "Neigh.")))
+      
+  (action "get"
+    (description "Override the get action so horse can't be put in inventory.")
+    (script
+      (stop)))
+    
+  (action "pester"
+    (description "Play with the horse's tail or tug on its ears.")
+    ; `data` refers to the data store for this object
+    ; `self` refers to the object.
+    ; `subject` refers to the player or thing that performed the action
+    ; `room` refers to the room the object currently exists in
+    (script
+      (if (greater-than (data.get "pestered") 5)
+        (do
+          (self.action "attack {subject.name}")
+          (data.set "pestered" 0))
+        (room.say "The horse glares at you.")
+      )))
+      
+  (action "examine"
+    (script
+      (room.say "{self.description}")
+      (if (not-equal (data.get "rider") "")
+        (room.say "{(data.get "rider")} is riding the horse."))))
+        
+  (action "ride"
+    (description 
+      "Attempt to mount the horse. It might not work if the horse is annoyed 
+      or if there is already a rider.")
+      
+    (script
+      (if (not-equal (data.get "rider") "")
+        (do
+          (room.say("{(data.get "rider")} is already on the horse."))
+          (stop)))
+          
+      (if (greater-than (data.get "pestered") 0)
+        (do
+          (self.action "snorts angrily")
+          (room.say "The horse seems angry...")
+          (stop)))
+          
+      (room.say "{subject.name} climbs up on the horse.")
+      (data.get "rider" subject.name))
+
+  (action "dismount"
+    (description
+      "Get off the horse.")
+      
+    (script
+      (if (equal (data.get "rider") "")
+        (stop))
+      
+      (data.set "rider" ""))
+      (room.say "{subject.name} hops down from the horse."))
+
+  (action "feed" [thing]
+    (description
+      "Feed the horse something.")
+
+    (script
+      (if (equal thing "oats")
+        (do
+          (room.say "The horse seems very happy!")
+          (data.set "pestered" 0))
+        (room.say "The horse happily gobbles up {thing}"))))
+```
+
+I think I'm going with this route.
+
+It's far easier to implement and more consistent than the brand new language I
+was constructing.
+
+I'm worried the s-expressions might be a bit daunting to beginners; but I know scheme is frequently a pedagogical language and also the general lack of confusing syntax is awesome.
+
+Notes:
+
+- `(equal x y)`, `(not-equal x y)`, and `(greater-than x y)` are not in native Hy; I'd be implementing them.
+-  I opted for the less lispy `(self.action)` form (instead of `(.action self)` since it seems much more clear for a learner)
+- I'm torn about the `(script)` macro's name. It could just be a `(do)` but it will make writing the overall macro easier.
