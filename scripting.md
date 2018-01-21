@@ -285,7 +285,7 @@ a session with the horse and a player named _vilmibm_:
 What if we just used Hy macros? Something like:
 
 ```hy
-(defobject "horse" by "vilmibm"
+(item "horse" by "vilmibm"
 
   (description 
     "A friendly horse you can ride. If angered, it can attack,
@@ -295,7 +295,7 @@ What if we just used Hy macros? Something like:
     {"rider" ""
     "pestered" 0})
  
-  (every (random-number) minutes
+  (every (random-number 90) minutes
     (script 
       (self.say "Neigh.")))
       
@@ -379,3 +379,47 @@ Notes:
 - `(equal x y)`, `(not-equal x y)`, and `(greater-than x y)` are not in native Hy; I'd be implementing them.
 -  I opted for the less lispy `(self.action)` form (instead of `(.action self)` since it seems much more clear for a learner)
 - I'm torn about the `(script)` macro's name. It could just be a `(do)` but it will make writing the overall macro easier.
+
+## Sketch 4 -- room definition
+
+```hylang
+(room "garden" by "vilmibm"
+
+  (description
+    "A quiet, lush garden. Flowers and vegetables of every color sprout up
+    along a simple, brick path. Thick green grass carpets the rest of the area.
+    There is a small table with a steaming teapot and a rustic chaise lounge 
+    chair next to it.")
+    
+  (has "teapot" by "vilmibm")
+  (has "chaise lounge" by "vilmibm")
+    
+  (look "up"
+    (script
+      (if world.evening
+        (subject.tell 
+          "You can make out strange constellations above you. 
+          The stars are bright and clear.")
+        (subject.tell 
+          "The sky is a pleasant blue color here. 
+          A few clouds dot the expanse above you."))))
+      
+  (every (random-number 60) minutes
+    (script
+      (self.say "Birdsong breaks the silence."))))
+```
+
+I'm thinking room creation can start like this:
+
+```
+/add-room "garden"
+*** You imagine vilmibm's garden. You get the sense that it's floating out there.
+/link-room "west" "garden"
+*** vilmibm's garden can now be accessed to the west.
+/unlink-room "west" "garden"
+*** vilmibm's garden can no longer be accessed to the west.
+/remove-room "garden"
+*** You hear a far off rumbling. The "garden" room is no more.
+/remove-room "basement"
+*** Error! you are vilmibm, and you don't own the room "basement".
+```
