@@ -90,9 +90,14 @@ out to some editor from within its UI (like
 
 _witch_ code can be saved as textual data tied to a user's account; care needs
 to be taken such that when a user re-opens some _witch_ code they see the file
-in the same state as they left it (whitespace warts and all).
+in the same state as they left it (whitespace warts and all.
 
 ## Language and Grammer Spec
+
+
+_Important_: You'll want to skip to the final sketches in this file, which puts
+forth a version of WITCH implemented as a set of Hy macros. This will be the
+initial approach for WITCH.
 
 ### Sketch 1
 
