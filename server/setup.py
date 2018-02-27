@@ -3,25 +3,24 @@
 from setuptools import setup
 
 setup(
-    name='tildemush',
+    name='tildemush-server',
     version='1.0.0',
     description='a modern mush primarily designed for tilde.town',
     url='https://github.com/vilmibm/tildemush',
     author='vilmibm',
-    author_email='nks@neongrid.space',
+    author_email='vilmibm@protonmail.ch',
     license='AGPL',
     classifiers=[
         'Topic :: Artistic Software',
         'License :: OSI Approved :: Affero GNU General Public License v3 (AGPLv3)',
     ],
     keywords='mush',
-    packages=['tildemush'],
+    packages=['tildemush-server'],
     install_requires = [],
     include_package_data = True,
     entry_points = {
           'console_scripts': [
-              'tildemush_server = tildemush.__init__:main_server',
-              'tildemush_client = tildemush.__init__:main_client',
+              'tmserver = tmserver.__init__:main',
           ]
     },
 )
