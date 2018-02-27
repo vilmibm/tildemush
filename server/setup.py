@@ -15,8 +15,12 @@ setup(
         'License :: OSI Approved :: Affero GNU General Public License v3 (AGPLv3)',
     ],
     keywords='mush',
-    packages=['tildemush-server'],
-    install_requires = [],
+    packages=['tmserver'],
+    install_requires = [
+        'peewee==3.1.1',
+        'psycopg2==2.7.4',
+        'websockets==4.0.1',
+    ],
     include_package_data = True,
     entry_points = {
           'console_scripts': [
