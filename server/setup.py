@@ -16,14 +16,14 @@ setup(
     ],
     keywords='mush',
     packages=['tmserver'],
-    install_requires = [
+    install_requires=[
         'click==6.7',
         'peewee==3.1.1',
         'psycopg2==2.7.4',
         'websockets==4.0.1',
     ],
-    include_package_data = True,
-    entry_points = {
+    include_package_data=True,
+    entry_points={
           'console_scripts': [
               'tmserver = tmserver.__init__:main',
           ]
