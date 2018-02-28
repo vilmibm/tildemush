@@ -17,6 +17,7 @@ setup(
     keywords='mush',
     packages=['tmserver'],
     install_requires = [
+        'click==6.7',
         'peewee==3.1.1',
         'psycopg2==2.7.4',
         'websockets==4.0.1',
