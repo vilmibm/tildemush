@@ -6,8 +6,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 debug_logger = logging.getLogger('tmserver debug')
-pg_logger = logging.getLogger('tmserver')
-
-debug_logger.addHandler(logging.StreamHandler())
-
+#pg_logger = logging.getLogger('tmserver')
 # TODO write PGHandler
+pg_logger = None

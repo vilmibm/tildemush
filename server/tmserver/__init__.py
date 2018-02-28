@@ -7,7 +7,7 @@ from .logs import pg_logger, debug_logger
 
 
 @click.command()
-@click.option('--debug', default=False, help='Log to STDOUT.')
+@click.option('--debug/--no-debug', default=False, help='Log to the console.')
 def _main(debug):
     logger = pg_logger
     if debug is True:
