@@ -26,10 +26,53 @@ def item_chosen(button):
 def exit_program(button):
     raise urwid.ExitMainLoop()
 
+
+class Form(urwid.Pile):
+    def __init__(self, fields, submit, on_submit):
+        super().__init__(fields+[submit])
+        self.fields = fields
+        self.submit_btn = submit
+        self.on_submit = on_submit
+
+        urwid.connect_signal(self.submit_btn, 'click', self.submit)
+
+
+    def submit(self, _):
+        data = {}
+        for w in self.fields:
+            data[w.name] = w.get_edit_text()
+
+        self.on_submit(data)
+
+
+class FormField(urwid.Edit):
+    def __init__(self, *args, **kwargs):
+        name = kwargs.get('name')
+        del kwargs['name']
+        super().__init__(*args, **kwargs)
+        self.name = name
+
+def show_login(_):
+
+    un_field = FormField(caption='username: ', name='username')
+    pw_field = FormField(caption='password: ', name='password', mask='~')
+    submit_btn = urwid.Button('login! >')
+    login_form = Form(fields=[un_field, pw_field],
+                      submit=submit_btn,
+                      on_submit=handle_login)
+
+    TOP.open_box(urwid.Filler(login_form))
+
+def handle_login(login_data):
+    print('HANDLING LOGIN WITH {}'.format(login_data))
+
+def handle_exit(_):
+    raise urwid.ExitMainLoop()
+
+
+# TODO dynamically create the main menu based on authentication state
 menu_top = menu('tildemush main menu', [
-    sub_menu('login', [
-        menu_button('TODO', item_chosen),
-    ]),
+    menu_button('login', show_login),
     sub_menu('create a new user account', [
         menu_button('TODO', item_chosen),
     ]),
@@ -37,7 +80,8 @@ menu_top = menu('tildemush main menu', [
         menu_button('set server domain', item_chosen),
         menu_button('set server port', item_chosen),
         menu_button('set server password', item_chosen)
-    ])
+    ]),
+    menu_button('exit', handle_exit)
 ])
 
 
@@ -54,7 +98,6 @@ class CascadingBoxes(urwid.WidgetPlaceholder):
         self.box_level = 0
         self.box = box
         self.initial = initial
-        #self.open_box(box)
 
     def open_box(self, box):
         self.original_widget = urwid.Overlay(urwid.LineBox(box),
