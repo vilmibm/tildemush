@@ -1,6 +1,50 @@
 import asyncio
+import json
 
 import urwid
+
+DEFAULT_CONFIG_PATH = '~/.config/tildemush/config.json'
+
+CONFIG_DEFAULTS = {'todo':'todo'}
+
+class Config:
+    def __init__(self, path=DEFAULT_CONFIG_PATH):
+        self.path = path
+        self._data = CONFIG_DEFAULTS
+        self.read()
+
+    def read(self):
+        self._data = CONFIG_DEFAULTS
+
+        file_config = None
+        with open(self.path) as config_file:
+            file_config = json.loads(config_file.read())
+
+        for k,v in file_config:
+            self._data[k] = v
+
+    def set_path(self, new_path):
+        self.path = new_path
+        self.read()
+
+    def get(self, key):
+        self._data.get(key)
+
+
+class ClientState:
+    def __init__(self):
+        self.connection = None
+        self.secret = None
+        self.auth_token = None
+        self.config = Config()
+
+    def connect(self):
+        pass
+
+    def authenticate(self, username, password):
+        if self.connection is None:
+            self.connect()
+
 
 
 class Form(urwid.Pile):
@@ -54,7 +98,6 @@ def exit_program(button):
 
 
 def show_login(_):
-
     un_field = FormField(caption='username: ', name='username')
     pw_field = FormField(caption='password: ', name='password', mask='~')
     submit_btn = urwid.Button('login! >')
@@ -132,7 +175,5 @@ SPLASH = f
 
 TOP = CascadingBoxes(menu_top, SPLASH)
 def start():
-    #import ipdb; ipdb.set_trace()
-
     evl = urwid.AsyncioEventLoop(loop=asyncio.get_event_loop())
     urwid.MainLoop(TOP, event_loop=evl, palette=[('reversed', 'standout', '')]).run()
