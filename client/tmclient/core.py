@@ -2,30 +2,6 @@ import asyncio
 
 import urwid
 
-def menu_button(caption, callback):
-    button = urwid.Button(caption)
-    urwid.connect_signal(button, 'click', callback)
-    return urwid.AttrMap(button, None, focus_map='reversed')
-
-def sub_menu(caption, choices):
-    contents = menu(caption, choices)
-    def open_menu(button):
-        return TOP.open_box(contents)
-    return menu_button([caption, u'...'], open_menu)
-
-def menu(title, choices):
-    body = [urwid.Text(title), urwid.Divider()]
-    body.extend(choices)
-    return urwid.ListBox(urwid.SimpleFocusListWalker(body))
-
-def item_chosen(button):
-    response = urwid.Text([u'You chose ', button.label, u'\n'])
-    done = menu_button(u'Ok', exit_program)
-    TOP.open_box(urwid.Filler(urwid.Pile([response, done])))
-
-def exit_program(button):
-    raise urwid.ExitMainLoop()
-
 
 class Form(urwid.Pile):
     def __init__(self, fields, submit, on_submit):
@@ -51,6 +27,31 @@ class FormField(urwid.Edit):
         del kwargs['name']
         super().__init__(*args, **kwargs)
         self.name = name
+
+def menu_button(caption, callback):
+    button = urwid.Button(caption)
+    urwid.connect_signal(button, 'click', callback)
+    return urwid.AttrMap(button, None, focus_map='reversed')
+
+def sub_menu(caption, choices):
+    contents = menu(caption, choices)
+    def open_menu(button):
+        return TOP.open_box(contents)
+    return menu_button([caption, u'...'], open_menu)
+
+def menu(title, choices):
+    body = [urwid.Text(title), urwid.Divider()]
+    body.extend(choices)
+    return urwid.ListBox(urwid.SimpleFocusListWalker(body))
+
+def item_chosen(button):
+    response = urwid.Text([u'You chose ', button.label, u'\n'])
+    done = menu_button(u'Ok', exit_program)
+    TOP.open_box(urwid.Filler(urwid.Pile([response, done])))
+
+def exit_program(button):
+    raise urwid.ExitMainLoop()
+
 
 def show_login(_):
 
