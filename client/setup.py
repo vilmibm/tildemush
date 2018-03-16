@@ -18,7 +18,7 @@ setup(
     packages=['tmclient'],
     install_requires=[
         'click==6.7',
-        'asciimatics==1.9.0',
+        'urwid==2.0.1',
     ],
     include_package_data=True,
     entry_points={
