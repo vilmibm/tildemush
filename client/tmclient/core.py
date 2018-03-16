@@ -26,28 +26,35 @@ def item_chosen(button):
 def exit_program(button):
     raise urwid.ExitMainLoop()
 
-menu_top = menu(u'Main Menu', [
-    sub_menu(u'Applications', [
-        sub_menu(u'Accessories', [
-            menu_button(u'Text Editor', item_chosen),
-            menu_button(u'Terminal', item_chosen),
-        ]),
+menu_top = menu('tildemush main menu', [
+    sub_menu('login', [
+        menu_button('TODO', item_chosen),
     ]),
-    sub_menu(u'System', [
-        sub_menu(u'Preferences', [
-            menu_button(u'Appearance', item_chosen),
-        ]),
-        menu_button(u'Lock Screen', item_chosen),
+    sub_menu('create a new user account', [
+        menu_button('TODO', item_chosen),
     ]),
+    sub_menu('settings', [
+        menu_button('set server domain', item_chosen),
+        menu_button('set server port', item_chosen),
+        menu_button('set server password', item_chosen)
+    ])
 ])
+
+
+class SplashScreen(urwid.BigText):
+    def __init__(self):
+        super(SplashScreen, self).__init__('welcome to\ntildemush',
+                                           urwid.font.HalfBlockHeavy6x5Font())
 
 class CascadingBoxes(urwid.WidgetPlaceholder):
     max_box_levels = 4
 
-    def __init__(self, box):
-        super(CascadingBoxes, self).__init__(urwid.SolidFill(u'/'))
+    def __init__(self, box, initial):
+        super(CascadingBoxes, self).__init__(initial)
         self.box_level = 0
-        self.open_box(box)
+        self.box = box
+        self.initial = initial
+        #self.open_box(box)
 
     def open_box(self, box):
         self.original_widget = urwid.Overlay(urwid.LineBox(box),
@@ -62,14 +69,26 @@ class CascadingBoxes(urwid.WidgetPlaceholder):
         self.box_level += 1
 
     def keypress(self, size, key):
-        if key == 'esc' and self.box_level > 1:
+        if self.original_widget is self.initial:
+            self.original_widget = urwid.SolidFill('~')
+            self.open_box(self.box)
+        elif key == 'esc' and self.box_level > 1:
             self.original_widget = self.original_widget[0]
             self.box_level -= 1
         else:
             return super(CascadingBoxes, self).keypress(size, key)
 
 
-TOP = CascadingBoxes(menu_top)
+bt = urwid.BigText('WELCOME TO TILDEMUSH', urwid.font.HalfBlock7x7Font())
+bt = urwid.Padding(bt, 'center', None)
+bt = urwid.Filler(bt, 'middle', None, 7)
+ftr = urwid.Text('~ press any key to jack in ~', align='center')
+f = urwid.Frame(body=bt, footer=ftr)
+SPLASH = f
+
+TOP = CascadingBoxes(menu_top, SPLASH)
 def start():
+    #import ipdb; ipdb.set_trace()
+
     evl = urwid.AsyncioEventLoop(loop=asyncio.get_event_loop())
     urwid.MainLoop(TOP, event_loop=evl, palette=[('reversed', 'standout', '')]).run()
