@@ -1,10 +1,14 @@
 import asyncio
+import copy
 import json
+import os
 
 import urwid
+import websockets
 
-DEFAULT_CONFIG_PATH = '~/.config/tildemush/config.json'
+DEFAULT_CONFIG_PATH = os.path.expanduser('~/.config/tildemush/config.json')
 
+# TODO handle actually creating DEFAULT_CONFIG_PATH
 CONFIG_DEFAULTS = {'todo':'todo'}
 
 class Config:
@@ -20,7 +24,7 @@ class Config:
         with open(self.path) as config_file:
             file_config = json.loads(config_file.read())
 
-        for k,v in file_config:
+        for k,v in file_config.items():
             self._data[k] = v
 
     def set_path(self, new_path):
@@ -28,23 +32,46 @@ class Config:
         self.read()
 
     def get(self, key):
-        self._data.get(key)
+        return self._data.get(key)
+
+
+    def set(self, key, value):
+        self._data[key] = value
+        self.sync()
+
+    def sync(self):
+        with open(self.path, 'w') as config_file:
+            config_file.write(json.dumps(self._data), sort_keys=True, indent=4)
 
 
 class ClientState:
     def __init__(self):
         self.connection = None
-        self.secret = None
-        self.auth_token = None
         self.config = Config()
 
+    @property
+    def login_url(self):
+        return 'ws://{host}:{port}'.format(
+            host=self.config.get('server_host'),
+            port=self.config.get('server_port'))
+
     def connect(self):
-        pass
+        print('GON CONNECT')
+        print(self.login_url)
+        self.connection = websockets.connect(self.login_url)
 
     def authenticate(self, username, password):
+        print('HAHAHAHAHAHAHAHAHA {} {}'.format(username, password))
         if self.connection is None:
             self.connect()
+        self.connection.send('AUTH {}:{}'.format(username, password))
+        auth_response = websocket.recv()
+        if auth_response != 'AUTH OK':
+            raise Exception('TODO better error for failing to login: {}'.format(auth_response))
+        self.authenticated = True
 
+    async def send(self, text):
+        await self.connection.send(text)
 
 
 class Form(urwid.Pile):
@@ -98,6 +125,7 @@ def exit_program(button):
 
 
 def show_login(_):
+    # TODO if un and pw are in config, use that and skip showing this
     un_field = FormField(caption='username: ', name='username')
     pw_field = FormField(caption='password: ', name='password', mask='~')
     submit_btn = urwid.Button('login! >')
@@ -108,7 +136,8 @@ def show_login(_):
     TOP.open_box(urwid.Filler(login_form))
 
 def handle_login(login_data):
-    print('HANDLING LOGIN WITH {}'.format(login_data))
+    CLIENT_STATE.authenticate(login_data['username'], login_data['password'])
+    TOP.original_widget = GAME_MAIN
 
 def handle_exit(_):
     raise urwid.ExitMainLoop()
@@ -121,6 +150,7 @@ menu_top = menu('tildemush main menu', [
         menu_button('TODO', item_chosen),
     ]),
     sub_menu('settings', [
+        menu_button('forget login details', item_chosen),
         menu_button('set server domain', item_chosen),
         menu_button('set server port', item_chosen),
         menu_button('set server password', item_chosen)
@@ -174,6 +204,21 @@ f = urwid.Frame(body=bt, footer=ftr)
 SPLASH = f
 
 TOP = CascadingBoxes(menu_top, SPLASH)
+CLIENT_STATE = ClientState()
+game_main_hdr = urwid.Text('welcome 2 tildemush, u are jacked in')
+game_main_bdy = urwid.Columns([
+    urwid.Filler(urwid.Text('lol game stuff happens here')),
+    urwid.Pile([
+        urwid.Filler(urwid.Text('details about your current room')),
+        urwid.Filler(urwid.Text('i donno a map?')),
+        urwid.Filler(urwid.Text('character info'))
+    ])
+
+
+], dividechars=1)
+game_main_ftr = urwid.Edit(caption='> ', multiline=True)
+GAME_MAIN = urwid.Frame(header=game_main_hdr, body=game_main_bdy, footer=game_main_ftr)
+
 def start():
     evl = urwid.AsyncioEventLoop(loop=asyncio.get_event_loop())
     urwid.MainLoop(TOP, event_loop=evl, palette=[('reversed', 'standout', '')]).run()
