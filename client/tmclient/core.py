@@ -55,17 +55,17 @@ class ClientState:
             host=self.config.get('server_host'),
             port=self.config.get('server_port'))
 
-    def connect(self):
+    async def connect(self):
         print('GON CONNECT')
         print(self.login_url)
-        self.connection = websockets.connect(self.login_url)
+        self.connection = await websockets.connect(self.login_url)
 
-    def authenticate(self, username, password):
-        print('HAHAHAHAHAHAHAHAHA {} {}'.format(username, password))
+    async def authenticate(self, username, password):
+        print('LOL {} {}'.format(username, password))
         if self.connection is None:
-            self.connect()
-        self.connection.send('AUTH {}:{}'.format(username, password))
-        auth_response = websocket.recv()
+            await self.connect()
+        await self.connection.send('AUTH {}:{}'.format(username, password))
+        auth_response = await websocket.recv()
         if auth_response != 'AUTH OK':
             raise Exception('TODO better error for failing to login: {}'.format(auth_response))
         self.authenticated = True
@@ -75,21 +75,17 @@ class ClientState:
 
 
 class Form(urwid.Pile):
-    def __init__(self, fields, submit, on_submit):
+    def __init__(self, fields, submit):
         super().__init__(fields+[submit])
         self.fields = fields
         self.submit_btn = submit
-        self.on_submit = on_submit
 
-        urwid.connect_signal(self.submit_btn, 'click', self.submit)
-
-
-    def submit(self, _):
+    @property
+    def data(self):
         data = {}
         for w in self.fields:
             data[w.name] = w.get_edit_text()
-
-        self.on_submit(data)
+        return data
 
 
 class FormField(urwid.Edit):
@@ -123,20 +119,22 @@ def item_chosen(button):
 def exit_program(button):
     raise urwid.ExitMainLoop()
 
-
 def show_login(_):
     # TODO if un and pw are in config, use that and skip showing this
     un_field = FormField(caption='username: ', name='username')
     pw_field = FormField(caption='password: ', name='password', mask='~')
     submit_btn = urwid.Button('login! >')
-    login_form = Form(fields=[un_field, pw_field],
-                      submit=submit_btn,
-                      on_submit=handle_login)
+    login_form = Form([un_field, pw_field], submit_btn)
+
+    def sigh(_):
+        asyncio.ensure_future(handle_login(login_form.data), loop=LOOP)
+
+    urwid.connect_signal(submit_btn, 'click', sigh)
 
     TOP.open_box(urwid.Filler(login_form))
 
-def handle_login(login_data):
-    CLIENT_STATE.authenticate(login_data['username'], login_data['password'])
+async def handle_login(login_data):
+    await CLIENT_STATE.authenticate(login_data['username'], login_data['password'])
     TOP.original_widget = GAME_MAIN
 
 def handle_exit(_):
@@ -219,6 +217,10 @@ game_main_bdy = urwid.Columns([
 game_main_ftr = urwid.Edit(caption='> ', multiline=True)
 GAME_MAIN = urwid.Frame(header=game_main_hdr, body=game_main_bdy, footer=game_main_ftr)
 
+LOOP = asyncio.get_event_loop()
+ULOOP = urwid.AsyncioEventLoop(loop=LOOP)
+
+
 def start():
-    evl = urwid.AsyncioEventLoop(loop=asyncio.get_event_loop())
-    urwid.MainLoop(TOP, event_loop=evl, palette=[('reversed', 'standout', '')]).run()
+    urwid.MainLoop(TOP, event_loop=ULOOP, palette=[('reversed', 'standout', '')]).run()
+
