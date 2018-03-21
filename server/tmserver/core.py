@@ -28,8 +28,13 @@ class GameServer:
     async def handle_message(self, user_ctx, message):
         self.logger.info("Handling message '{}' for {}".format(
             message, user_ctx))
-        # TODO for now, just echo
-        await user_ctx.websocket.send(message)
+        if message.startswith('AUTH'):
+            # TODO actually validate un/pw
+            # TODO connect context to user account
+            await user_ctx.websocket.send('AUTH OK')
+        else:
+            # TODO for now, just echo
+            await user_ctx.websocket.send(message)
 
     def start(self):
         self.logger.info('Starting up asyncio loop')

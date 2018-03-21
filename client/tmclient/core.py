@@ -65,7 +65,7 @@ class ClientState:
         if self.connection is None:
             await self.connect()
         await self.connection.send('AUTH {}:{}'.format(username, password))
-        auth_response = await websocket.recv()
+        auth_response = await self.connection.recv()
         if auth_response != 'AUTH OK':
             raise Exception('TODO better error for failing to login: {}'.format(auth_response))
         self.authenticated = True
@@ -127,7 +127,9 @@ def show_login(_):
     login_form = Form([un_field, pw_field], submit_btn)
 
     def sigh(_):
-        asyncio.ensure_future(handle_login(login_form.data), loop=LOOP)
+        asyncio.wait_for(
+            asyncio.ensure_future(handle_login(login_form.data), loop=LOOP),
+            60.0, loop=LOOP)
 
     urwid.connect_signal(submit_btn, 'click', sigh)
 
