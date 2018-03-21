@@ -7,6 +7,8 @@ import urwid
 import websockets
 
 DEFAULT_CONFIG_PATH = os.path.expanduser('~/.config/tildemush/config.json')
+LOOP = asyncio.get_event_loop()
+ULOOP = urwid.AsyncioEventLoop(loop=LOOP)
 
 # TODO handle actually creating DEFAULT_CONFIG_PATH
 CONFIG_DEFAULTS = {'todo':'todo'}
@@ -126,12 +128,12 @@ def show_login(_):
     submit_btn = urwid.Button('login! >')
     login_form = Form([un_field, pw_field], submit_btn)
 
-    def sigh(_):
+    def wait_for_login(_):
         asyncio.wait_for(
             asyncio.ensure_future(handle_login(login_form.data), loop=LOOP),
             60.0, loop=LOOP)
 
-    urwid.connect_signal(submit_btn, 'click', sigh)
+    urwid.connect_signal(submit_btn, 'click', wait_for_login)
 
     TOP.open_box(urwid.Filler(login_form))
 
@@ -195,7 +197,6 @@ class CascadingBoxes(urwid.WidgetPlaceholder):
         else:
             return super(CascadingBoxes, self).keypress(size, key)
 
-
 bt = urwid.BigText('WELCOME TO TILDEMUSH', urwid.font.HalfBlock7x7Font())
 bt = urwid.Padding(bt, 'center', None)
 bt = urwid.Filler(bt, 'middle', None, 7)
@@ -219,10 +220,6 @@ game_main_bdy = urwid.Columns([
 game_main_ftr = urwid.Edit(caption='> ', multiline=True)
 GAME_MAIN = urwid.Frame(header=game_main_hdr, body=game_main_bdy, footer=game_main_ftr)
 
-LOOP = asyncio.get_event_loop()
-ULOOP = urwid.AsyncioEventLoop(loop=LOOP)
-
 
 def start():
     urwid.MainLoop(TOP, event_loop=ULOOP, palette=[('reversed', 'standout', '')]).run()
-
