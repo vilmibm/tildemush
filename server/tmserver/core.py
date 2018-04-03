@@ -34,7 +34,7 @@ class GameServer:
             await user_ctx.websocket.send('AUTH OK')
         else:
             # TODO for now, just echo
-            await user_ctx.websocket.send(message)
+            await user_ctx.websocket.send('you said {}'.format(message))
 
     def start(self):
         self.logger.info('Starting up asyncio loop')

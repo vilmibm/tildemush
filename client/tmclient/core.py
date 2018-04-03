@@ -50,6 +50,7 @@ class ClientState:
     def __init__(self):
         self.connection = None
         self.config = Config()
+        self.listening = False
 
     @property
     def login_url(self):
@@ -57,11 +58,18 @@ class ClientState:
             host=self.config.get('server_host'),
             port=self.config.get('server_port'))
 
+    def set_on_recv(self, handler):
+        self.recv_handler = handler
+
     async def connect(self):
         print('GON CONNECT')
         print(self.login_url)
         self.connection = await websockets.connect(self.login_url)
-        # TODO set up recv awaiting
+
+    async def start_listen_loop(self):
+        self.listening = True
+        async for server_msg in self.connection:
+            await self.recv_handler(server_msg)
 
     async def authenticate(self, username, password):
         print('LOL {} {}'.format(username, password))
@@ -207,8 +215,9 @@ class GameMain(urwid.Frame):
         self.client_state = client_state
         self.loop = loop
         self.banner = urwid.Text('welcome 2 tildemush, u are jacked in')
+        self.game_text = urwid.Text('lol game stuff happens here')
         self.main = urwid.Columns([
-            urwid.Filler(urwid.Text('lol game stuff happens here')),
+            urwid.Filler(self.game_text),
             urwid.Pile([
                 urwid.Filler(urwid.Text('details about your current room')),
                 urwid.Filler(urwid.Text('i donno a map?')),
@@ -216,8 +225,14 @@ class GameMain(urwid.Frame):
             ])
         ], dividechars=1)
         self.prompt = GamePrompt()
+        self.client_state.set_on_recv(self.on_server_message)
         super().__init__(header=self.banner, body=self.main, footer=self.prompt)
         self.focus_prompt()
+
+    async def on_server_message(self, server_msg):
+        self.game_text.set_text("{}\n{}".format(
+            self.game_text.get_text(),
+            server_msg))
 
     def focus_prompt(self):
         self.focus_position = 'footer'
@@ -231,6 +246,8 @@ class GameMain(urwid.Frame):
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
+        if not self.client_state.listening:
+            asyncio.ensure_future(self.client_state.start_listen_loop(), loop=self.loop)
         asyncio.ensure_future(self.client_state.send(text), loop=self.loop)
         self.prompt.edit_text = ''
 
