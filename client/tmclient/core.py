@@ -61,6 +61,7 @@ class ClientState:
         print('GON CONNECT')
         print(self.login_url)
         self.connection = await websockets.connect(self.login_url)
+        # TODO set up recv awaiting
 
     async def authenticate(self, username, password):
         print('LOL {} {}'.format(username, password))
@@ -170,7 +171,7 @@ class CascadingBoxes(urwid.WidgetPlaceholder):
     max_box_levels = 4
 
     def __init__(self, box, initial):
-        super(CascadingBoxes, self).__init__(initial)
+        super().__init__(initial)
         self.box_level = 0
         self.box = box
         self.initial = initial
@@ -197,6 +198,40 @@ class CascadingBoxes(urwid.WidgetPlaceholder):
         else:
             return super(CascadingBoxes, self).keypress(size, key)
 
+class GamePrompt(urwid.Edit):
+    # TODO decide how to capture enter and submit edit contents to server
+    def __init__(self):
+        super().__init__(caption='> ', multiline=True)
+
+class GameMain(urwid.Frame):
+    def __init__(self, client_state):
+        self.client_state = client_state
+        self.banner = urwid.Text('welcome 2 tildemush, u are jacked in')
+        self.main = urwid.Columns([
+            urwid.Filler(urwid.Text('lol game stuff happens here')),
+            urwid.Pile([
+                urwid.Filler(urwid.Text('details about your current room')),
+                urwid.Filler(urwid.Text('i donno a map?')),
+                urwid.Filler(urwid.Text('character info'))
+            ])
+        ], dividechars=1)
+        self.prompt = GamePrompt()
+        super().__init__(header=self.banner, body=self.main, footer=self.prompt)
+        self.focus_prompt()
+
+    def focus_prompt(self):
+        self.focus_position = 'footer'
+
+    def keypress(self, size, key):
+        if self.focus is self.prompt:
+            if key == 'enter':
+                self.handle_game_input(self.prompt.get_edit_text())
+
+    def handle_game_input(self, text):
+        # TODO handle any validation of text
+        self.client_state.send(text)
+
+
 bt = urwid.BigText('WELCOME TO TILDEMUSH', urwid.font.HalfBlock7x7Font())
 bt = urwid.Padding(bt, 'center', None)
 bt = urwid.Filler(bt, 'middle', None, 7)
@@ -206,19 +241,7 @@ SPLASH = f
 
 TOP = CascadingBoxes(menu_top, SPLASH)
 CLIENT_STATE = ClientState()
-game_main_hdr = urwid.Text('welcome 2 tildemush, u are jacked in')
-game_main_bdy = urwid.Columns([
-    urwid.Filler(urwid.Text('lol game stuff happens here')),
-    urwid.Pile([
-        urwid.Filler(urwid.Text('details about your current room')),
-        urwid.Filler(urwid.Text('i donno a map?')),
-        urwid.Filler(urwid.Text('character info'))
-    ])
-
-
-], dividechars=1)
-game_main_ftr = urwid.Edit(caption='> ', multiline=True)
-GAME_MAIN = urwid.Frame(header=game_main_hdr, body=game_main_bdy, footer=game_main_ftr)
+GAME_MAIN = GameMain(client_state=CLIENT_STATE)
 
 
 def start():
