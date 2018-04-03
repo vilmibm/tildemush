@@ -215,7 +215,7 @@ class GameMain(urwid.Frame):
         self.client_state = client_state
         self.loop = loop
         self.banner = urwid.Text('welcome 2 tildemush, u are jacked in')
-        self.game_text = urwid.Text('lol game stuff happens here')
+        self.game_text = urwid.Pile([urwid.Text('lol game stuff happens here')])
         self.main = urwid.Columns([
             urwid.Filler(self.game_text),
             urwid.Pile([
@@ -230,9 +230,8 @@ class GameMain(urwid.Frame):
         self.focus_prompt()
 
     async def on_server_message(self, server_msg):
-        self.game_text.set_text("{}\n{}".format(
-            self.game_text.get_text(),
-            server_msg))
+        self.game_text.contents.append(
+            (urwid.Text(server_msg), self.game_text.options()))
 
     def focus_prompt(self):
         self.focus_position = 'footer'
