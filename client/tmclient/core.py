@@ -199,13 +199,13 @@ class CascadingBoxes(urwid.WidgetPlaceholder):
             return super(CascadingBoxes, self).keypress(size, key)
 
 class GamePrompt(urwid.Edit):
-    # TODO decide how to capture enter and submit edit contents to server
     def __init__(self):
         super().__init__(caption='> ', multiline=True)
 
 class GameMain(urwid.Frame):
-    def __init__(self, client_state):
+    def __init__(self, client_state, loop):
         self.client_state = client_state
+        self.loop = loop
         self.banner = urwid.Text('welcome 2 tildemush, u are jacked in')
         self.main = urwid.Columns([
             urwid.Filler(urwid.Text('lol game stuff happens here')),
@@ -226,10 +226,13 @@ class GameMain(urwid.Frame):
         if self.focus is self.prompt:
             if key == 'enter':
                 self.handle_game_input(self.prompt.get_edit_text())
+            else:
+                self.prompt.keypress((size[0],), key)
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
-        self.client_state.send(text)
+        asyncio.ensure_future(self.client_state.send(text), loop=self.loop)
+        self.prompt.edit_text = ''
 
 
 bt = urwid.BigText('WELCOME TO TILDEMUSH', urwid.font.HalfBlock7x7Font())
@@ -241,7 +244,7 @@ SPLASH = f
 
 TOP = CascadingBoxes(menu_top, SPLASH)
 CLIENT_STATE = ClientState()
-GAME_MAIN = GameMain(client_state=CLIENT_STATE)
+GAME_MAIN = GameMain(client_state=CLIENT_STATE, loop=LOOP)
 
 
 def start():
