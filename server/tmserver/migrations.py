@@ -16,6 +16,6 @@ def migrate():
     for migration in MIGRATIONS:
         migration(db, migrator)
 
-def reset():
+def reset_db():
     get_db().drop_tables(MODELS)
     migrate()

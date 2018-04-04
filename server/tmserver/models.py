@@ -4,10 +4,10 @@ import peewee as pw
 from . import config
 
 
-
 class BaseModel(pw.Model):
     class Meta:
         database = config.get_db()
+
 
 class User(BaseModel):
     username = pw.CharField(unique=True)
@@ -18,6 +18,6 @@ class User(BaseModel):
         self.password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt())
 
     def check_password(self, plaintext_password):
-        return bcrypt.checkpw(plaintext_password.encode('utf-8'), self.password)
+        return bcrypt.checkpw(plaintext_password.encode('utf-8'), self.password.encode('utf-8'))
 
 MODELS = [User,]
