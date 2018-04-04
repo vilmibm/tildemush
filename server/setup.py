@@ -21,6 +21,7 @@ setup(
         'peewee==3.1.1',
         'psycopg2==2.7.4',
         'websockets==4.0.1',
+        'bcrypt==3.1.4',
     ],
     include_package_data=True,
     entry_points={
