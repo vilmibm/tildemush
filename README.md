@@ -50,7 +50,7 @@ Thus, the goals of _tildemush_:
 - A MUSH built with contemporary tooling (Python)
 - Extensible by users, even those unused to programming
 - A beautiful, intuitive, and text-based UI
-- A graphical (web based) administrative interface
+- A rich TUI administrative interface
 
 ## Guiding Quotes
 
@@ -115,15 +115,14 @@ if it amuses you.
 
 [Telnet](https://en.wikipedia.org/wiki/Telnet) is awesome. However, it carries a
 big pile of baggage, user interface wise. It's too brittle and too unsafe for
-this project. Instead, a custom client will interact with a HTTP (or, possibly,
-websocket) API.
+this project. Instead, a custom [urwid](http://urwid.org/) client will interact with a [websocket](https://websockets.readthedocs.io) API.
 
-### Why bother with HTTP at all?
+### Why websockets?
 
-HTTP is, at this point, a lingua franca we are stuck with. It has many, many
+Websockets come from the HTTP world. HTTP is, at this point, a lingua franca we are stuck with. It has many, many
 shortcomings, but it is understood by many and easy to reason about. Further,
-while _tildemush_ itself will not have a GUI, an HTTP API means we can easily
-report on the state of the world via a website.
+while _tildemush_ itself will not have a GUI, a websocket-based API means we can easily
+report on the state of the world via a website. Finally, getting to use HTTPS is an advantage; while like all crypto tools its UX is funamdentally confusing, it's better than many.
 
 
 ## Acknowledgements
