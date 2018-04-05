@@ -62,8 +62,6 @@ class ClientState:
         self.recv_handler = handler
 
     async def connect(self):
-        print('GON CONNECT')
-        print(self.login_url)
         self.connection = await websockets.connect(self.login_url)
 
     async def start_listen_loop(self):
@@ -72,14 +70,21 @@ class ClientState:
             await self.recv_handler(server_msg)
 
     async def authenticate(self, username, password):
-        print('LOL {} {}'.format(username, password))
         if self.connection is None:
             await self.connect()
         await self.connection.send('AUTH {}:{}'.format(username, password))
-        auth_response = await self.connection.recv()
-        if auth_response != 'AUTH OK':
-            raise Exception('TODO better error for failing to login: {}'.format(auth_response))
+        login_response = await self.connection.recv()
+        if login_response != 'AUTH OK':
+            raise Exception('TODO better error for failing to login: {}'.format(login_response))
         self.authenticated = True
+
+    async def register(self, username, password):
+        if self.connection is None:
+            await self.connect()
+        await self.connection.send('REGISTER {}:{}'.format(username, password))
+        register_response = await self.connection.recv()
+        if register_response != 'REGISTER OK':
+            raise Exception('TODO better error for failing to register: {}'.format(register_response))
 
     async def send(self, text):
         await self.connection.send(text)
@@ -148,7 +153,36 @@ def show_login(_):
 
 async def handle_login(login_data):
     await CLIENT_STATE.authenticate(login_data['username'], login_data['password'])
+    # TODO don't just go to GAME_MAIN until we know we're logged in.
     TOP.original_widget = GAME_MAIN
+
+def show_register(_):
+    un_field = FormField(caption='username: ', name='username')
+    pw_field = FormField(caption='password: ', name='password', mask='~')
+    pw_confirm_field = FormField(caption='confirm password: ', name='confirm_password', mask='~')
+    submit_btn = urwid.Button('register! >')
+    register_form = Form([un_field, pw_field, pw_confirm_field], submit_btn)
+
+    def wait_for_register(_):
+        asyncio.wait_for(
+            asyncio.ensure_future(handle_register(register_form.data), loop=LOOP),
+            60.0, loop=LOOP)
+
+    urwid.connect_signal(submit_btn, 'click', wait_for_register)
+    TOP.open_box(urwid.Filler(register_form))
+
+
+async def handle_register(register_data):
+    if not register_data['username']:
+        pass # TODO error
+
+    if not register_data['password']\
+       or not register_data['confirm_password']\
+       or register_data['password'] != register_data['confirm_password']:
+        pass # TODO error
+
+    await CLIENT_STATE.register(register_data['username'], register_data['password'])
+    # TODO actually wait on recv for result of register
 
 def handle_exit(_):
     raise urwid.ExitMainLoop()
@@ -157,9 +191,7 @@ def handle_exit(_):
 # TODO dynamically create the main menu based on authentication state
 menu_top = menu('tildemush main menu', [
     menu_button('login', show_login),
-    sub_menu('create a new user account', [
-        menu_button('TODO', item_chosen),
-    ]),
+    menu_button('create a new user account', show_register),
     sub_menu('settings', [
         menu_button('forget login details', item_chosen),
         menu_button('set server domain', item_chosen),

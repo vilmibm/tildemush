@@ -32,6 +32,9 @@ class GameServer:
             # TODO actually validate un/pw
             # TODO connect context to user account
             await user_ctx.websocket.send('AUTH OK')
+        elif message.startswith('REGISTER'):
+            # TODO actually handle creating a user
+            await user_ctx.websocket.send('REGISTER OK')
         else:
             # TODO for now, just echo
             await user_ctx.websocket.send('you said {}'.format(message))
