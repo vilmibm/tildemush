@@ -1,7 +1,11 @@
 import asyncio
+import re
 import websockets as ws
 
 from .logs import debug_logger
+from .models import User
+
+REGISTER_RE = re.compile(r'^REGISTER ([^:]+?):(.+)$')
 
 
 class UserContext:
@@ -33,11 +37,23 @@ class GameServer:
             # TODO connect context to user account
             await user_ctx.websocket.send('AUTH OK')
         elif message.startswith('REGISTER'):
-            # TODO actually handle creating a user
+            username, password = self.parse_registration(message)
+            u = User(username=username, password=password)
+            u.validate()
+            u.hash_password()
+            u.save()
             await user_ctx.websocket.send('REGISTER OK')
         else:
             # TODO for now, just echo
             await user_ctx.websocket.send('you said {}'.format(message))
+
+    def parse_registration(self, message):
+        """Given a registration message like REGISTER vilmibm:abc123, parse and
+        return the username and password."""
+        match = REGISTER_RE.fullmatch(message)
+        if match is None:
+            raise Exception('malformed registration message: {}'.format(message))
+        return match.groups()
 
     def start(self):
         self.logger.info('Starting up asyncio loop')
