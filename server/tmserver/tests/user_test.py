@@ -25,3 +25,21 @@ class TestUserModel(unittest.TestCase):
         self.assertEqual(u.display_name, 'a gaseous cloud')
         u.display_name = 'vil'
         u.save()
+
+    # validation stuff
+
+    def test_username_taken(self):
+        User.create(username='vilmibm', password='foo')
+        u = User(username='vilmibm', password='bar')
+        with self.assertRaises(
+                Exception,
+                msg='username taken: vilmibm'):
+            u.validate()
+
+    def test_username_invalid(self):
+        # TODO
+        self.assertTrue(False)
+
+    def test_password_insecure(self):
+        # TODO
+        self.assertTrue(False)

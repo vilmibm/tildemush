@@ -5,7 +5,7 @@ import websockets as ws
 from .logs import debug_logger
 from .models import User
 
-REGISTER_RE = re.compile(r'^REGISTER ([^:]+?):(.+)$')
+REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
 
 
 class UserContext:
@@ -37,17 +37,22 @@ class GameServer:
             # TODO connect context to user account
             await user_ctx.websocket.send('AUTH OK')
         elif message.startswith('REGISTER'):
-            username, password = self.parse_registration(message)
-            u = User(username=username, password=password)
-            u.validate()
-            u.hash_password()
-            u.save()
+            self.handle_registration(message)
             await user_ctx.websocket.send('REGISTER OK')
         else:
             # TODO for now, just echo
             await user_ctx.websocket.send('you said {}'.format(message))
 
-    def parse_registration(self, message):
+    @classmethod
+    def handle_registration(cls, message):
+        username, password = cls.parse_registration(message)
+        u = User(username=username, password=password)
+        u.validate()
+        u.hash_password()
+        u.save()
+
+    @classmethod
+    def parse_registration(cls, message):
         """Given a registration message like REGISTER vilmibm:abc123, parse and
         return the username and password."""
         match = REGISTER_RE.fullmatch(message)
