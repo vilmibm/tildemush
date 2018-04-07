@@ -1,7 +1,12 @@
+import re
+
 import bcrypt
 import peewee as pw
 
 from . import config
+
+BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
+MIN_PASSWORD_LEN = 12
 
 
 class BaseModel(pw.Model):
@@ -26,8 +31,10 @@ class User(BaseModel):
         if 0 != len(User.select().where(User.username == self.username)):
             raise Exception('username taken: {}'.format(self.username))
 
-        # TODO username characters, length
-        # TODO password length, dictionary words
-        pass
+        if BAD_USERNAME_CHARS_RE.search(self.username):
+            raise Exception('username has invalid character')
+
+        if len(self.password) < MIN_PASSWORD_LEN:
+            raise Exception('password too short')
 
 MODELS = [User,]

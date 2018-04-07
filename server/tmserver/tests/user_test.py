@@ -36,10 +36,26 @@ class TestUserModel(unittest.TestCase):
                 msg='username taken: vilmibm'):
             u.validate()
 
+
     def test_username_invalid(self):
-        # TODO
-        self.assertTrue(False)
+        bad_usernames = [
+            'foo:',
+            'foo\'',
+            'foo"',
+            'foo;',
+            'fo%',
+        ]
+        for bad in bad_usernames:
+            u = User(username=bad, password='foobarbazquux')
+            with self.assertRaises(
+                    Exception,
+                    msg='username has invalid characters'):
+                u.validate()
+
 
     def test_password_insecure(self):
-        # TODO
-        self.assertTrue(False)
+        u = User(username='hello', password='foobar')
+        with self.assertRaises(
+                Exception,
+                msg='password too short'):
+            u.validate()

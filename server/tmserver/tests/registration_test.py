@@ -40,7 +40,7 @@ class TestRegistration(unittest.TestCase):
 
     def test_hashes_user_password(self):
         with mock.patch('tmserver.models.User.hash_password') as m:
-            msg = 'REGISTER vilmibm:foobar'
+            msg = 'REGISTER vilmibm:foobarbazquux'
             GameServer.handle_registration(msg)
         m.assert_called()
 
