@@ -2,23 +2,31 @@
 
 ## phase 1
 
-- [] stub websocket handlers
-- [] stub http handler
-- [] stub client, no curses
+- [x] stub websocket handlers
+- ~stub http handler~
+- [x] basic client with urwid
 
 ## phase 2
 
+- [x] connect client to server
+ - [x] login
+ - [x] register
 - [] schema design
  - [] users
  - [] rooms
  - [] objects
  - [] scripts
-- [] auth model
- - [] ident style
- - [] username/password style
+ - [] game world
+- [x] implement auth model
+ - ~ident style~
+ - [x] username/password style
 
 ## phase 3
 
+- [] expose game world to client
+ - [] room presence
+ - [] announcements
+ - [] whispers
 - [] WITCH macro stubs
  - [] object scripting
  - [] room scripting
@@ -26,5 +34,9 @@
 
 ## phase 4
 
-- [] UI sketching
-- [] asciimatics stubbing
+- [] UI flesh out
+ - [] settings
+ - [] error messaging
+ - [] WITCH editor
+ - [] tab completion first pass
+- [] test harness for testing async interactions
