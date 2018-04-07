@@ -8,7 +8,7 @@ the phases are very arbitrary.
 
 project management flow is:
 
-- notes in this file
+- ➡️ notes in this file
   - ➡️ notes added to TODO in project board
     - ➡️ notes converted to issues and filled in with checkbox TODO list
     - ⬅️ issue is completed
