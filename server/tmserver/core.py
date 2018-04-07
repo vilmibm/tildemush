@@ -19,6 +19,7 @@ class UserSession:
     def associate(self, user):
         self.user = user
 
+    @property
     def associated(self):
         return self.user is not None
 
@@ -73,7 +74,7 @@ class GameServer:
             await user_session.websocket.send('ERROR: '.format(e))
 
     def handle_login(self, user_session, message):
-        if user_session.associated():
+        if user_session.associated:
             raise ClientException('log out first')
         username, password = self.parse_login(message)
         users = User.select().where(User.username==username)
@@ -92,7 +93,7 @@ class GameServer:
         return match.groups()
 
     def handle_registration(self, user_session, message):
-        if user_session.associated():
+        if user_session.associated:
             raise ClientException('log out first')
         username, password = self.parse_registration(message)
         u = User(username=username, password=password)
