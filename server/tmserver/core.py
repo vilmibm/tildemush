@@ -61,14 +61,10 @@ class GameServer:
             message, user_session))
         try:
             if message.startswith('LOGIN'):
-                if user_session.associated():
-                    raise ClientException('log out first')
                 self.handle_login(user_session, message)
                 await user_session.websocket.send('LOGIN OK')
             elif message.startswith('REGISTER'):
-                if user_session.associated():
-                    raise ClientException('log out first')
-                self.handle_registration(message)
+                self.handle_registration(user_session, message)
                 await user_session.websocket.send('REGISTER OK')
             else:
                 # TODO for now, just echo
@@ -77,6 +73,8 @@ class GameServer:
             await user_session.websocket.send('ERROR: '.format(e))
 
     def handle_login(self, user_session, message):
+        if user_session.associated():
+            raise ClientException('log out first')
         username, password = self.parse_login(message)
         users = User.select().where(User.username==username)
         if len(users) == 0:
@@ -93,7 +91,9 @@ class GameServer:
             raise ClientException('malformed login message: {}'.format(message))
         return match.groups()
 
-    def handle_registration(self, message):
+    def handle_registration(self, user_session, message):
+        if user_session.associated():
+            raise ClientException('log out first')
         username, password = self.parse_registration(message)
         u = User(username=username, password=password)
         u.validate()

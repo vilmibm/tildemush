@@ -4,13 +4,15 @@ import unittest
 from ..errors import ClientException
 from ..migrations import reset_db
 from ..models import User
-from ..core import GameServer
+from ..core import GameServer, UserSession
 
 class TestRegistration(unittest.TestCase):
 
     def setUp(self):
-        self.log_mock = mock.MagicMock()
+        self.log_mock = mock.Mock()
         self.server = GameServer(logger=self.log_mock)
+        self.mock_session = mock.Mock()
+        self.mock_session.associated.return_value = False
         reset_db()
 
     def test_malformed_registers(self):
@@ -32,22 +34,29 @@ class TestRegistration(unittest.TestCase):
 
     def test_creates_user(self):
         msg = 'REGISTER vilmibm:foobar1234567890-=_+!@#$%^&*()_+{}[]|/.,<>;:\'"'
-        self.server.handle_registration(msg)
+        self.server.handle_registration(self.mock_session, msg)
         users = User.select().where(User.username == 'vilmibm')
         self.assertEqual(1, len(users))
 
     def test_validates_user(self):
         with mock.patch('tmserver.models.User.validate') as m:
             msg = 'REGISTER vilmibm:foobar'
-            self.server.handle_registration(msg)
+            self.server.handle_registration(self.mock_session, msg)
         m.assert_called()
 
     def test_hashes_user_password(self):
         with mock.patch('tmserver.models.User.hash_password') as m:
             msg = 'REGISTER vilmibm:foobarbazquux'
-            self.server.handle_registration(msg)
+            self.server.handle_registration(self.mock_session, msg)
         m.assert_called()
 
     def test_detects_already_assoced_user_session(self):
-        # TODO
-        pass
+        vil = User(username='vilmibm', password='foobarbazquux')
+        vil.hash_password()
+        vil.save()
+        user_session = UserSession(mock.Mock())
+        user_session.associate(vil)
+        with self.assertRaisesRegex(
+                ClientException,
+                'log out first'):
+            self.server.handle_registration(user_session, 'LOGIN vilmibm:foobarbazquux')

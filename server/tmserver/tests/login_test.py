@@ -9,7 +9,7 @@ from ..core import GameServer, UserSession
 class TestLogin(unittest.TestCase):
 
     def setUp(self):
-        self.log_mock = mock.MagicMock()
+        self.log_mock = mock.Mock()
         self.server = GameServer(logger=self.log_mock)
         reset_db()
 
@@ -65,7 +65,9 @@ class TestLogin(unittest.TestCase):
         vil = User(username='vilmibm', password='foobarbazquux')
         vil.hash_password()
         vil.save()
-        user_session = UserSession(None)
+        user_session = UserSession(mock.Mock())
         user_session.associate(vil)
-        # TODO need to call async handle_message here
-        pass
+        with self.assertRaisesRegex(
+                ClientException,
+                'log out first'):
+            self.server.handle_login(user_session, 'LOGIN vilmibm:foobarbazquux')
