@@ -1,3 +1,4 @@
+from datetime import datetime
 import re
 
 import bcrypt
@@ -37,4 +38,10 @@ class User(BaseModel):
         if len(self.password) < MIN_PASSWORD_LEN:
             raise Exception('password too short')
 
-MODELS = [User,]
+class Log(BaseModel):
+    env = pw.CharField()
+    created_at = pw.DateTimeField(default=datetime.utcnow())
+    level = pw.CharField()
+    raw = pw.CharField()
+
+MODELS = [User, Log]
