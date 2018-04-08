@@ -3,8 +3,6 @@ import logging
 
 from .models import Log
 
-logging.basicConfig(level=logging.INFO)
-
 class PGHandler(logging.Handler):
     def __init__(self, level=logging.NOTSET):
         super().__init__(level)
@@ -20,7 +18,14 @@ class PGHandler(logging.Handler):
             raw=record.getMessage(),
             level=record.levelname)
 
-# TODO looking good, but debug logger still going -- i think stdout handler is still active? figure that out
-debug_logger = logging.getLogger('tmserver debug')
-pg_logger = logging.getLogger('tmserver')
-pg_logger.addHandler(PGHandler())
+
+def get_logger(debug=False):
+    if debug:
+        logging.basicConfig(level=logging.INFO)
+
+    logger = logging.getLogger('tmserver')
+
+    if not debug:
+        logger.addHandler(PGHandler())
+
+    return logger

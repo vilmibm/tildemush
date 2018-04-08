@@ -1,9 +1,9 @@
 import asyncio
+import logging
 import re
 import websockets as ws
 
 from .errors import ClientException
-from .logs import debug_logger
 from .models import User
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
@@ -43,7 +43,9 @@ class ConnectionMap:
 
 
 class GameServer:
-    def __init__(self, bind='localhost', port=10014, logger=debug_logger):
+    def __init__(self, bind='localhost', port=10014, logger=None):
+        if logger is None:
+            logger = logging.getLogger('tmserver')
         self.bind = bind
         self.port = port
         self.connections = ConnectionMap()
