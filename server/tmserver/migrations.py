@@ -34,4 +34,4 @@ def migrate(migrations=MIGRATIONS):
 
 def reset_db():
     get_db().drop_tables(MODELS)
-    migrate()
+    get_db().create_tables(MODELS)
