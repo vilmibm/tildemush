@@ -12,7 +12,7 @@ class TestRegistration(unittest.TestCase):
         self.log_mock = mock.Mock()
         self.server = GameServer(logger=self.log_mock)
         self.mock_session = mock.Mock()
-        self.mock_session.associated.return_value = False
+        self.mock_session.associated = False
         reset_db()
 
     def test_malformed_registers(self):
