@@ -1,6 +1,6 @@
 from os import environ
 
-from peewee import PostgresqlDatabase
+from playhouse.postgres_ext import PostgresqlExtDatabase
 
 DB_HOST = 'localhost'
 DB_PORT = 5432
@@ -15,14 +15,14 @@ def get_db():
     db = None
 
     if env == 'test':
-        db = PostgresqlDatabase(
+        db = PostgresqlExtDatabase(
             TEST_DB_NAME,
             user=DB_UN,
             password=DB_PW,
             host=DB_HOST,
             port=DB_PORT)
     else:
-        db = PostgresqlDatabase(
+        db = PostgresqlExtDatabase(
             DB_NAME,
             user=DB_UN,
             password=DB_PW,
