@@ -5,15 +5,16 @@ import unittest
 from ..logs import PGHandler, get_logger
 from ..migrations import reset_db
 from ..models import Log
+from .tm_test_case import TildemushTestCase
 
 
-class TestPGHandler(unittest.TestCase):
+class TestPGHandler(TildemushTestCase):
     def setUp(self):
+        super().setUp()
         self.pgh = PGHandler()
         self.mock_log_record = mock.Mock()
         self.mock_log_record.getMessage.return_value = 'sweet'
         self.mock_log_record.levelname = 'INFO'
-        reset_db()
 
     def test_respects_env(self):
         self.assertEqual('test', self.pgh.env)
@@ -34,7 +35,7 @@ class TestPGHandler(unittest.TestCase):
         self.assertEqual(logs[0].raw, 'sweet')
 
 
-class TestLogging(unittest.TestCase):
+class TestLogging(TildemushTestCase):
     def test_debug_ignores_pg(self):
         with mock.patch('logging.getLogger') as m:
             logger = get_logger(debug=True)

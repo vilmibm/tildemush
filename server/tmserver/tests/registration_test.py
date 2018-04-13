@@ -5,15 +5,16 @@ from ..errors import ClientException
 from ..migrations import reset_db
 from ..models import User
 from ..core import GameServer, UserSession
+from .tm_test_case import TildemushTestCase
 
-class TestRegistration(unittest.TestCase):
+class TestRegistration(TildemushTestCase):
 
     def setUp(self):
+        super().setUp()
         self.log_mock = mock.Mock()
         self.server = GameServer(logger=self.log_mock)
         self.mock_session = mock.Mock()
         self.mock_session.associated = False
-        reset_db()
 
     def test_malformed_registers(self):
         malformed_registrations = [

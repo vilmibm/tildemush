@@ -6,12 +6,13 @@ from ..migrations import reset_db
 from ..models import User
 from ..core import GameServer, UserSession
 
-class TestLogin(unittest.TestCase):
+from .tm_test_case import TildemushTestCase
 
+class TestLogin(TildemushTestCase):
     def setUp(self):
+        super().setUp()
         self.log_mock = mock.Mock()
         self.server = GameServer(logger=self.log_mock)
-        reset_db()
 
     def test_malformed_login(self):
         malformed_logins = [

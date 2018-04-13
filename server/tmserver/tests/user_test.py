@@ -2,13 +2,9 @@ import unittest
 
 from ..migrations import reset_db
 from ..models import User
+from .tm_test_case import TildemushTestCase
 
-class TestUserModel(unittest.TestCase):
-
-    def setUp(self):
-        reset_db()
-
-
+class TestUserModel(TildemushTestCase):
     def test_password_hashing(self):
         u = User(username='vilmibm', password='foobar')
         u.hash_password()
