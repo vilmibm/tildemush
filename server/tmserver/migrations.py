@@ -13,6 +13,9 @@ def logging_remove_actor_column(db, migrator):
     m.migrate(
         migrator.drop_column('log', 'actor_id'))
 
+# These are largely historical, but may be of use once there exists a
+# long-running tildemush instance. in test and dev, i'm repeatedly trashing the
+# db with reset_db.
 MIGRATIONS = [
     logging_env_column,
     logging_remove_actor_column
