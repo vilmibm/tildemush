@@ -3,7 +3,7 @@ import unittest
 
 from ..errors import ClientException
 from ..migrations import reset_db
-from ..models import User
+from ..models import UserAccount
 from ..core import GameServer, UserSession
 from .tm_test_case import TildemushTestCase
 
@@ -36,23 +36,23 @@ class TestRegistration(TildemushTestCase):
     def test_creates_user(self):
         msg = 'REGISTER vilmibm:foobar1234567890-=_+!@#$%^&*()_+{}[]|/.,<>;:\'"'
         self.server.handle_registration(self.mock_session, msg)
-        users = User.select().where(User.username == 'vilmibm')
+        users = UserAccount.select().where(UserAccount.username == 'vilmibm')
         self.assertEqual(1, len(users))
 
     def test_validates_user(self):
-        with mock.patch('tmserver.models.User.validate') as m:
+        with mock.patch('tmserver.models.UserAccount.validate') as m:
             msg = 'REGISTER vilmibm:foobar'
             self.server.handle_registration(self.mock_session, msg)
         m.assert_called()
 
     def test_hashes_user_password(self):
-        with mock.patch('tmserver.models.User.hash_password') as m:
+        with mock.patch('tmserver.models.UserAccount.hash_password') as m:
             msg = 'REGISTER vilmibm:foobarbazquux'
             self.server.handle_registration(self.mock_session, msg)
         m.assert_called()
 
     def test_detects_already_assoced_user_session(self):
-        vil = User(username='vilmibm', password='foobarbazquux')
+        vil = UserAccount(username='vilmibm', password='foobarbazquux')
         vil.hash_password()
         vil.save()
         user_session = UserSession(mock.Mock())

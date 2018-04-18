@@ -2,7 +2,7 @@ import peewee as pw
 import playhouse.migrate as m
 
 from .config import get_db
-from .models import MODELS, User, Log
+from .models import MODELS
 
 def logging_env_column(db, migrator):
     m.migrate(

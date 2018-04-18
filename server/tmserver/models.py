@@ -15,7 +15,7 @@ class BaseModel(pw.Model):
         database = config.get_db()
 
 
-class User(BaseModel):
+class UserAccount(BaseModel):
     username = pw.CharField(unique=True)
     display_name = pw.CharField(default='a gaseous cloud')
     password = pw.CharField()
@@ -29,7 +29,7 @@ class User(BaseModel):
 
     # TODO should this be a class method?
     def validate(self):
-        if 0 != len(User.select().where(User.username == self.username)):
+        if 0 != len(UserAccount.select().where(UserAccount.username == self.username)):
             raise Exception('username taken: {}'.format(self.username))
 
         if BAD_USERNAME_CHARS_RE.search(self.username):
@@ -44,4 +44,4 @@ class Log(BaseModel):
     level = pw.CharField()
     raw = pw.CharField()
 
-MODELS = [User, Log]
+MODELS = [UserAccount, Log]

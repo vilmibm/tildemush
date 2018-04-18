@@ -4,7 +4,7 @@ import re
 import websockets as ws
 
 from .errors import ClientException
-from .models import User
+from .models import UserAccount
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
 REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
@@ -79,7 +79,7 @@ class GameServer:
         if user_session.associated:
             raise ClientException('log out first')
         username, password = self.parse_login(message)
-        users = User.select().where(User.username==username)
+        users = UserAccount.select().where(UserAccount.username==username)
         if len(users) == 0:
             raise ClientException('no such user')
         user = users[0]
@@ -98,7 +98,7 @@ class GameServer:
         if user_session.associated:
             raise ClientException('log out first')
         username, password = self.parse_registration(message)
-        u = User(username=username, password=password)
+        u = UserAccount(username=username, password=password)
         u.validate()
         u.hash_password()
         u.save()

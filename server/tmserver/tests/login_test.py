@@ -3,7 +3,7 @@ import unittest
 
 from ..errors import ClientException
 from ..migrations import reset_db
-from ..models import User
+from ..models import UserAccount
 from ..core import GameServer, UserSession
 
 from .tm_test_case import TildemushTestCase
@@ -32,7 +32,7 @@ class TestLogin(TildemushTestCase):
                 self.server.parse_login(malformed)
 
     def test_user_not_found(self):
-        vil = User(username='vilmibm', password='12345678901')
+        vil = UserAccount(username='vilmibm', password='12345678901')
         vil.hash_password()
         vil.save()
         msg = 'LOGIN vilmibbm:foobarbazquux'
@@ -42,7 +42,7 @@ class TestLogin(TildemushTestCase):
             self.server.handle_login(UserSession(None), msg)
 
     def test_bad_password(self):
-        vil = User(username='vilmibm', password='12345678901')
+        vil = UserAccount(username='vilmibm', password='12345678901')
         vil.hash_password()
         vil.save()
         msg = 'LOGIN vilmibm:foobarbazquux'
@@ -53,7 +53,7 @@ class TestLogin(TildemushTestCase):
 
     def test_success(self):
         user_session = UserSession(None)
-        vil = User(username='vilmibm', password='foobarbazquux')
+        vil = UserAccount(username='vilmibm', password='foobarbazquux')
         vil.hash_password()
         vil.save()
         msg = 'LOGIN vilmibm:foobarbazquux'
@@ -63,7 +63,7 @@ class TestLogin(TildemushTestCase):
         self.assertEqual('UserSession<vilmibm>', str(user_session))
 
     def test_detects_already_assoced_user_session(self):
-        vil = User(username='vilmibm', password='foobarbazquux')
+        vil = UserAccount(username='vilmibm', password='foobarbazquux')
         vil.hash_password()
         vil.save()
         user_session = UserSession(mock.Mock())
