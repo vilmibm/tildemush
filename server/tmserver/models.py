@@ -9,12 +9,13 @@ from . import config
 BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
 MIN_PASSWORD_LEN = 12
 
-class GameObjectManager:
+class GameWorld:
     # TODO do i actually want this? i think i do since while area_of_effect
     # could live in UserAccount, this class will also be handling creating and
     # destroying contain relationships. Those methods might should go into
     # Contains, though. I'll keep this here for now until more dust settles.
-    def area_of_effect(self, user_account):
+    @classmethod
+    def area_of_effect(cls, user_account):
         """Given a user_account, returns the set of objects that should
         receive events the account emits.
         """
@@ -39,10 +40,10 @@ class GameObjectManager:
         #
         # this is easier to implement and also means you can "muffle" an object
         # by stuffing it into a box.
-        inventory = set(self.player_object.contains)
-        room = set(self.player_object.contained_by)
+        room = user_account.player_obj.contained_by
+        inventory = set(user_account.player_obj.contains)
         adjacent_objs = set(room.contains)
-        return {self.player_object} & inventory & room & adjacent_objs
+        return {user_account.player_obj, room} & inventory & adjacent_objs
 
 
     # TODO it's arguable these should be defined on Contains
@@ -116,13 +117,15 @@ class GameObject(BaseModel):
     # every object needs to tie to a user account for authorizaton purposes
     author = pw.ForeignKeyField(UserAccount)
     name = pw.CharField()
-    description = pw.TextField()
+    description = pw.TextField(default='')
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
 
+    @property
     def contains(self):
         return (c.inner_obj for c in Contains.select().where(Contains.outer_obj==self))
 
+    @property
     def contained_by(self):
         model_set = list(Contains.select().where(Contains.inner_obj==self))
         if not model_set:
@@ -131,7 +134,7 @@ class GameObject(BaseModel):
         if len(model_set) > 1:
             # TODO uhh
             pass
-        return model_set[0]
+        return model_set[0].outer_obj
 
     @property
     def user_account(self):
