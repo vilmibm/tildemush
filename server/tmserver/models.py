@@ -69,12 +69,6 @@ class UserAccount(BaseModel):
     username = pw.CharField(unique=True)
     display_name = pw.CharField(default='a gaseous cloud')
     password = pw.CharField()
-    # this is weird, but we need to know what particular object is a player in
-    # the game. a user account can have any number of items in its possession
-    # (as governed by its player object's presence in the Contains table) and a
-    # user account can be the author of any number of objects (via the author
-    # field of an object), but a user account only ever has one player object.
-    player_object = pw.ForeignKeyField(GameObject, backref='user_account')
     # TODO add metadata -- created at and updated at
 
     def hash_password(self):
@@ -94,8 +88,25 @@ class UserAccount(BaseModel):
         if len(self.password) < MIN_PASSWORD_LEN:
             raise Exception('password too short')
 
+    def init_player_obj(self, description=''):
+        return GameObject.create(
+            author=self,
+            name=self.display_name,
+            description=description,
+            is_player_obj=True)
+
+    @property
+    def player_obj(self):
+        gos = GameObject.select().where(
+            GameObject.author==self,
+            GameObject.is_player_obj==True)
+        if gos:
+            return gos[0]
+        return None
+
+
 class Script(BaseModel):
-    author = pw.ForeignKeyField(User)
+    author = pw.ForeignKeyField(UserAccount)
 
 class ScriptRevision(BaseModel):
     code = pw.TextField()
@@ -103,10 +114,11 @@ class ScriptRevision(BaseModel):
 
 class GameObject(BaseModel):
     # every object needs to tie to a user account for authorizaton purposes
-    author = pw.ForeignKeyField(UserAccout)
+    author = pw.ForeignKeyField(UserAccount)
     name = pw.CharField()
     description = pw.TextField()
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
+    is_player_obj = pw.BooleanField(default=False)
 
     def contains(self):
         return (c.inner_obj for c in Contains.select().where(Contains.outer_obj==self))
@@ -121,9 +133,11 @@ class GameObject(BaseModel):
             pass
         return model_set[0]
 
-    def is_player_obj(self):
-        return self.user_account is None
-
+    @property
+    def user_account(self):
+        if self.is_player_obj:
+            return self.author
+        return None
 
 class Contains(BaseModel):
     outer_obj = pw.ForeignKeyField(GameObject)
@@ -137,4 +151,4 @@ class Log(BaseModel):
     raw = pw.CharField()
 
 
-MODELS = [UserAccount, Log]
+MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision]
