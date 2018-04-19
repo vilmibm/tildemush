@@ -43,14 +43,16 @@ class GameWorld:
         room = user_account.player_obj.contained_by
         inventory = set(user_account.player_obj.contains)
         adjacent_objs = set(room.contains)
-        return {user_account.player_obj, room} & inventory & adjacent_objs
+        return {user_account.player_obj, room} | inventory | adjacent_objs
 
 
     # TODO it's arguable these should be defined on Contains
-    def put_into(outer_obj, inner_obj):
+    @classmethod
+    def put_into(cls, outer_obj, inner_obj):
         Contains.create(outer_obj=outer_obj, inner_obj=inner_obj)
 
-    def remove_from(outer_obj, inner_obj):
+    @classmethod
+    def remove_from(cls, outer_obj, inner_obj):
         Contains.delete().where(
             Contains.outer_obj==outer_obj,
             Contains.inner_obj==inner_obj).execute()
@@ -129,8 +131,7 @@ class GameObject(BaseModel):
     def contained_by(self):
         model_set = list(Contains.select().where(Contains.inner_obj==self))
         if not model_set:
-            # TODO uhh
-            pass
+            return None
         if len(model_set) > 1:
             # TODO uhh
             pass
@@ -141,6 +142,31 @@ class GameObject(BaseModel):
         if self.is_player_obj:
             return self.author
         return None
+
+    def __str__(self):
+        return 'GameObject<{}> authored by {}'.format(self.name, self.author)
+
+    def __eq__(self, other):
+        script_revision = -1
+        other_revision = -1
+        if self.script_revision:
+            script_revision = self.script_revision.id
+        if other.script_revision:
+            other_revision = other.script_revision.id
+
+        return self.author.username == other.author.username\
+            and self.name == other.name\
+            and script_revision == other_revision
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        script_revision = -1
+        if self.script_revision:
+            script_revision = self.script_revision.id
+
+        return hash((self.author.username, self.name, script_revision))
 
 class Contains(BaseModel):
     outer_obj = pw.ForeignKeyField(GameObject)

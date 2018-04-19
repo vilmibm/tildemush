@@ -11,6 +11,15 @@ class ContainTest(TildemushTestCase):
             display_name='a gaseous cloud')
         self.vil.hash_password()
         self.vil.save()
+        self.room = GameObject.create(
+            author=self.vil,
+            name='foul foyer')
+        self.phone = GameObject.create(
+            author=self.vil,
+            name='pixel 2')
+        self.app = GameObject.create(
+            author=self.vil,
+            name='signal')
 
     def test_player_obj(self):
         assert self.vil.player_obj is None
@@ -20,20 +29,11 @@ class ContainTest(TildemushTestCase):
         assert player_obj.author == self.vil
 
     def test_area_of_effect(self):
-        self.vil.init_player_obj()
-        room = GameObject.create(
-            author=self.vil,
-            name='foul foyer')
+        player_obj = self.vil.init_player_obj()
         cigar = GameObject.create(
             author=self.vil,
             name='black and mild',
             description='with the wood tip, naturally')
-        phone = GameObject.create(
-            author=self.vil,
-            name='pixel 2')
-        app = GameObject.create(
-            author=self.vil,
-            name='signal')
         rug = GameObject.create(
             author=self.vil,
             name='rug',
@@ -43,33 +43,43 @@ class ContainTest(TildemushTestCase):
             name='Voyager')
 
         Contains.create(
-            outer_obj=room,
-            inner_obj=self.vil.player_obj)
+            outer_obj=self.room,
+            inner_obj=player_obj)
         Contains.create(
-            outer_obj=phone,
-            inner_obj=app)
+            outer_obj=self.phone,
+            inner_obj=self.app)
         Contains.create(
-            outer_obj=room,
+            outer_obj=self.room,
             inner_obj=cigar)
         Contains.create(
-            outer_obj=self.vil.player_obj,
-            inner_obj=phone)
+            outer_obj=player_obj,
+            inner_obj=self.phone)
         Contains.create(
-            outer_obj=room,
+            outer_obj=self.room,
             inner_obj=rug)
         Contains.create(
             outer_obj=ship,
-            inner_obj=room)
-        # TODO so this equality check will likely fail, we'll see
-        # TODO probably add a custom hash method for objects
+            inner_obj=self.room)
+
         assert GameWorld.area_of_effect(self.vil) == {
-            room,
-            phone,
+            self.room,
+            self.phone,
             cigar,
-            rug}
+            rug,
+            player_obj}
 
     def test_creating_contains(self):
-        pass
+        player_obj = self.vil.init_player_obj()
+        GameWorld.put_into(self.room, player_obj)
+        GameWorld.put_into(player_obj, self.phone)
+        GameWorld.put_into(self.phone, self.app)
+        assert self.room == player_obj.contained_by
+        assert self.phone == self.app.contained_by
+        assert None == self.room.contained_by
+        assert [self.app] == list(self.phone.contains)
+        assert [player_obj] == list(self.room.contains)
+        assert [] == list(self.app.contains)
+
 
     def test_removing_contains(self):
         pass
