@@ -74,12 +74,19 @@ class ContainTest(TildemushTestCase):
         GameWorld.put_into(player_obj, self.phone)
         GameWorld.put_into(self.phone, self.app)
         assert self.room == player_obj.contained_by
-        assert self.phone == self.app.contained_by
         assert None == self.room.contained_by
+        assert self.phone == self.app.contained_by
         assert [self.app] == list(self.phone.contains)
         assert [player_obj] == list(self.room.contains)
         assert [] == list(self.app.contains)
 
-
     def test_removing_contains(self):
-        pass
+        player_obj = self.vil.init_player_obj()
+        GameWorld.put_into(self.room, player_obj)
+        GameWorld.put_into(player_obj, self.phone)
+        GameWorld.put_into(self.phone, self.app)
+        assert self.phone == self.app.contained_by
+        assert [self.app] == list(self.phone.contains)
+        GameWorld.remove_from(self.phone, self.app)
+        assert [] == list(self.phone.contains)
+        assert None == self.app.contained_by
