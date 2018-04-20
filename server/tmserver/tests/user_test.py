@@ -1,6 +1,5 @@
 import unittest
 
-from ..migrations import reset_db
 from ..models import UserAccount
 from .tm_test_case import TildemushTestCase
 

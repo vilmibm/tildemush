@@ -2,9 +2,9 @@ import unittest.mock as mock
 import unittest
 
 from ..errors import ClientException
-from ..migrations import reset_db
 from ..models import UserAccount
 from ..core import GameServer, UserSession
+from ..world import GameWorld
 
 from .tm_test_case import TildemushTestCase
 
@@ -12,7 +12,7 @@ class TestLogin(TildemushTestCase):
     def setUp(self):
         super().setUp()
         self.log_mock = mock.Mock()
-        self.server = GameServer(logger=self.log_mock)
+        self.server = GameServer(GameWorld, logger=self.log_mock)
 
     def test_malformed_login(self):
         malformed_logins = [

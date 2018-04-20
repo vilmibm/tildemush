@@ -8,20 +8,29 @@ from .models import UserAccount
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
 REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
+COMMAND_RE = re.compile(r'^COMMAND ([^ ]+) ?(.*)$')
 
 
 class UserSession:
     """An instance of this class represents a user's session."""
-    def __init__(self, websocket):
+    def __init__(self, game_world, websocket):
         self.websocket = websocket
+        self.game_world = game_world
+        # TODO rename user_account
         self.user = None
-
-    def associate(self, user):
-        self.user = user
 
     @property
     def associated(self):
         return self.user is not None
+
+    def associate(self, user):
+        self.user = user
+
+    async def client_send(self, message):
+        self.websocket.send(message)
+
+    def dispatch_action(self, action, rest):
+        self.game_world.dispatch_action(self.user, action, rest)
 
     def __str__(self):
         s = 'UserSession<{}>'.format(None)
@@ -43,7 +52,8 @@ class ConnectionMap:
 
 
 class GameServer:
-    def __init__(self, bind='localhost', port=10014, logger=None):
+    def __init__(self, game_world, bind='localhost', port=10014, logger=None):
+        self.game_world = game_world
         if logger is None:
             logger = logging.getLogger('tmserver')
         self.bind = bind
@@ -53,7 +63,7 @@ class GameServer:
 
     async def handle_connection(self, websocket, path):
         self.logger.info('Handling initial connection at path {}'.format(path))
-        user_session = UserSession(websocket)
+        user_session = UserSession(game_world, websocket)
         self.logger.info('Registering user context {}'.format(user_session))
         self.connections.add(websocket, user_session)
         async for message in websocket:
@@ -65,10 +75,10 @@ class GameServer:
         try:
             if message.startswith('LOGIN'):
                 self.handle_login(user_session, message)
-                await user_session.websocket.send('LOGIN OK')
+                await user_session.clent_send('LOGIN OK')
             elif message.startswith('REGISTER'):
                 self.handle_registration(user_session, message)
-                await user_session.websocket.send('REGISTER OK')
+                await user_session.client_send('REGISTER OK')
             elif message.startswith('COMMAND'):
                 # these incoming messages are now linked to a user session ->
                 # user account -> player object. we have a bridge to the
@@ -100,12 +110,24 @@ class GameServer:
                 # should these be acked back to the client? probably -- it's
                 # good for presence wrt the server connection.
                 self.handle_command(user_session, message)
-                await user_session.websocket.send('COMMAND OK')
+                await user_session.client_send('COMMAND OK')
             else:
-                #await user_session.websocket.send('you said {}'.format(message))
+                #await user_session.client_send('you said {}'.format(message))
                 raise ClientException('message not understood')
         except ClientException as e:
-            await user_session.websocket.send('ERROR: '.format(e))
+            await user_session.client_send('ERROR: '.format(e))
+
+    def handle_command(self, user_session, message):
+        if not user_session.associated:
+            raise ClientException('not logged in')
+        action, rest = self.parse_command(message)
+        user_session.dispatch_action(action, rest)
+
+    def parse_command(self, message):
+        match = COMMAND_RE.fullmatch(message)
+        if match is None:
+            raise ClientException('malformed command message: {}'.format(message))
+        return match.groups()
 
     def handle_login(self, user_session, message):
         if user_session.associated:

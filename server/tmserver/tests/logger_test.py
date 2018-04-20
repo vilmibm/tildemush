@@ -3,7 +3,6 @@ import unittest.mock as mock
 import unittest
 
 from ..logs import PGHandler, get_logger
-from ..migrations import reset_db
 from ..models import Log
 from .tm_test_case import TildemushTestCase
 
