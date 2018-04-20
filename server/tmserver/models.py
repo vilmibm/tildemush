@@ -4,6 +4,8 @@ import re
 import bcrypt
 import peewee as pw
 from playhouse.signals import Model, pre_save
+from playhouse.postgres_ext import JSONField
+
 
 from . import config
 
@@ -106,6 +108,7 @@ class GameObject(BaseModel):
     description = pw.TextField(default='')
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
+    data = JSONField(default='{}')
 
     @property
     def contains(self):
@@ -126,6 +129,25 @@ class GameObject(BaseModel):
         if self.is_player_obj:
             return self.author
         return None
+
+    def handle_action(player_obj, action, rest):
+        # TODO
+        # suddenly it's time to decide how WITCH is going to work at runtime.
+        #
+        # Given:
+        # 1. a WITCH script exists as static text in a revision object
+        # 2. we need to know if a given script responds to a given action
+        #
+        # Then:
+        # A. we need an in-RAM representation of that script: a live object instance that can dispatch actions
+        # B. we need to be able to access and update the data on the GameObject model
+        # C. we need to decide what the underlying class is for a live object and how to expose it via a Hy macro
+        # D. we need to decide how to coordinate the GameObject model with instances of live objects
+        #
+        # Questions:
+        # !. Should there be a static class that all live objects share? (probably)
+        # @. Should a scriptrevision be lazily compiled and compiled at most once (probably)
+        pass
 
     def __str__(self):
         return 'GameObject<{}> authored by {}'.format(self.name, self.author)
