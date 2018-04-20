@@ -64,6 +64,15 @@ class UserAccount(BaseModel):
             return gos[0]
         return None
 
+    def __eq__(self, other):
+        return self.username == other.username
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.username,))
+
 @pre_save(sender=UserAccount)
 def pre_save_handler(cls, instance, created):
     if not created:
