@@ -69,9 +69,41 @@ class GameServer:
             elif message.startswith('REGISTER'):
                 self.handle_registration(user_session, message)
                 await user_session.websocket.send('REGISTER OK')
+            elif message.startswith('COMMAND'):
+                # these incoming messages are now linked to a user session ->
+                # user account -> player object. we have a bridge to the
+                # client, but the actual definition of game commands hasn't
+                # been done.
+                #
+                # i'd like to set up the scaffolding for a command -- like /go
+                # <direction> or /look -- to round trip to the model layer and
+                # back to the client.
+                #
+                # i can process the commands either here in the game server
+                # (like with login and register), in the user session (blech),
+                # in the user model (v blech). none of these feels particularly
+                # natural to me.
+                #
+                # i think first i should probably decide on the actual
+                # hierarchy of commands as well as routing chats.
+                #
+                # i can detect here in server if i'm seeing a CHAT (ie command
+                # sent to the client with no punctuational prefix) or COMMAND.
+                # This feels wrong immediately, though, since a CHAT should
+                # just be another COMMAND.
+                #
+                # the client can detect a chat and send "COMMAND CHAT $rest".
+                # In the case of a punctuational message typed by the user at
+                # the client, it would be "COMMAND $command $rest". I'm find
+                # with this as a starting point.
+                #
+                # should these be acked back to the client? probably -- it's
+                # good for presence wrt the server connection.
+                self.handle_command(user_session, message)
+                await user_session.websocket.send('COMMAND OK')
             else:
-                # TODO for now, just echo
-                await user_session.websocket.send('you said {}'.format(message))
+                #await user_session.websocket.send('you said {}'.format(message))
+                raise ClientException('message not understood')
         except ClientException as e:
             await user_session.websocket.send('ERROR: '.format(e))
 

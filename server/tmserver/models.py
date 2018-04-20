@@ -86,6 +86,7 @@ class UserAccount(BaseModel):
         return bcrypt.checkpw(plaintext_password.encode('utf-8'), pw)
 
     # TODO should this be a class method?
+    # TODO should this just run in pre_save?
     def validate(self):
         if 0 != len(UserAccount.select().where(UserAccount.username == self.username)):
             raise Exception('username taken: {}'.format(self.username))
