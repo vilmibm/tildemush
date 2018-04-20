@@ -46,15 +46,13 @@ class TestRegistration(TildemushTestCase):
         m.assert_called()
 
     def test_hashes_user_password(self):
-        with mock.patch('tmserver.models.UserAccount.hash_password') as m:
+        with mock.patch('tmserver.models.UserAccount._hash_password') as m:
             msg = 'REGISTER vilmibm:foobarbazquux'
             self.server.handle_registration(self.mock_session, msg)
         m.assert_called()
 
     def test_detects_already_assoced_user_session(self):
-        vil = UserAccount(username='vilmibm', password='foobarbazquux')
-        vil.hash_password()
-        vil.save()
+        vil = UserAccount.create(username='vilmibm', password='foobarbazquux')
         user_session = UserSession(mock.Mock())
         user_session.associate(vil)
         with self.assertRaisesRegex(

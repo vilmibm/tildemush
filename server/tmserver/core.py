@@ -100,7 +100,6 @@ class GameServer:
         username, password = self.parse_registration(message)
         u = UserAccount(username=username, password=password)
         u.validate()
-        u.hash_password()
         u.save()
 
     def parse_registration(self, message):

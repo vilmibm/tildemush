@@ -5,12 +5,10 @@ from .tm_test_case import TildemushTestCase
 class ContainTest(TildemushTestCase):
     def setUp(self):
         super().setUp()
-        self.vil = UserAccount(
+        self.vil = UserAccount.create(
             username='vilmibm',
             password='foobarbazquux',
             display_name='a gaseous cloud')
-        self.vil.hash_password()
-        self.vil.save()
         self.room = GameObject.create(
             author=self.vil,
             name='foul foyer')

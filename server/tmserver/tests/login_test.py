@@ -32,9 +32,7 @@ class TestLogin(TildemushTestCase):
                 self.server.parse_login(malformed)
 
     def test_user_not_found(self):
-        vil = UserAccount(username='vilmibm', password='12345678901')
-        vil.hash_password()
-        vil.save()
+        vil = UserAccount.create(username='vilmibm', password='12345678901')
         msg = 'LOGIN vilmibbm:foobarbazquux'
         with self.assertRaisesRegex(
                 ClientException,
@@ -42,9 +40,7 @@ class TestLogin(TildemushTestCase):
             self.server.handle_login(UserSession(None), msg)
 
     def test_bad_password(self):
-        vil = UserAccount(username='vilmibm', password='12345678901')
-        vil.hash_password()
-        vil.save()
+        vil = UserAccount.create(username='vilmibm', password='12345678901')
         msg = 'LOGIN vilmibm:foobarbazquux'
         with self.assertRaisesRegex(
                 ClientException,
@@ -53,9 +49,7 @@ class TestLogin(TildemushTestCase):
 
     def test_success(self):
         user_session = UserSession(None)
-        vil = UserAccount(username='vilmibm', password='foobarbazquux')
-        vil.hash_password()
-        vil.save()
+        vil = UserAccount.create(username='vilmibm', password='foobarbazquux')
         msg = 'LOGIN vilmibm:foobarbazquux'
         self.server.handle_login(user_session, msg)
         self.assertTrue(user_session.associated)
@@ -63,9 +57,7 @@ class TestLogin(TildemushTestCase):
         self.assertEqual('UserSession<vilmibm>', str(user_session))
 
     def test_detects_already_assoced_user_session(self):
-        vil = UserAccount(username='vilmibm', password='foobarbazquux')
-        vil.hash_password()
-        vil.save()
+        vil = UserAccount.create(username='vilmibm', password='foobarbazquux')
         user_session = UserSession(mock.Mock())
         user_session.associate(vil)
         with self.assertRaisesRegex(

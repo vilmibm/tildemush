@@ -3,6 +3,7 @@ import re
 
 import bcrypt
 import peewee as pw
+from playhouse.signals import Model, pre_save
 
 from . import config
 
@@ -58,8 +59,8 @@ class GameWorld:
             Contains.inner_obj==inner_obj).execute()
 
 
-class BaseModel(pw.Model):
-    # TODO is it chill to just add created/updated meta fields here?
+class BaseModel(Model):
+    created_at = pw.DateTimeField(default=datetime.utcnow())
     class Meta:
         database = config.get_db()
 
@@ -72,13 +73,17 @@ class UserAccount(BaseModel):
     username = pw.CharField(unique=True)
     display_name = pw.CharField(default='a gaseous cloud')
     password = pw.CharField()
-    # TODO add metadata -- created at and updated at
+    updated_at = pw.DateTimeField(null=True)
+    god = pw.BooleanField(default=False)
 
-    def hash_password(self):
+    def _hash_password(self):
         self.password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt())
 
     def check_password(self, plaintext_password):
-        return bcrypt.checkpw(plaintext_password.encode('utf-8'), self.password.encode('utf-8'))
+        pw = self.password
+        if type(self.password) == type(''):
+            pw = self.password.encode('utf-8')
+        return bcrypt.checkpw(plaintext_password.encode('utf-8'), pw)
 
     # TODO should this be a class method?
     def validate(self):
@@ -106,6 +111,14 @@ class UserAccount(BaseModel):
         if gos:
             return gos[0]
         return None
+
+@pre_save(sender=UserAccount)
+def pre_save_handler(cls, instance, created):
+    if not created:
+        instance.updated_at = datetime.utcnow()
+
+    if created and instance.password:
+        instance._hash_password()
 
 
 class Script(BaseModel):
@@ -175,7 +188,7 @@ class Contains(BaseModel):
 
 class Log(BaseModel):
     env = pw.CharField()
-    created_at = pw.DateTimeField(default=datetime.utcnow())
+    #created_at = pw.DateTimeField(default=datetime.utcnow())
     level = pw.CharField()
     raw = pw.CharField()
 
