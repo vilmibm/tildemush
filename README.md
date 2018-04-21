@@ -3,9 +3,9 @@
 ## TOC
 
 - This document: background, purpose, and high level information
-- [Architecture](architecture.md)
-- [Client design](client.md)
-- [The WITCH in-game scripting language](scripting.md)
+- [Architecture](docs/architecture.md)
+- [Client design](docs/client.md)
+- [The WITCH in-game scripting language](docs/scripting.md)
 
 ## Purpose and Goals
 
