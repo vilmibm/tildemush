@@ -167,6 +167,27 @@ class GameObject(BaseModel):
         # This evals in current scope, so ScriptEngine is available
         return hy.eval(compiled_code)
 
+    def _ensure_data(self, data_mapping):
+        # TODO check to see if data has been init'ed and init if not
+        print('in _ensure_data')
+        pass
+
+    # should these be _ methods too?
+    def say(self, message):
+        # TODO
+        print('in say')
+        pass
+
+    def set_data(self, key, value):
+        # TODO
+        print('in set_data')
+        pass
+
+    def get_data(self, key):
+        # TODO
+        print('in get_data')
+        pass
+
     def handle_action(player_obj, action, rest):
         # TODO
         # suddenly it's time to decide how WITCH is going to work at runtime.
