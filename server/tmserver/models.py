@@ -2,6 +2,7 @@ from datetime import datetime
 import re
 
 import bcrypt
+import hy
 import peewee as pw
 from playhouse.signals import Model, pre_save
 from playhouse.postgres_ext import JSONField
@@ -11,6 +12,24 @@ from . import config
 
 BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
 MIN_PASSWORD_LEN = 12
+
+class ScriptEngine:
+    # TODO this may be merged with GameObject, ultimately. I'm not sure.
+    def __init__(self):
+        self.handlers = {'debug': self.debug}
+
+    @staticmethod
+    def noop(*args, **kwargs):
+        pass
+
+    def debug(self):
+        return 'i am a scriptedobject'
+
+    def add_handler(self, action, fn):
+        self.handlers[action] = fn
+
+    def handler(self, action):
+        return self.handlers.get(action, self.noop)
 
 class BaseModel(Model):
     created_at = pw.DateTimeField(default=datetime.utcnow())
@@ -130,6 +149,24 @@ class GameObject(BaseModel):
             return self.author
         return None
 
+    @property
+    def engine(self):
+        if not hasattr(self, '_engine'):
+            # TODO should this be two steps?
+            compiled = self._compile_script()
+            self._engine = self._execute_script(compiled)
+
+        return self._engine
+
+    def _compile_script(self):
+        script_text = self.script_revision.code
+        with_header = '{}\n\n{}'.format(HY_HEADER, script_text)
+        return hy.read_str(with_header)
+
+    def _execute_script(self, compiled_code):
+        # This evals in current scope, so ScriptEngine is available
+        return hy.eval(compiled_code)
+
     def handle_action(player_obj, action, rest):
         # TODO
         # suddenly it's time to decide how WITCH is going to work at runtime.
@@ -147,7 +184,10 @@ class GameObject(BaseModel):
         # Questions:
         # !. Should there be a static class that all live objects share? (probably)
         # @. Should a scriptrevision be lazily compiled and compiled at most once (probably)
-        pass
+        #
+        # When a WITCH (script) macro is compiled, it should emit code that
+        # instantiates an instance of ScriptEngine.
+        self.engine.handler(action)(self, player_obj, rest)
 
     def __str__(self):
         return 'GameObject<{}> authored by {}'.format(self.name, self.author)

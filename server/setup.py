@@ -22,6 +22,7 @@ setup(
         'psycopg2==2.7.4',
         'websockets==4.0.1',
         'bcrypt==3.1.4',
+        'hy==0.14.0',
     ],
     include_package_data=True,
     entry_points={
