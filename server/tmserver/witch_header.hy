@@ -13,20 +13,22 @@
   [script_name _ author_name data actions]
   #_("TODO what to do with script_name and author_name?")
   (setv se (gensym))
+  (setv hp (gensym))
   (quasiquote
     (do
       (setv ~se (ScriptEngine))
-      ~(for [hear-pair actions]
-        `(.add-handler
+      #_("TODO something wrong with ~actions expansion...")
+      (for [~hp ~actions]
+        (.add-handler
           ~se
-          ~(get hear-pair 1)
+          ~(get hp 1)
           (fn [gobj pobj the-rest]
             #_("TODO eventually decide on the-rest handling")
             (._ensure-data gobj ~(get data 1))
-            ~@(cut hear-pair 2))))
+            ~@(cut hp 2))))
       ~se)))
 
-(macroexpand (witch "horse" by "vilmibm"
+(setv se (witch "horse" by "vilmibm"
                 (has {"num-pets" 0})
                 (hears "pet"
                        (set-data "num-pets"
