@@ -175,7 +175,7 @@ class GameObject(BaseModel):
     description = pw.TextField(default='')
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
-    data = JSONField(default='{}')
+    data = JSONField(default=dict)
 
     @property
     def contains(self):
@@ -218,11 +218,9 @@ class GameObject(BaseModel):
     def _ensure_data(self, data_mapping):
         """Given the default values for some gameobject's script, initialize
         this object's data column to those defaults. Saves the instance."""
-        if data_mapping == {}:
+        if data_mapping == {} or self.data != {}:
             return
-        if self.data != '{}':
-            return
-        self.data = json.dumps(data_mapping)
+        self.data = data_mapping
         self.save()
 
     # TODO should these be _ methods too?
@@ -231,15 +229,21 @@ class GameObject(BaseModel):
         print('in say')
         pass
 
+    # TODO I may want to forbid getting/setting things not originally declared
+    # via ensure_data. This might help newer programmers catch typos in WITCH
+    # scripts. For now, eh.
     def set_data(self, key, value):
-        self.data.set(key, value)
+        self.data[key] = value
         self.save()
 
     def get_data(self, key):
-        return self.data.extract(key)
+        return self.get_by_id(self.id).data.get(key)
 
     def handle_action(sender_obj, action, action_args):
         # TODO i'm using, alternately, rest and cmd_args. i should standardize on action_args.
+        # TODO there are *horrifying* race conditions going on here if set_data
+        # and get_data are used in separate transactions. Call handler inside
+        # of a transaction:
         self.engine.handler(action)(self, sender_obj, rest)
 
     def __str__(self):
