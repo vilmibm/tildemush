@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 import re
 
 import bcrypt
@@ -215,47 +216,31 @@ class GameObject(BaseModel):
         return hy.eval(compiled_code)
 
     def _ensure_data(self, data_mapping):
-        # TODO check to see if data has been init'ed and init if not
-        print('in _ensure_data')
-        pass
+        """Given the default values for some gameobject's script, initialize
+        this object's data column to those defaults. Saves the instance."""
+        if data_mapping == {}:
+            return
+        if self.data != '{}':
+            return
+        self.data = json.dumps(data_mapping)
+        self.save()
 
-    # should these be _ methods too?
+    # TODO should these be _ methods too?
     def say(self, message):
-        # TODO
+        # TODO use GameWorld to emit a say action?
         print('in say')
         pass
 
     def set_data(self, key, value):
-        # TODO
-        print('in set_data')
-        pass
+        self.data.set(key, value)
+        self.save()
 
     def get_data(self, key):
-        # TODO
-        print('in get_data')
-        pass
+        return self.data.extract(key)
 
-    def handle_action(player_obj, action, rest):
-        # TODO
-        # suddenly it's time to decide how WITCH is going to work at runtime.
-        #
-        # Given:
-        # 1. a WITCH script exists as static text in a revision object
-        # 2. we need to know if a given script responds to a given action
-        #
-        # Then:
-        # A. we need an in-RAM representation of that script: a live object instance that can dispatch actions
-        # B. we need to be able to access and update the data on the GameObject model
-        # C. we need to decide what the underlying class is for a live object and how to expose it via a Hy macro
-        # D. we need to decide how to coordinate the GameObject model with instances of live objects
-        #
-        # Questions:
-        # !. Should there be a static class that all live objects share? (probably)
-        # @. Should a scriptrevision be lazily compiled and compiled at most once (probably)
-        #
-        # When a WITCH (script) macro is compiled, it should emit code that
-        # instantiates an instance of ScriptEngine.
-        self.engine.handler(action)(self, player_obj, rest)
+    def handle_action(sender_obj, action, action_args):
+        # TODO i'm using, alternately, rest and cmd_args. i should standardize on action_args.
+        self.engine.handler(action)(self, sender_obj, rest)
 
     def __str__(self):
         return 'GameObject<{}> authored by {}'.format(self.name, self.author)
