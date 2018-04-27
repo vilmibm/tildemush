@@ -217,12 +217,12 @@ class GameObject(BaseModel):
 
     # TODO should these be _ methods too?
     def say(self, message):
-        # TODO use GameWorld to emit a say action?
-        print('in say')
+        self.game_world.dispatch_action(self, 'say', message)
 
     # TODO I may want to forbid getting/setting things not originally declared
     # via ensure_data. This might help newer programmers catch typos in WITCH
     # scripts. For now, eh.
+    # lol this would have saved me some debugging earlier when i mixed up - and _
     def set_data(self, key, value):
         self.data[key] = value
         self.save()

@@ -1,18 +1,17 @@
 class GameWorld:
 
     @classmethod
-    def dispatch_action(cls, user_account, action, action_args):
-        aoe = cls.area_of_effect(user_account)
-        po = user_account.player_obj
+    def dispatch_action(cls, sender_obj, action, action_args):
+        aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
             o.handle_action(po, action, action_args)
 
     @classmethod
-    def area_of_effect(cls, user_account):
-        """Given a user_account, returns the set of objects that should
-        receive events the account emits.
+    def area_of_effect(cls, sender_obj):
+        """Given a game object, returns the set of objects that should
+        receive events that object emits.
         We want a set that includes:
-        - the user_account's player object
+        - the sender (you can hear yourself)
         - objects that contain that player object
         - objects contained by player object
         - objects contained by objects that contain the player object
@@ -33,10 +32,10 @@ class GameWorld:
         this is easier to implement and also means you can "muffle" an object
         by stuffing it into a box.
         """
-        room = user_account.player_obj.contained_by
-        inventory = set(user_account.player_obj.contains)
+        room = sender_obj.contained_by
+        inventory = set(sender_obj.contains)
         adjacent_objs = set(room.contains)
-        return {user_account.player_obj, room} | inventory | adjacent_objs
+        return {sender_obj, room} | inventory | adjacent_objs
 
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
