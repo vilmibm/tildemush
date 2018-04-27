@@ -29,8 +29,8 @@ class UserSession:
     async def client_send(self, message):
         self.websocket.send(message)
 
-    def dispatch_action(self, action, rest):
-        self.game_world.dispatch_action(self.user, action, rest)
+    def dispatch_action(self, action, action_args):
+        self.game_world.dispatch_action(self.user, action, action_args)
 
     def __str__(self):
         s = 'UserSession<{}>'.format(None)
@@ -120,8 +120,8 @@ class GameServer:
     def handle_command(self, user_session, message):
         if not user_session.associated:
             raise ClientException('not logged in')
-        action, rest = self.parse_command(message)
-        user_session.dispatch_action(action, rest)
+        action, action_args = self.parse_command(message)
+        user_session.dispatch_action(action, action_args)
 
     def parse_command(self, message):
         match = COMMAND_RE.fullmatch(message)

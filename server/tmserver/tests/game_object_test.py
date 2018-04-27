@@ -1,5 +1,7 @@
+import types
 from unittest import mock
 from .. import models
+from ..errors import WitchException
 from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision, ScriptEngine
 from ..world import GameWorld
 
@@ -112,17 +114,18 @@ def GameObjectComparisonTest(self):
 class GameObjectScriptEngineTest(TildemushTestCase):
     def setUp(self):
         super().setUp()
-        self.vil = UserAccount.create(
+        vil_ua = UserAccount.create(
             username='vilmibm',
             password='foobarbazquux',
             display_name='a gaseous cloud')
+        self.vil = vil_ua.player_obj
 
-        self.script = Script(
+        self.script = Script.create(
             name='horse',
-            author=self.vil
+            author=vil_ua
         )
 
-        self.script_rev = ScriptRevision(
+        self.script_rev = ScriptRevision.create(
             script=self.script,
             code='''
             (witch "horse" by "vilmibm"
@@ -133,10 +136,9 @@ class GameObjectScriptEngineTest(TildemushTestCase):
                     (says "neigh neigh neigh i am horse"))))''')
 
         self.snoozy = GameObject.create(
-            author=self.vil,
+            author=vil_ua,
             name='snoozy',
-            script_revision=self.script_rev
-        )
+            script_revision=self.script_rev)
 
     def test_witch_header_read(self):
         assert models.WITCH_HEADER is not None
@@ -146,14 +148,26 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         assert isinstance(eng, ScriptEngine)
 
     def test_handler_added(self):
-        pass
+        assert type(self.snoozy.engine.handler('pet')) == types.FunctionType
+
+    def test_handler_works(self):
+        self.snoozy.handle_action(self.vil, 'pet', [])
+        assert self.snoozy.get_data('num-pets') == 1
+        self.snoozy.handle_action(self.vil, 'pet', [])
+        self.snoozy.handle_action(self.vil, 'pet', [])
+        self.snoozy.handle_action(self.vil, 'pet', [])
+        with mock.patch('tmserver.models.GameObject.say') as mock_say:
+            self.snoozy.handle_action(self.vil, 'pet', [])
+            mock_say.assert_called_once_with('neigh neigh neigh i am horse')
 
     def test_debug_handler(self):
-        pass
-
-    def test_say_handler(self):
-        pass
+        result = self.snoozy.handle_action(self.vil, 'debug', [])
+        assert result == '{} <- {} with []'.format(self.snoozy, self.vil)
 
     def test_bad_witch(self):
-        pass
+        self.script_rev.code = '''(witch oops lol haha)'''
+        self.script_rev.save()
+        # TODO assert raises
+        with self.assertRaises(WitchException):
+            self.snoozy.handle_action(self.vil, 'pet', [])
 

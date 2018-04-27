@@ -14,7 +14,7 @@
          (fn [hp] `(.add-handler
                      ~se
                      ~(get hp 1)
-                     (fn [receiver sender cmd-args]
+                     (fn [receiver sender action-args]
                        (._ensure-data receiver ~(get data 1))
                        ~@(cut hp 2))) )
          actions)

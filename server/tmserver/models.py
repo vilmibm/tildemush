@@ -10,8 +10,8 @@ import peewee as pw
 from playhouse.signals import Model, pre_save
 from playhouse.postgres_ext import JSONField
 
-
 from . import config
+from .errors import WitchException
 
 # TODO this is completely bootleg but, inasfar as it's tape and gum and sticks
 # it works
@@ -32,14 +32,14 @@ class ScriptEngine:
     def noop(*args, **kwargs):
         pass
 
-    def debug_handler(self, receiver, sender, cmd_args):
+    def debug_handler(self, receiver, sender, action_args):
         # TODO i don't even know if this makes sense
-        return '{} <- {} with {}'.format(receiver, sender, cmd_args)
+        return '{} <- {} with {}'.format(receiver, sender, action_args)
 
-    def say_handler(self, receiver, sender, cmd_args):
+    def say_handler(self, receiver, sender, action_args):
         # TODO i don't even know if this makes sense
         if receiver.user_account:
-            receiver.user_account.hears(cmd_args)
+            receiver.user_account.hears(action_args)
 
     def add_handler(self, action, fn):
         self.handlers[action] = fn
@@ -210,14 +210,19 @@ class GameObject(BaseModel):
     @property
     def engine(self):
         if not hasattr(self, '_engine'):
-            self._engine = self._execute_script(self.script_revision.code)
+            try:
+                self._engine = self._execute_script(self.script_revision.code)
+            except Exception as e:
+                raise WitchException(
+                    ';_; There is a problem with your witch script: {}'.format(e))
 
         return self._engine
 
     def _execute_script(self, witch_code):
         """Given a pile of script revision code, this function prepends the
         (witch) macro definition and then reads and evals the combined code."""
-        # TODO handle compilation errors
+        # TODO either figure out how to avoid the need or upstream Hy compiler
+        # patch that makes this work
         script_text = self.script_revision.code
         with_header = '{}\n{}'.format(WITCH_HEADER, script_text)
         buff = io.StringIO(with_header)
@@ -245,7 +250,6 @@ class GameObject(BaseModel):
     def say(self, message):
         # TODO use GameWorld to emit a say action?
         print('in say')
-        pass
 
     # TODO I may want to forbid getting/setting things not originally declared
     # via ensure_data. This might help newer programmers catch typos in WITCH
@@ -257,12 +261,11 @@ class GameObject(BaseModel):
     def get_data(self, key):
         return self.get_by_id(self.id).data.get(key)
 
-    def handle_action(sender_obj, action, action_args):
-        # TODO i'm using, alternately, rest and cmd_args. i should standardize on action_args.
+    def handle_action(self, sender_obj, action, action_args):
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        self.engine.handler(action)(self, sender_obj, rest)
+        return self.engine.handler(action)(self, sender_obj, action_args)
 
     def __str__(self):
         return 'GameObject<{}> authored by {}'.format(self.name, self.author)

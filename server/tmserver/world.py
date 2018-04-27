@@ -3,11 +3,11 @@ from .models import Contains
 class GameWorld:
 
     @classmethod
-    def dispatch_action(cls, user_account, action, rest):
+    def dispatch_action(cls, user_account, action, action_args):
         aoe = cls.area_of_effect(user_account)
         po = user_account.player_obj
         for o in aoe:
-            o.handle_action(po, action, rest)
+            o.handle_action(po, action, action_args)
 
     @classmethod
     def area_of_effect(cls, user_account):
