@@ -10,32 +10,42 @@ LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
 REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
 COMMAND_RE = re.compile(r'^COMMAND ([^ ]+) ?(.*)$')
 
+LOOP = asyncio.get_event_loop()
+
 
 class UserSession:
     """An instance of this class represents a user's session."""
     def __init__(self, game_world, websocket):
         self.websocket = websocket
         self.game_world = game_world
-        # TODO rename user_account
-        self.user = None
+        self.user_account = None
 
     @property
     def associated(self):
-        return self.user is not None
+        return self.user_account is not None
 
-    def associate(self, user):
-        self.user = user
+    def associate(self, user_account):
+        self.user_account = user_account
+        user_account.register_session(self)
+
+    def handle_hears(self, sender_obj, message):
+        asyncio.ensure_future(
+            self.client_send('{} says {}'.format(sender_obj.name, message)),
+            loop=LOOP)
 
     async def client_send(self, message):
         self.websocket.send(message)
 
     def dispatch_action(self, action, action_args):
-        self.game_world.dispatch_action(self.user, action, action_args)
+        self.game_world.dispatch_action(
+            self.user_account.player_obj,
+            action,
+            action_args)
 
     def __str__(self):
         s = 'UserSession<{}>'.format(None)
         if self.associated:
-            s = 'UserSession<{}>'.format(self.user.username)
+            s = 'UserSession<{}>'.format(self.user_account.username)
 
         return s
 
@@ -63,7 +73,7 @@ class GameServer:
 
     async def handle_connection(self, websocket, path):
         self.logger.info('Handling initial connection at path {}'.format(path))
-        user_session = UserSession(game_world, websocket)
+        user_session = UserSession(self.game_world, websocket)
         self.logger.info('Registering user context {}'.format(user_session))
         self.connections.add(websocket, user_session)
         async for message in websocket:
@@ -75,43 +85,18 @@ class GameServer:
         try:
             if message.startswith('LOGIN'):
                 self.handle_login(user_session, message)
-                await user_session.clent_send('LOGIN OK')
+                self.logger.info('telling {} about having logged them in'.format(
+                    user_session.user_account.username))
+                await user_session.client_send('LOGIN OK')
             elif message.startswith('REGISTER'):
                 self.handle_registration(user_session, message)
                 await user_session.client_send('REGISTER OK')
             elif message.startswith('COMMAND'):
-                # these incoming messages are now linked to a user session ->
-                # user account -> player object. we have a bridge to the
-                # client, but the actual definition of game commands hasn't
-                # been done.
-                #
-                # i'd like to set up the scaffolding for a command -- like /go
-                # <direction> or /look -- to round trip to the model layer and
-                # back to the client.
-                #
-                # i can process the commands either here in the game server
-                # (like with login and register), in the user session (blech),
-                # in the user model (v blech). none of these feels particularly
-                # natural to me.
-                #
-                # i think first i should probably decide on the actual
-                # hierarchy of commands as well as routing chats.
-                #
-                # i can detect here in server if i'm seeing a CHAT (ie command
-                # sent to the client with no punctuational prefix) or COMMAND.
-                # This feels wrong immediately, though, since a CHAT should
-                # just be another COMMAND.
-                #
-                # the client can detect a chat and send "COMMAND CHAT $rest".
-                # In the case of a punctuational message typed by the user at
-                # the client, it would be "COMMAND $command $rest". I'm find
-                # with this as a starting point.
-                #
-                # should these be acked back to the client? probably -- it's
-                # good for presence wrt the server connection.
                 self.handle_command(user_session, message)
                 await user_session.client_send('COMMAND OK')
             else:
+                # TODO clients should format said things (ie things a user
+                # types not prefixed with a / command) with "COMMAND SAY"
                 #await user_session.client_send('you said {}'.format(message))
                 raise ClientException('message not understood')
         except ClientException as e:
@@ -133,12 +118,13 @@ class GameServer:
         if user_session.associated:
             raise ClientException('log out first')
         username, password = self.parse_login(message)
-        users = UserAccount.select().where(UserAccount.username==username)
-        if len(users) == 0:
+        user_accounts = UserAccount.select().where(UserAccount.username==username)
+        if len(user_accounts) == 0:
             raise ClientException('no such user')
-        user = users[0]
-        if user.check_password(password):
-            user_session.associate(user)
+        user_account = user_accounts[0]
+        if user_account.check_password(password):
+            self.logger.info('logging in user {}'.format(user_account.username))
+            user_session.associate(user_account)
         else:
             raise ClientException('bad password')
 
@@ -168,6 +154,6 @@ class GameServer:
         self.logger.info('Starting up asyncio loop')
         # I'm cargo culting these asyncio calls from the websockets
         # documentation
-        asyncio.get_event_loop().run_until_complete(
+        LOOP.run_until_complete(
             ws.serve(self.handle_connection, self.bind, self.port))
-        asyncio.get_event_loop().run_forever()
+        LOOP.run_forever()

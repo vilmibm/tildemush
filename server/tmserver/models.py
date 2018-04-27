@@ -34,13 +34,11 @@ class ScriptEngine:
         pass
 
     def debug_handler(self, receiver, sender, action_args):
-        # TODO i don't even know if this makes sense
         return '{} <- {} with {}'.format(receiver, sender, action_args)
 
     def say_handler(self, receiver, sender, action_args):
-        # TODO i don't even know if this makes sense
         if receiver.user_account:
-            receiver.user_account.hears(action_args)
+            receiver.user_account.hears(sender, action_args)
 
     def add_handler(self, action, fn):
         self.handlers[action] = fn
@@ -94,17 +92,20 @@ class UserAccount(BaseModel):
             description=description,
             is_player_obj=True)
 
-    def hears(self, message):
-        # TODO
+    def register_session(self, session):
+        # TODO This feels wrong ... but i can inject a user_session instance
+        # when associating a user account with a session. that'll get me back
+        # out to the websocket connection.
         #
-        # so far I've been handling the direction of mutation from a logged in user
-        # *into* the gameworld. when it comes time to handle the opposite
-        # direction, i need to actually be able to get data to the UserSession from
-        # the gameworld. Right now an accout knows nothing about its session. A
-        # refactoring is probably in order once i get the first direction going.
-        #
-        # ODOT
-        pass
+        # if this codebase wasn't already a tasty plate of spaghetti, it is now
+        self._session = session
+
+    @property
+    def session(self):
+        return self._session
+
+    def hears(self, sender_obj, message):
+        self.session.handle_hears(sender_obj, message)
 
     @property
     def player_obj(self):

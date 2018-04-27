@@ -39,7 +39,7 @@ class CommandTest(TildemushTestCase):
         with mock.patch('tmserver.world.GameWorld.dispatch_action') as world_dispatch_mock:
             for msg, expected in command_msgs:
                 self.server.handle_command(self.user_session, msg)
-                world_dispatch_mock.assert_called_with(*([self.vil] + list(expected)))
+                world_dispatch_mock.assert_called_with(*([self.vil.player_obj] + list(expected)))
 
     def test_detects_malformed_command(self):
         malformed_msgs = [

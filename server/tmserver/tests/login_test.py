@@ -53,7 +53,7 @@ class TestLogin(TildemushTestCase):
         msg = 'LOGIN vilmibm:foobarbazquux'
         self.server.handle_login(user_session, msg)
         self.assertTrue(user_session.associated)
-        self.assertEqual(user_session.user.username, 'vilmibm')
+        self.assertEqual(user_session.user_account.username, 'vilmibm')
         self.assertEqual('UserSession<vilmibm>', str(user_session))
 
     def test_detects_already_assoced_user_session(self):
