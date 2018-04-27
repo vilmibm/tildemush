@@ -73,8 +73,6 @@ class ClientState:
         if self.connection is None:
             await self.connect()
         await self.connection.send('LOGIN {}:{}'.format(username, password))
-        # TODO this recv isn't seeing what we're sending
-        # TODO try blocking (not sure how without loop reference)
         login_response = await self.connection.recv()
         if login_response != 'LOGIN OK':
             raise Exception('TODO better error for failing to login: {}'.format(login_response))

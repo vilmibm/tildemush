@@ -29,12 +29,13 @@ class UserSession:
         user_account.register_session(self)
 
     def handle_hears(self, sender_obj, message):
+        # TODO NEXT test thissssssssssss
         asyncio.ensure_future(
             self.client_send('{} says {}'.format(sender_obj.name, message)),
             loop=LOOP)
 
     async def client_send(self, message):
-        self.websocket.send(message)
+        await self.websocket.send(message)
 
     def dispatch_action(self, action, action_args):
         self.game_world.dispatch_action(
