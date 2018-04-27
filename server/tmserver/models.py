@@ -1,5 +1,7 @@
 from datetime import datetime
+import io
 import json
+import os
 import re
 
 import bcrypt
@@ -10,6 +12,13 @@ from playhouse.postgres_ext import JSONField
 
 
 from . import config
+
+# TODO this is completely bootleg but, inasfar as it's tape and gum and sticks
+# it works
+PKG_DIR = os.path.dirname(os.path.abspath(__file__))
+WITCH_HEADER = None
+with open(os.path.join(PKG_DIR, 'witch_header.hy')) as f:
+    WITCH_HEADER = f.read()
 
 BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
 MIN_PASSWORD_LEN = 12
@@ -122,6 +131,7 @@ def pre_save_handler(cls, instance, created):
 
 class Script(BaseModel):
     author = pw.ForeignKeyField(UserAccount)
+    name = pw.CharField()
 
 class ScriptRevision(BaseModel):
     code = pw.TextField()
@@ -200,20 +210,28 @@ class GameObject(BaseModel):
     @property
     def engine(self):
         if not hasattr(self, '_engine'):
-            # TODO should this be two steps?
-            compiled = self._compile_script()
-            self._engine = self._execute_script(compiled)
+            self._engine = self._execute_script(self.script_revision.code)
 
         return self._engine
 
-    def _compile_script(self):
+    def _execute_script(self, witch_code):
+        """Given a pile of script revision code, this function prepends the
+        (witch) macro definition and then reads and evals the combined code."""
+        # TODO handle compilation errors
         script_text = self.script_revision.code
-        with_header = '{}\n\n{}'.format(HY_HEADER, script_text)
-        return hy.read_str(with_header)
-
-    def _execute_script(self, compiled_code):
-        # This evals in current scope, so ScriptEngine is available
-        return hy.eval(compiled_code)
+        with_header = '{}\n{}'.format(WITCH_HEADER, script_text)
+        buff = io.StringIO(with_header)
+        stop = False
+        result = None
+        while not stop:
+            try:
+                tree = hy.read(buff)
+                result = hy.eval(tree,
+                                 namespace={'ScriptEngine': ScriptEngine},
+                                 module_name='tmserver.models')
+            except EOFError:
+                stop = True
+        return result
 
     def _ensure_data(self, data_mapping):
         """Given the default values for some gameobject's script, initialize

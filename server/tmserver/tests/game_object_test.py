@@ -1,5 +1,6 @@
 from unittest import mock
-from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision
+from .. import models
+from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision, ScriptEngine
 from ..world import GameWorld
 
 from .tm_test_case import TildemushTestCase
@@ -94,7 +95,7 @@ def GameObjectComparisonTest(self):
         revision = ScriptRevision.create(code='(witch)', script=self.snoozy.script)
         snoozy = GameObject.get_by_id(self.snoozy.id)
         snoozy.script_revision = revision
-        assert False == (snoozy == self.snoozy)
+        assert True == (snoozy != self.snoozy)
 
     def test_hash_operations(self):
         self.snoozy.script_revision = self.revision
@@ -107,5 +108,52 @@ def GameObjectComparisonTest(self):
         snoozy.script_revision = revision
         assert False == (snoozy.__hash__() == self.snoozy.__hash__())
 
-def GameObjectScriptEngineTest(self):
-    pass
+
+class GameObjectScriptEngineTest(TildemushTestCase):
+    def setUp(self):
+        super().setUp()
+        self.vil = UserAccount.create(
+            username='vilmibm',
+            password='foobarbazquux',
+            display_name='a gaseous cloud')
+
+        self.script = Script(
+            name='horse',
+            author=self.vil
+        )
+
+        self.script_rev = ScriptRevision(
+            script=self.script,
+            code='''
+            (witch "horse" by "vilmibm"
+              (has {"num_pets" 0})
+              (hears "pet"
+                (set-data "num-pets" (+ 1 (get-data "num-pets")))
+                  (if (= 0 (% (get-data "num-pets") 5))
+                    (says "neigh neigh neigh i am horse"))))''')
+
+        self.snoozy = GameObject.create(
+            author=self.vil,
+            name='snoozy',
+            script_revision=self.script_rev
+        )
+
+    def test_witch_header_read(self):
+        assert models.WITCH_HEADER is not None
+
+    def test_engine_is_created(self):
+        eng = self.snoozy.engine
+        assert isinstance(eng, ScriptEngine)
+
+    def test_handler_added(self):
+        pass
+
+    def test_debug_handler(self):
+        pass
+
+    def test_say_handler(self):
+        pass
+
+    def test_bad_witch(self):
+        pass
+
