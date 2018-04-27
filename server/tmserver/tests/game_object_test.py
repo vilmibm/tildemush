@@ -167,7 +167,13 @@ class GameObjectScriptEngineTest(TildemushTestCase):
     def test_bad_witch(self):
         self.script_rev.code = '''(witch oops lol haha)'''
         self.script_rev.save()
-        # TODO assert raises
         with self.assertRaises(WitchException):
             self.snoozy.handle_action(self.vil, 'pet', [])
+
+    def test_unhandled_action(self):
+        assert None == self.snoozy.handle_action('poke', self.vil, [])
+        with mock.patch('tmserver.models.ScriptEngine.noop') as mock_noop:
+            self.snoozy.handle_action('poke', self.vil, [])
+            assert mock_noop.called
+
 
