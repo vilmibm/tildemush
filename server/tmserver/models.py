@@ -225,6 +225,16 @@ class GameObject(BaseModel):
         # of a transaction:
         return self.engine.handler(action)(self, sender_obj, action_args)
 
+    # containership methods
+    # TODO this naming sucks
+    def put_into(self, inner_obj):
+        Contains.create(outer_obj=self, inner_obj=inner_obj)
+
+    def remove_from(self, inner_obj):
+        Contains.delete().where(
+            Contains.outer_obj==self,
+            Contains.inner_obj==inner_obj).execute()
+
     def __str__(self):
         return 'GameObject<{}> authored by {}'.format(self.name, self.author)
 
@@ -257,7 +267,6 @@ class Contains(BaseModel):
 
 class Log(BaseModel):
     env = pw.CharField()
-    #created_at = pw.DateTimeField(default=datetime.utcnow())
     level = pw.CharField()
     raw = pw.CharField()
 

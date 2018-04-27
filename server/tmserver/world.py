@@ -1,5 +1,3 @@
-from .models import Contains
-
 class GameWorld:
 
     @classmethod
@@ -40,15 +38,11 @@ class GameWorld:
         adjacent_objs = set(room.contains)
         return {user_account.player_obj, room} | inventory | adjacent_objs
 
-
-    # TODO it's arguable these should be defined on Contains
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
-        Contains.create(outer_obj=outer_obj, inner_obj=inner_obj)
+        outer_obj.put_into(inner_obj)
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
-        Contains.delete().where(
-            Contains.outer_obj==outer_obj,
-            Contains.inner_obj==inner_obj).execute()
+        outer_obj.remove_from(inner_obj)
 
