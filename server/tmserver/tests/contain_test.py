@@ -60,7 +60,7 @@ class ContainTest(TildemushTestCase):
             outer_obj=ship,
             inner_obj=self.room)
 
-        assert GameWorld.area_of_effect(self.vil) == {
+        assert GameWorld.area_of_effect(self.vil.player_obj) == {
             self.room,
             self.phone,
             cigar,
