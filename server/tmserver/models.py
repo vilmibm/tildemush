@@ -12,6 +12,7 @@ from playhouse.postgres_ext import JSONField
 
 from . import config
 from .errors import WitchException
+from .world import GameWorld
 
 # TODO this is completely bootleg but, inasfar as it's tape and gum and sticks
 # it works
@@ -144,6 +145,16 @@ class GameObject(BaseModel):
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
     data = JSONField(default=dict)
+
+    @property
+    def game_world(self):
+        # why bother with this? i'm keeping myself open to injecting something
+        # for GameWorld instead of just using a global singleton.
+        #
+        # my brief foray into game dev, though, showed me that a singleton
+        # coordinator like GameWorld is pretty normal, so it might stay like
+        # this.
+        return GameWorld
 
     @property
     def contains(self):
