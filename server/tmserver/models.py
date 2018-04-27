@@ -59,15 +59,6 @@ class UserAccount(BaseModel):
     "exist," per se, in the game world, but rather is anchored to a single
     "player" object. this player object is the useraccount's window on the game
     world."""
-    # TODO
-    #
-    # so far I've been handling the direction of mutation from a logged in user
-    # *into* the gameworld. when it comes time to handle the opposite
-    # direction, i need to actually be able to get data to the UserSession from
-    # the gameworld. Right now an accout knows nothing about its session. A
-    # refactoring is probably in order once i get the first direction going.
-    #
-    # ODOT
 
     username = pw.CharField(unique=True)
     display_name = pw.CharField(default='a gaseous cloud')
@@ -102,6 +93,18 @@ class UserAccount(BaseModel):
             name=self.display_name,
             description=description,
             is_player_obj=True)
+
+    def hears(self, message):
+        # TODO
+        #
+        # so far I've been handling the direction of mutation from a logged in user
+        # *into* the gameworld. when it comes time to handle the opposite
+        # direction, i need to actually be able to get data to the UserSession from
+        # the gameworld. Right now an accout knows nothing about its session. A
+        # refactoring is probably in order once i get the first direction going.
+        #
+        # ODOT
+        pass
 
     @property
     def player_obj(self):
