@@ -1,5 +1,5 @@
 from unittest import mock
-from ..models import UserAccount, GameObject, Contains
+from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision
 from ..world import GameWorld
 
 from .tm_test_case import TildemushTestCase
@@ -59,3 +59,53 @@ class GameObjectDataTest(TildemushTestCase):
         self.snoozy.set_data('num_pets', self.snoozy.get_data('num_pets') + 1)
         assert 1 == GameObject.get_by_id(self.snoozy.id).get_data('num_pets')
 
+
+def GameObjectComparisonTest(self):
+
+    def setUp(self):
+        super().setUp()
+        self.vil = UserAccount.create(
+            username='vilmibm',
+            password='foobarbazquux',
+            display_name='a gaseous cloud')
+        self.snoozy = GameObject.create(
+            author=self.vil,
+            name='snoozy')
+
+        self.horse_script = Script.create(author=self.vil)
+        self.revision = ScriptRevision.create(code='<witch code>', script=self.horse_script)
+
+    def test_str_representation(self):
+        assert 'GameObject<snoozy> authored by {}'.format(self.vil) == str(self.snoozy)
+
+    def test_eq_operations_without_revisions(self):
+        snoozy = GameObject.get_by_id(self.snoozy.id)
+        assert True == (snoozy == self.snoozy)
+
+        snoozy.name = 'false snoozy'
+        assert False == (snoozy == self.snoozy)
+
+    def test_eq_operations(self):
+        self.snoozy.script_revision = self.revision
+        self.snoozy.save()
+        snoozy = GameObject.get_by_id(self.snoozy.id)
+        assert True == (snoozy == self.snoozy)
+
+        revision = ScriptRevision.create(code='(witch)', script=self.snoozy.script)
+        snoozy = GameObject.get_by_id(self.snoozy.id)
+        snoozy.script_revision = revision
+        assert False == (snoozy == self.snoozy)
+
+    def test_hash_operations(self):
+        self.snoozy.script_revision = self.revision
+        self.snoozy.save()
+        snoozy = GameObject.get_by_id(self.snoozy.id)
+        assert True == (snoozy.__hash__() == self.snoozy.__hash__())
+
+        revision = ScriptRevision.create(code='(witch)', script=self.snoozy.script)
+        snoozy = GameObject.get_by_id(self.snoozy.id)
+        snoozy.script_revision = revision
+        assert False == (snoozy.__hash__() == self.snoozy.__hash__())
+
+def GameObjectScriptEngineTest(self):
+    pass
