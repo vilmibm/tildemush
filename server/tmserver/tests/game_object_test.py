@@ -126,7 +126,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
             script=self.script,
             code='''
             (witch "horse" by "vilmibm"
-              (has {"num_pets" 0})
+              (has {"num-pets" 0})
               (hears "pet"
                 (set-data "num-pets" (+ 1 (get-data "num-pets")))
                   (if (= 0 (% (get-data "num-pets") 5))
