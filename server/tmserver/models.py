@@ -93,13 +93,7 @@ class UserAccount(BaseModel):
             is_player_obj=True)
 
     def hears(self, sender_obj, message):
-        # TODO this of course doesn't work.
-        # When we do a contains query and find that a player object needs to
-        # get an action, we're selecting a brand new user account instance from
-        # the DB.
-        #
-        # perhaps the GameWorld should track the useraccount <-> session mapping?
-        self.session.handle_hears(sender_obj, message)
+        GameWorld.get_session(self.id).handle_hears(sender_obj, message)
 
     @property
     def player_obj(self):
