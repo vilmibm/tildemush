@@ -140,6 +140,10 @@ class GameObjectScriptEngineTest(TildemushTestCase):
             name='snoozy',
             script_revision=self.script_rev)
 
+    def test_no_script_revision(self):
+        result = self.vil.handle_action(self.snoozy, 'kick', [])
+        assert result is None
+
     def test_witch_header_read(self):
         assert models.WITCH_HEADER is not None
 

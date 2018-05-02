@@ -190,11 +190,14 @@ class GameObject(BaseModel):
     @property
     def engine(self):
         if not hasattr(self, '_engine'):
-            try:
-                self._engine = self._execute_script(self.script_revision.code)
-            except Exception as e:
-                raise WitchException(
-                    ';_; There is a problem with your witch script: {}'.format(e))
+            if self.script_revision is None:
+                self._engine = ScriptEngine()
+            else:
+                try:
+                    self._engine = self._execute_script(self.script_revision.code)
+                except Exception as e:
+                    raise WitchException(
+                        ';_; There is a problem with your witch script: {}'.format(e))
 
         return self._engine
 
