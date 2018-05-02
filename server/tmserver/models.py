@@ -7,7 +7,7 @@ import re
 import bcrypt
 import hy
 import peewee as pw
-from playhouse.signals import Model, pre_save
+from playhouse.signals import Model, pre_save, post_save
 from playhouse.postgres_ext import JSONField
 
 from . import config
@@ -134,6 +134,11 @@ def pre_save_handler(cls, instance, created):
 
     if created and instance.password:
         instance._hash_password()
+
+@post_save(sender=UserAccount)
+def post_save_handler(cls, instance, created):
+    if created:
+        instance._init_player_obj()
 
 
 class Script(BaseModel):

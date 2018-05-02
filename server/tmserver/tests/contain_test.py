@@ -21,14 +21,13 @@ class ContainTest(TildemushTestCase):
             name='signal')
 
     def test_player_obj(self):
-        assert self.vil.player_obj is None
-        player_obj = self.vil.init_player_obj()
-        assert self.vil.player_obj.name == self.vil.display_name
+        player_obj = self.vil.player_obj
+        assert player_obj.name == self.vil.display_name
         assert player_obj.user_account == self.vil
         assert player_obj.author == self.vil
 
     def test_area_of_effect(self):
-        player_obj = self.vil.init_player_obj()
+        player_obj = self.vil.player_obj
         cigar = GameObject.create(
             author=self.vil,
             name='black and mild',
@@ -68,7 +67,7 @@ class ContainTest(TildemushTestCase):
             player_obj}
 
     def test_creating_contains(self):
-        player_obj = self.vil.init_player_obj()
+        player_obj = self.vil.player_obj
         GameWorld.put_into(self.room, player_obj)
         GameWorld.put_into(player_obj, self.phone)
         GameWorld.put_into(self.phone, self.app)
@@ -80,7 +79,7 @@ class ContainTest(TildemushTestCase):
         assert [] == list(self.app.contains)
 
     def test_removing_contains(self):
-        player_obj = self.vil.init_player_obj()
+        player_obj = self.vil.player_obj
         GameWorld.put_into(self.room, player_obj)
         GameWorld.put_into(player_obj, self.phone)
         GameWorld.put_into(self.phone, self.app)
