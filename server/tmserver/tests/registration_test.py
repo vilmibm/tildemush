@@ -53,7 +53,7 @@ class TestRegistration(TildemushTestCase):
 
     def test_detects_already_assoced_user_session(self):
         vil = UserAccount.create(username='vilmibm', password='foobarbazquux')
-        user_session = UserSession(None, mock.Mock())
+        user_session = UserSession(GameWorld, mock.Mock())
         user_session.associate(vil)
         with self.assertRaisesRegex(
                 ClientException,

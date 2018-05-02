@@ -85,26 +85,20 @@ class UserAccount(BaseModel):
         if len(self.password) < MIN_PASSWORD_LEN:
             raise Exception('password too short')
 
-    def init_player_obj(self, description=''):
-        return GameObject.create(
+    def _init_player_obj(self, description=''):
+        GameObject.create(
             author=self,
             name=self.display_name,
             description=description,
             is_player_obj=True)
 
-    def register_session(self, session):
-        # TODO This feels wrong ... but i can inject a user_session instance
-        # when associating a user account with a session. that'll get me back
-        # out to the websocket connection.
-        #
-        # if this codebase wasn't already a tasty plate of spaghetti, it is now
-        self._session = session
-
-    @property
-    def session(self):
-        return self._session
-
     def hears(self, sender_obj, message):
+        # TODO this of course doesn't work.
+        # When we do a contains query and find that a player object needs to
+        # get an action, we're selecting a brand new user account instance from
+        # the DB.
+        #
+        # perhaps the GameWorld should track the useraccount <-> session mapping?
         self.session.handle_hears(sender_obj, message)
 
     @property

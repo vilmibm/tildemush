@@ -4,6 +4,7 @@ import unittest
 import pytest
 
 from ..migrations import reset_db
+from ..world import GameWorld
 
 
 class TildemushTestCase(unittest.TestCase):
@@ -12,3 +13,4 @@ class TildemushTestCase(unittest.TestCase):
             pytest.exit('Run tildemush tests with TILDEMUSH_ENV=test')
 
         reset_db()
+        GameWorld.reset()

@@ -26,7 +26,7 @@ class UserSession:
 
     def associate(self, user_account):
         self.user_account = user_account
-        user_account.register_session(self)
+        self.game_world.register_session(user_account, self)
 
     def handle_hears(self, sender_obj, message):
         # TODO NEXT test thissssssssssss
