@@ -117,6 +117,8 @@ class UserAccount(BaseModel):
         return None
 
     def __eq__(self, other):
+        if not hasattr(other, 'username'):
+            return False
         return self.username == other.username
 
     def __ne__(self, other):
