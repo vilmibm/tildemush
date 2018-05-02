@@ -279,7 +279,15 @@ class GameMain(urwid.Frame):
         # TODO handle any validation of text
         if not self.client_state.listening:
             asyncio.ensure_future(self.client_state.start_listen_loop(), loop=self.loop)
-        asyncio.ensure_future(self.client_state.send(text), loop=self.loop)
+
+        if text.startswith('/'):
+            text = text[1:]
+        else:
+            text = 'say {}'.format(text)
+
+        server_msg = 'COMMAND {}'.format(text)
+
+        asyncio.ensure_future(self.client_state.send(server_msg), loop=self.loop)
         self.prompt.edit_text = ''
 
 
