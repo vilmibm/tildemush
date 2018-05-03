@@ -14,12 +14,7 @@ from . import config
 from .errors import WitchException
 from .world import GameWorld
 
-# TODO this is completely bootleg but, inasfar as it's tape and gum and sticks
-# it works
-PKG_DIR = os.path.dirname(os.path.abspath(__file__))
-WITCH_HEADER = None
-with open(os.path.join(PKG_DIR, 'witch_header.hy')) as f:
-    WITCH_HEADER = f.read()
+WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 
 BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
 MIN_PASSWORD_LEN = 12
@@ -192,8 +187,6 @@ class GameObject(BaseModel):
     def _execute_script(self, witch_code):
         """Given a pile of script revision code, this function prepends the
         (witch) macro definition and then reads and evals the combined code."""
-        # TODO either figure out how to avoid the need or upstream Hy compiler
-        # patch that makes this work
         script_text = self.script_revision.code
         with_header = '{}\n{}'.format(WITCH_HEADER, script_text)
         buff = io.StringIO(with_header)
@@ -203,8 +196,7 @@ class GameObject(BaseModel):
             try:
                 tree = hy.read(buff)
                 result = hy.eval(tree,
-                                 namespace={'ScriptEngine': ScriptEngine},
-                                 module_name='tmserver.models')
+                                 namespace={'ScriptEngine': ScriptEngine})
             except EOFError:
                 stop = True
         return result
