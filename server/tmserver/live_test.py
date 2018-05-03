@@ -1,10 +1,6 @@
 """This script is used to create a test world. Once run, log in as
 vilmibm:foobarbazquux, then you should be in a room with a horse."""
 
-# TODO create vil accout
-# TODO create room and snoozy
-# TODO set up contains relationships
-
 from .migrations import reset_db
 from .models import UserAccount, GameObject, Script, ScriptRevision
 from .world import GameWorld
