@@ -17,7 +17,6 @@ if not os.path.isfile(DEFAULT_CONFIG_PATH):
     with open(DEFAULT_CONFIG_PATH, 'w') as config_file:
         config_file.write("{}")
 
-# TODO handle actually creating DEFAULT_CONFIG_PATH
 CONFIG_DEFAULTS = {'todo':'todo'}
 
 class Config:

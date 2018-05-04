@@ -34,8 +34,12 @@
 
 ## running
 
-* `tmserver --debug`
-* `tmclient`
+* `tmserver --debug` to start the server
+* `tmclient` in another terminal to start a client
+
+## testing
+
+* `TILDEMUSH_ENV=test pytest`
 
 ## Purpose and Goals
 
