@@ -10,6 +10,13 @@ DEFAULT_CONFIG_PATH = os.path.expanduser('~/.config/tildemush/config.json')
 LOOP = asyncio.get_event_loop()
 ULOOP = urwid.AsyncioEventLoop(loop=LOOP)
 
+if not os.path.exists(os.path.dirname(DEFAULT_CONFIG_PATH)):
+    os.makedirs(os.path.dirname(DEFAULT_CONFIG_PATH))
+
+if not os.path.isfile(DEFAULT_CONFIG_PATH):
+    with open(DEFAULT_CONFIG_PATH, 'w') as config_file:
+        config_file.write("{}")
+
 # TODO handle actually creating DEFAULT_CONFIG_PATH
 CONFIG_DEFAULTS = {'todo':'todo'}
 

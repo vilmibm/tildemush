@@ -7,6 +7,36 @@
 - [Client design](docs/client.md)
 - [The WITCH in-game scripting language](docs/scripting.md)
 
+## requirements
+
+* `python 3.6+`
+* `pip`
+* `postgresql`
+
+## setup
+
+* `python -m virtualenv venv` - create a virtualenv in the project directory
+* `source venv/bin/active`
+* `cd server & pip install -e . & cd ..`
+* `cd client & pip install -e . & cd ..`
+* setup `postgres` (see below)
+* `createuser tildemush -W` (will prompt for password, use `tildemush`)
+* `createdb tildemush -O tildemush`
+* `createdb tildemush_test -O tildemush`
+
+### postgres setup (Arch linux)
+
+[https://wiki.archlinux.org/index.php/PostgreSQL](https://wiki.archlinux.org/index.php/PostgreSQL)
+
+* `sudo su postgres`
+* `initdb --locale $LANG -E UTF8 -D '/var/lib/postgres/data'`
+* `sudo systemctl start postgresql.service`
+
+## running
+
+* `tmserver --debug`
+* `tmclient`
+
 ## Purpose and Goals
 
 An original guiding principle of tilde.town is to re-examine "old" ideas using
