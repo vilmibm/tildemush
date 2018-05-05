@@ -11,7 +11,7 @@ from playhouse.signals import Model, pre_save, post_save
 from playhouse.postgres_ext import JSONField
 
 from . import config
-from .errors import WitchException
+from .errors import *
 from .world import GameWorld
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
@@ -72,13 +72,13 @@ class UserAccount(BaseModel):
     # TODO should this just run in pre_save?
     def validate(self):
         if 0 != len(UserAccount.select().where(UserAccount.username == self.username)):
-            raise Exception('username taken: {}'.format(self.username))
+            raise UserValidationError('username taken: {}'.format(self.username))
 
         if BAD_USERNAME_CHARS_RE.search(self.username):
-            raise Exception('username has invalid character')
+            raise UserValidationError('username has invalid character')
 
         if len(self.password) < MIN_PASSWORD_LEN:
-            raise Exception('password too short')
+            raise UserValidationError('password too short')
 
     def _init_player_obj(self, description=''):
         GameObject.create(
@@ -277,3 +277,6 @@ class Log(BaseModel):
 
 
 MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision]
+
+config.get_db().create_tables(MODELS, safe=True)
+print("tables:", config.get_db().get_tables())

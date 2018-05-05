@@ -16,7 +16,7 @@
 ## setup
 
 * `python -m virtualenv venv` - create a virtualenv in the project directory
-* `source venv/bin/active`
+* `source venv/bin/activate`
 * `cd server & pip install -e . & cd ..`
 * `cd client & pip install -e . & cd ..`
 * setup `postgres` (see below)
@@ -30,7 +30,8 @@
 
 * `sudo su postgres`
 * `initdb --locale $LANG -E UTF8 -D '/var/lib/postgres/data'`
-* `sudo systemctl start postgresql.service`
+* `sudo systemctl enable postgresql` - configure postgres service to start on boot
+* `sudo systemctl start postgresql.service` - start postgres service
 
 ## running
 

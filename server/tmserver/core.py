@@ -3,7 +3,7 @@ import logging
 import re
 import websockets as ws
 
-from .errors import ClientException
+from .errors import *
 from .models import UserAccount
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
@@ -90,8 +90,11 @@ class GameServer:
                     user_session.user_account.username))
                 await user_session.client_send('LOGIN OK')
             elif message.startswith('REGISTER'):
-                self.handle_registration(user_session, message)
-                await user_session.client_send('REGISTER OK')
+                try:
+                    self.handle_registration(user_session, message)
+                    await user_session.client_send('REGISTER OK')
+                except UserValidationError as e:
+                    await user_session.client_send('ERROR: {}'.format(e))
             elif message.startswith('COMMAND'):
                 self.handle_command(user_session, message)
                 await user_session.client_send('COMMAND OK')
