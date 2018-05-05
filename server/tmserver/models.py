@@ -11,13 +11,13 @@ from playhouse.signals import Model, pre_save, post_save
 from playhouse.postgres_ext import JSONField
 
 from . import config
-from .errors import *
+from .errors import WitchException, UserValidationError
 from .world import GameWorld
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 
 BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
-MIN_PASSWORD_LEN = 12
+MIN_PASSWORD_LEN = 4
 
 class ScriptEngine:
     def __init__(self):
@@ -278,5 +278,6 @@ class Log(BaseModel):
 
 MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision]
 
-config.get_db().create_tables(MODELS, safe=True)
-print("tables:", config.get_db().get_tables())
+def init_db():
+    config.get_db().create_tables(MODELS, safe=True)
+    print("db tables:", config.get_db().get_tables())

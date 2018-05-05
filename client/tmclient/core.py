@@ -58,6 +58,7 @@ class ClientState:
         self.connection = None
         self.config = Config()
         self.listening = False
+        self.authenticated = False
 
     @property
     def login_url(self):
@@ -80,19 +81,24 @@ class ClientState:
         if self.connection is None:
             await self.connect()
         await self.connection.send('LOGIN {}:{}'.format(username, password))
-        login_response = await self.connection.recv()
-        if login_response != 'LOGIN OK':
-            raise Exception('TODO better error for failing to login: {}'.format(login_response))
-        self.authenticated = True
+        response = await self.connection.recv()
+        if response == 'LOGIN OK':
+            self.authenticated = True
+        else:
+            TOP.message(response, 'error')
+        
 
     async def register(self, username, password):
         if self.connection is None:
             await self.connect()
         await self.connection.send('REGISTER {}:{}'.format(username, password))
-        register_response = await self.connection.recv()
-        if register_response != 'REGISTER OK':
-            #TODO: should ClientState be modifying the UI directly?
-            TOP.message(register_response, 'error')
+        response = await self.connection.recv()
+        if response == 'REGISTER OK':
+            TOP.close_box()
+            show_login(True)
+            TOP.message("Account created!")
+        else:
+            TOP.message(response, 'error')
 
     async def send(self, text):
         await self.connection.send(text)
@@ -163,8 +169,8 @@ def show_login(_):
 
 async def handle_login(login_data):
     await CLIENT_STATE.authenticate(login_data['username'], login_data['password'])
-    # TODO don't just go to GAME_MAIN until we know we're logged in.
-    TOP.original_widget = GAME_MAIN
+    if CLIENT_STATE.authenticated:
+        TOP.original_widget = GAME_MAIN
 
 def show_register(_):
     un_field = FormField(caption='username: ', name='username')
@@ -184,15 +190,16 @@ def show_register(_):
 
 async def handle_register(register_data):
     if not register_data['username']:
-        pass # TODO error
+        TOP.message("please enter a username", "error")
+        return
 
     if not register_data['password']\
        or not register_data['confirm_password']\
        or register_data['password'] != register_data['confirm_password']:
-        pass # TODO error
+        TOP.message("password mismatch", "error")
+        return
 
     await CLIENT_STATE.register(register_data['username'], register_data['password'])
-    # TODO actually wait on recv for result of register
 
 def handle_exit(_):
     raise urwid.ExitMainLoop()
