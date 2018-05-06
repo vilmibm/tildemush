@@ -17,7 +17,7 @@ from .world import GameWorld
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 
 BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
-MIN_PASSWORD_LEN = 4
+MIN_PASSWORD_LEN = 12
 
 class ScriptEngine:
     def __init__(self):
@@ -277,7 +277,3 @@ class Log(BaseModel):
 
 
 MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision]
-
-def init_db():
-    config.get_db().create_tables(MODELS, safe=True)
-    print("db tables:", config.get_db().get_tables())

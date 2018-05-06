@@ -5,14 +5,14 @@ import click
 from .core import GameServer
 from .logs import get_logger
 from .world import GameWorld
-from .models import init_db
+from .migrations import init_db
 
 
 @click.command()
 @click.option('--debug/--no-debug', default=False, help='Log to the console.')
 def _main(debug):
-    init_db()
     gs = GameServer(GameWorld, logger=get_logger(debug))
+    init_db()
     gs.start()
 
 

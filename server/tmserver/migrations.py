@@ -3,6 +3,7 @@ import playhouse.migrate as m
 
 from .config import get_db
 from .models import MODELS
+import logging
 
 def logging_env_column(db, migrator):
     m.migrate(
@@ -30,6 +31,10 @@ def migrate(migrations=MIGRATIONS):
     for migration in migrations:
         migration(db, migrator)
 
+def init_db():
+    get_db().create_tables(MODELS, safe=True)
+    logging.getLogger('tmserver').info("db tables: {}".format(get_db().get_tables()))
+
 def reset_db():
     get_db().drop_tables(MODELS)
-    get_db().create_tables(MODELS)
+    get_db().init_db()
