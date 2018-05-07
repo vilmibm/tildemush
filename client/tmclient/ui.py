@@ -110,8 +110,8 @@ class UI:
     def __init__(self, loop):
         base = urwid.SolidFill("")
         self.loop = urwid.MainLoop(
-            base, 
-            event_loop=urwid.AsyncioEventLoop(loop=loop), 
+            base,
+            event_loop=urwid.AsyncioEventLoop(loop=loop),
             palette=palettes)
         self.base = base
 

@@ -23,11 +23,11 @@ class Client:
             ui.solidfill('░', 'background'),
             align='center', width=15,
             valign='middle', height=3,)
-        asyncio.wait_for(asyncio.ensure_future(self.connect(), loop=LOOP),60.0, loop=LOOP)
-        
+
     def run(self):
+        asyncio.wait_for(asyncio.ensure_future(self.connect(), loop=LOOP),60.0, loop=LOOP)
         self.ui.loop.run()
-    
+
     def show_menu(self):
         self.ui.base = MainMenu(client=self)
 
@@ -58,7 +58,7 @@ class Client:
             self.ui.base = GameMain(self, LOOP)
         else:
             self.ui.base.message(response, 'error')
-        
+
     async def register(self, username, password):
         await self.connection.send('REGISTER {}:{}'.format(username, password))
         response = await self.connection.recv()

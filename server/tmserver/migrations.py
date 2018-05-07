@@ -37,4 +37,4 @@ def init_db():
 
 def reset_db():
     get_db().drop_tables(MODELS)
-    get_db().init_db()
+    init_db()
