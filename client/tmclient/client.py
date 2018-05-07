@@ -24,8 +24,9 @@ class Client:
             align='center', width=15,
             valign='middle', height=3,)
         asyncio.wait_for(asyncio.ensure_future(self.connect(), loop=LOOP),60.0, loop=LOOP)
-        self.ui.loop.run()
         
+    def run(self):
+        self.ui.loop.run()
     
     def show_menu(self):
         self.ui.base = MainMenu(client=self)
