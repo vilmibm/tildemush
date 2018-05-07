@@ -1,9 +1,6 @@
 import sys
-
 import click
+from .client import Client
 
-from . import core
-
-#@click.command
 def main():
-    core.start()
+    client = Client()
