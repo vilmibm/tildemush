@@ -17,7 +17,9 @@ if not os.path.isfile(DEFAULT_CONFIG_PATH):
     with open(DEFAULT_CONFIG_PATH, 'w') as config_file:
         config_file.write("{}")
 
-CONFIG_DEFAULTS = {'todo':'todo'}
+CONFIG_DEFAULTS = {
+    'server_host':'localhost',
+    'server_port': 10014}
 
 class Config:
     def __init__(self, path=DEFAULT_CONFIG_PATH):
@@ -42,7 +44,6 @@ class Config:
     def get(self, key):
         return self._data.get(key)
 
-
     def set(self, key, value):
         self._data[key] = value
         self.sync()
@@ -57,6 +58,7 @@ class ClientState:
         self.connection = None
         self.config = Config()
         self.listening = False
+        self.authenticated = False
 
     @property
     def login_url(self):
@@ -79,18 +81,24 @@ class ClientState:
         if self.connection is None:
             await self.connect()
         await self.connection.send('LOGIN {}:{}'.format(username, password))
-        login_response = await self.connection.recv()
-        if login_response != 'LOGIN OK':
-            raise Exception('TODO better error for failing to login: {}'.format(login_response))
-        self.authenticated = True
+        response = await self.connection.recv()
+        if response == 'LOGIN OK':
+            self.authenticated = True
+        else:
+            TOP.message(response, 'error')
+        
 
     async def register(self, username, password):
         if self.connection is None:
             await self.connect()
         await self.connection.send('REGISTER {}:{}'.format(username, password))
-        register_response = await self.connection.recv()
-        if register_response != 'REGISTER OK':
-            raise Exception('TODO better error for failing to register: {}'.format(register_response))
+        response = await self.connection.recv()
+        if response == 'REGISTER OK':
+            TOP.close_box()
+            show_login(True)
+            TOP.message("Account created!")
+        else:
+            TOP.message(response, 'error')
 
     async def send(self, text):
         await self.connection.send(text)
@@ -118,7 +126,7 @@ class FormField(urwid.Edit):
         self.name = name
 
 def menu_button(caption, callback):
-    button = urwid.Button(caption)
+    button = urwid.Button(" "+caption)
     urwid.connect_signal(button, 'click', callback)
     return urwid.AttrMap(button, None, focus_map='reversed')
 
@@ -126,10 +134,12 @@ def sub_menu(caption, choices):
     contents = menu(caption, choices)
     def open_menu(button):
         return TOP.open_box(contents)
-    return menu_button([caption, u'...'], open_menu)
+    return menu_button(caption+'...', open_menu)
 
 def menu(title, choices):
-    body = [urwid.Text(title), urwid.Divider()]
+    if type(title) is str:
+        title = urwid.Text(title)
+    body = [title, urwid.Divider()]
     body.extend(choices)
     return urwid.ListBox(urwid.SimpleFocusListWalker(body))
 
@@ -159,8 +169,8 @@ def show_login(_):
 
 async def handle_login(login_data):
     await CLIENT_STATE.authenticate(login_data['username'], login_data['password'])
-    # TODO don't just go to GAME_MAIN until we know we're logged in.
-    TOP.original_widget = GAME_MAIN
+    if CLIENT_STATE.authenticated:
+        TOP.original_widget = GAME_MAIN
 
 def show_register(_):
     un_field = FormField(caption='username: ', name='username')
@@ -180,15 +190,16 @@ def show_register(_):
 
 async def handle_register(register_data):
     if not register_data['username']:
-        pass # TODO error
+        TOP.message("please enter a username", "error")
+        return
 
     if not register_data['password']\
        or not register_data['confirm_password']\
        or register_data['password'] != register_data['confirm_password']:
-        pass # TODO error
+        TOP.message("password mismatch", "error")
+        return
 
     await CLIENT_STATE.register(register_data['username'], register_data['password'])
-    # TODO actually wait on recv for result of register
 
 def handle_exit(_):
     raise urwid.ExitMainLoop()
@@ -234,13 +245,21 @@ class CascadingBoxes(urwid.WidgetPlaceholder):
             bottom=(self.max_box_levels - self.box_level - 1) * 2)
         self.box_level += 1
 
-    def keypress(self, size, key):
-        if self.original_widget is self.initial:
-            self.original_widget = urwid.SolidFill('~')
-            self.open_box(self.box)
-        elif key == 'esc' and self.box_level > 1:
+    def close_box(self):
+        if self.box_level > 0:
             self.original_widget = self.original_widget[0]
             self.box_level -= 1
+
+    def message(self, s, palette='basic'):
+        self.open_box(menu(urwid.Text((palette, s)), 
+            [menu_button('ESC', lambda _:self.close_box())]))
+
+    def keypress(self, size, key):
+        if self.original_widget is self.initial:
+            self.original_widget = urwid.AttrMap(urwid.SolidFill('░'), 'background')
+            self.open_box(self.box)
+        elif key == 'esc' and self.box_level > 1:
+            self.close_box()
         else:
             return super(CascadingBoxes, self).keypress(size, key)
 
@@ -309,5 +328,11 @@ CLIENT_STATE = ClientState()
 GAME_MAIN = GameMain(client_state=CLIENT_STATE, loop=LOOP)
 
 
+palettes = [
+    ('reversed', 'standout', ''),
+    ('basic', 'white', 'black'),
+    ('background', 'dark magenta', 'black'),
+    ('error', 'light red', 'black')]
+
 def start():
-    urwid.MainLoop(TOP, event_loop=ULOOP, palette=[('reversed', 'standout', '')]).run()
+    urwid.MainLoop(TOP, event_loop=ULOOP, palette=palettes).run()
