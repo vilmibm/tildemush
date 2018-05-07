@@ -59,10 +59,11 @@ class Screen(urwid.WidgetPlaceholder):
     """
     max_box_levels = 4
 
-    def __init__(self, base, exit=lambda _:True):
+    def __init__(self, base, client=None, exit=lambda _:True):
         super().__init__(base)
         self.box_level = 0
         self.base = base
+        self.client = client
         self.exit = exit
 
     def input(self, key):
