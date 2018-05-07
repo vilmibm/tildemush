@@ -1,8 +1,8 @@
 # contributing to tildemush
 
-`tildemush` is an amibitious project started by a single person. While there's been an attempt to capture lots of things in issues and documentation, there remains a lot of nebulous project planning that exists in @vilmibm's head.
+`tildemush` is an amibitious project started by a single person. While there's been an attempt to capture lots of things in issues and documentation, there remains a lot of nebulous project planning that exists in [@vilmibm](https://github.com/vilmibm)'s head.
 
-This means that contributing can be a little confusing :( If you'd like to help out with `tildemush` and it's not clear how, your help is definitely still wanted! Comment on #22 and we'll figure out the best way to contribute.
+This means that contributing can be a little confusing :( If you'd like to help out with `tildemush` and it's not clear how, your help is definitely still wanted! Comment on [#22](https://github.com/vilmibm/tildemush/issues/22) and we'll figure out the best way to contribute.
 
 # golden rule
 
