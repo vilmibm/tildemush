@@ -20,6 +20,13 @@ setup(
         'click==6.7',
         'urwid==2.0.1',
     ],
+    extras_require={
+        'testing': [
+            'tmserver==1.0.0',
+            'pytest==3.5.0',
+            'pytest-asyncio==0.8.0',
+        ]
+    },
     include_package_data=True,
     entry_points={
           'console_scripts': [

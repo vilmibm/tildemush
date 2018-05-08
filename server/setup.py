@@ -24,6 +24,11 @@ setup(
         'bcrypt==3.1.4',
         'hy==0.14.0',
     ],
+    extras_require={
+        'testing': [
+            'pytest==3.5.0',
+        ]
+    },
     include_package_data=True,
     entry_points={
           'console_scripts': [
