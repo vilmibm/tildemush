@@ -10,7 +10,7 @@ from .ui import Screen, Form, FormField, menu, menu_button, sub_menu
 
 LOOP = asyncio.get_event_loop()
 
-def quit(_):
+def quit_client(_):
     raise urwid.ExitMainLoop()
 
 class Splash(Screen):
@@ -42,7 +42,7 @@ class MainMenu(Screen):
                     menu_button('set server domain', lambda _:True),
                     menu_button('set server port', lambda _:True),
                     menu_button('set server password', lambda _:True)]),
-                menu_button('exit', quit)]))
+                menu_button('exit', quit_client)]))
 
     def input(self, key):
         return False
