@@ -17,8 +17,8 @@
 
 * `python -m virtualenv venv` - create a virtualenv in the project directory
 * `source venv/bin/activate`
-* `cd server & pip install -e ".[testing]" & cd ..`
-* `cd client & pip install -e ".[testing]" & cd ..`
+* `cd server & pip install -e . & cd ..`
+* `cd client & pip install -e . & cd ..`
 * setup `postgres` (see below)
 * `createuser tildemush -W` (will prompt for password, use `tildemush`)
 * `createdb tildemush -O tildemush`
