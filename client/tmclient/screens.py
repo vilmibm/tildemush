@@ -8,13 +8,11 @@ from .config import Config
 from . import ui
 from .ui import Screen, Form, FormField, menu, menu_button, sub_menu
 
-LOOP = asyncio.get_event_loop()
-
-def quit(_):
+def quit_client(_):
     raise urwid.ExitMainLoop()
 
 class Splash(Screen):
-    def __init__(self, exit=lambda _:True):    
+    def __init__(self, exit=lambda _:True):
         bt = urwid.BigText('WELCOME TO TILDEMUSH', urwid.font.HalfBlock5x4Font())
         bt = urwid.Padding(bt, 'center', None)
         bt = urwid.Filler(bt, 'middle', None, 7)
@@ -27,7 +25,8 @@ class Splash(Screen):
 
 
 class MainMenu(Screen):
-    def __init__(self, client=None, exit=lambda _:True):    
+    def __init__(self, loop, client=None, exit=lambda _: True):
+        self.loop = loop
         self.base = ui.solidfill('░', 'background')
         super().__init__(self.base, client, exit)
         self.show_menu()
@@ -42,7 +41,7 @@ class MainMenu(Screen):
                     menu_button('set server domain', lambda _:True),
                     menu_button('set server port', lambda _:True),
                     menu_button('set server password', lambda _:True)]),
-                menu_button('exit', quit)]))
+                menu_button('exit', quit_client)]))
 
     def input(self, key):
         return False
@@ -52,18 +51,18 @@ class MainMenu(Screen):
         pw = self.client.config.get('password')
         if un and pw:
             asyncio.wait_for(
-                    asyncio.ensure_future(self.handle_login({'username':un, 'password':pw}), loop=LOOP),
-                    60.0, loop=LOOP)
+                    asyncio.ensure_future(self.handle_login({'username':un, 'password':pw}), loop=self.loop),
+                    60.0, loop=self.loop)
         else:
             un_field = FormField(caption='username: ', name='username')
             pw_field = FormField(caption='password: ', name='password', mask='~')
             submit_btn = urwid.Button('login!')
             login_form = Form([un_field, pw_field], submit_btn)
-            
+
             def wait_for_login(_):
                 asyncio.wait_for(
-                    asyncio.ensure_future(self.handle_login(login_form.data), loop=LOOP),
-                    60.0, loop=LOOP)
+                    asyncio.ensure_future(self.handle_login(login_form.data), loop=self.loop),
+                    60.0, loop=self.loop)
 
             urwid.connect_signal(submit_btn, 'click', wait_for_login)
 
@@ -81,8 +80,8 @@ class MainMenu(Screen):
 
         def wait_for_register(_):
             asyncio.wait_for(
-                asyncio.ensure_future(self.handle_register(register_form.data), loop=LOOP),
-                60.0, loop=LOOP)
+                asyncio.ensure_future(self.handle_register(register_form.data), loop=self.loop),
+                60.0, loop=self.loop)
 
         urwid.connect_signal(submit_btn, 'click', wait_for_register)
         self.open_box(urwid.Filler(register_form))

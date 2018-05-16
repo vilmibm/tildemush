@@ -9,13 +9,12 @@ from . import ui
 from .ui import Screen, Form, FormField, menu, menu_button, sub_menu
 from .screens import Splash, MainMenu, GameMain
 
-LOOP = asyncio.get_event_loop()
-
 class Client:
-    def __init__(self):
+    def __init__(self, loop):
+        self.loop = loop
         self.connection = None
         self.config = Config()
-        self.ui = ui.UI(LOOP)
+        self.ui = ui.UI(self.loop)
         self.listening = False
         self.authenticated = False
         self.ui.base = urwid.Overlay(
@@ -25,11 +24,11 @@ class Client:
             valign='middle', height=3,)
 
     def run(self):
-        asyncio.wait_for(asyncio.ensure_future(self.connect(), loop=LOOP),60.0, loop=LOOP)
-        self.ui.loop.run()
+        asyncio.wait_for(asyncio.ensure_future(self.connect(), loop=self.loop),60.0, loop=self.loop)
+        self.loop.run()
 
     def show_menu(self):
-        self.ui.base = MainMenu(client=self)
+        self.ui.base = MainMenu(self.loop, client=self)
 
     @property
     def login_url(self):
@@ -55,7 +54,7 @@ class Client:
         response = await self.connection.recv()
         if response == 'LOGIN OK':
             self.authenticated = True
-            self.ui.base = GameMain(self, LOOP)
+            self.ui.base = GameMain(self, self.loop)
         else:
             self.ui.base.message(response, 'error')
 

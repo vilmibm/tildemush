@@ -4,7 +4,7 @@ import re
 import websockets as ws
 
 from .errors import ClientException, UserValidationError
-from .models import UserAccount
+from .models import UserAccount, GameObject
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
 REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
@@ -15,7 +15,8 @@ LOOP = asyncio.get_event_loop()
 
 class UserSession:
     """An instance of this class represents a user's session."""
-    def __init__(self, game_world, websocket):
+    def __init__(self, loop, game_world, websocket):
+        self.loop = loop
         self.websocket = websocket
         self.game_world = game_world
         self.user_account = None
@@ -27,12 +28,14 @@ class UserSession:
     def associate(self, user_account):
         self.user_account = user_account
         self.game_world.register_session(user_account, self)
+        foyer = GameObject.select().where(GameObject.name=='Foyer')[0]
+        self.game_world.put_into(foyer, user_account.player_obj)
+        # TODO thread through disconnect handling to dematerialize player objects
 
     def handle_hears(self, sender_obj, message):
-        # TODO NEXT test thissssssssssss
         asyncio.ensure_future(
             self.client_send('{} says {}'.format(sender_obj.name, message)),
-            loop=LOOP)
+            loop=self.loop)
 
     async def client_send(self, message):
         await self.websocket.send(message)
@@ -63,7 +66,8 @@ class ConnectionMap:
 
 
 class GameServer:
-    def __init__(self, game_world, bind='localhost', port=10014, logger=None):
+    def __init__(self, game_world, loop=LOOP, bind='127.0.0.1', port=10014, logger=None):
+        self.loop = loop
         self.game_world = game_world
         if logger is None:
             logger = logging.getLogger('tmserver')
@@ -74,7 +78,7 @@ class GameServer:
 
     async def handle_connection(self, websocket, path):
         self.logger.info('Handling initial connection at path {}'.format(path))
-        user_session = UserSession(self.game_world, websocket)
+        user_session = UserSession(self.loop, self.game_world, websocket)
         self.logger.info('Registering user context {}'.format(user_session))
         self.connections.add(websocket, user_session)
         async for message in websocket:
@@ -98,6 +102,8 @@ class GameServer:
             elif message.startswith('COMMAND'):
                 self.handle_command(user_session, message)
                 await user_session.client_send('COMMAND OK')
+            elif message.startswith('PING'):
+                await user_session.client_send('PONG')
             else:
                 # TODO clients should format said things (ie things a user
                 # types not prefixed with a / command) with "COMMAND SAY"
@@ -158,6 +164,9 @@ class GameServer:
         self.logger.info('Starting up asyncio loop')
         # I'm cargo culting these asyncio calls from the websockets
         # documentation
-        LOOP.run_until_complete(
-            ws.serve(self.handle_connection, self.bind, self.port))
-        LOOP.run_forever()
+        self.loop.run_until_complete(
+            ws.serve(self.handle_connection, self.bind, self.port, loop=self.loop))
+        self.loop.run_forever()
+
+    def _get_ws_server(self):
+        return ws.serve(self.handle_connection, self.bind, self.port, loop=self.loop)
