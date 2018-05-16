@@ -1,3 +1,4 @@
+import os
 import asyncio
 from unittest import mock
 
@@ -6,7 +7,16 @@ import websockets
 
 from .tm_test_case import TildemushTestCase
 from ..core import GameServer
+from ..migrations import reset_db
 from ..world import GameWorld
+
+@pytest.fixture(autouse=True)
+def state():
+    if os.environ.get('TILDEMUSH_ENV') != 'test':
+        pytest.exit('Run tildemush tests with TILDEMUSH_ENV=test')
+
+    reset_db()
+    GameWorld.reset()
 
 @pytest.fixture
 def mock_logger():
