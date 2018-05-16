@@ -22,10 +22,13 @@ def state():
 def mock_logger():
     yield mock.Mock()
 
-@pytest.mark.asyncio
-async def test_ping(event_loop, mock_logger):
+@pytest.fixture(autouse=True)
+def start_server(event_loop, mock_logger):
     gs = GameServer(GameWorld, loop=event_loop, logger=mock_logger, port=5555)
     asyncio.ensure_future(gs._get_ws_server(), loop=event_loop)
+
+@pytest.mark.asyncio
+async def test_ping(event_loop, mock_logger):
     client = await websockets.connect('ws://localhost:5555')
     await client.send('PING')
     msg = await client.recv()
