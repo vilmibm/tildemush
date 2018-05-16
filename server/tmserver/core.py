@@ -28,6 +28,9 @@ class UserSession:
     def associate(self, user_account):
         self.user_account = user_account
         self.game_world.register_session(user_account, self)
+        foyer = GameObject.select().where(GameObject.name=='Foyer')[0]
+        self.game_world.put_into(foyer, user_account.player_obj)
+        # TODO thread through disconnect handling to dematerialize player objects
 
     def handle_hears(self, sender_obj, message):
         asyncio.ensure_future(
