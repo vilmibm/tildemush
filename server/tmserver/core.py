@@ -62,7 +62,7 @@ class ConnectionMap:
 
 
 class GameServer:
-    def __init__(self, game_world, loop=LOOP, bind='localhost', port=10014, logger=None):
+    def __init__(self, game_world, loop=LOOP, bind='127.0.0.1', port=10014, logger=None):
         self.loop = loop
         self.game_world = game_world
         if logger is None:
