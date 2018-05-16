@@ -4,7 +4,7 @@ import re
 import websockets as ws
 
 from .errors import ClientException, UserValidationError
-from .models import UserAccount
+from .models import UserAccount, GameObject
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
 REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
@@ -15,7 +15,8 @@ LOOP = asyncio.get_event_loop()
 
 class UserSession:
     """An instance of this class represents a user's session."""
-    def __init__(self, game_world, websocket):
+    def __init__(self, loop, game_world, websocket):
+        self.loop = loop
         self.websocket = websocket
         self.game_world = game_world
         self.user_account = None
@@ -74,7 +75,7 @@ class GameServer:
 
     async def handle_connection(self, websocket, path):
         self.logger.info('Handling initial connection at path {}'.format(path))
-        user_session = UserSession(self.game_world, websocket)
+        user_session = UserSession(self.loop, self.game_world, websocket)
         self.logger.info('Registering user context {}'.format(user_session))
         self.connections.add(websocket, user_session)
         async for message in websocket:
