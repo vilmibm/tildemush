@@ -98,6 +98,8 @@ class GameServer:
             elif message.startswith('COMMAND'):
                 self.handle_command(user_session, message)
                 await user_session.client_send('COMMAND OK')
+            elif message.startswith('PING'):
+                await user_session.client_send('PONG')
             else:
                 # TODO clients should format said things (ie things a user
                 # types not prefixed with a / command) with "COMMAND SAY"
