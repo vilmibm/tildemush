@@ -29,10 +29,9 @@ class UserSession:
         self.game_world.register_session(user_account, self)
 
     def handle_hears(self, sender_obj, message):
-        # TODO NEXT test thissssssssssss
         asyncio.ensure_future(
             self.client_send('{} says {}'.format(sender_obj.name, message)),
-            loop=LOOP)
+            loop=self.loop)
 
     async def client_send(self, message):
         await self.websocket.send(message)
@@ -63,7 +62,8 @@ class ConnectionMap:
 
 
 class GameServer:
-    def __init__(self, game_world, bind='localhost', port=10014, logger=None):
+    def __init__(self, game_world, loop=LOOP, bind='localhost', port=10014, logger=None):
+        self.loop = loop
         self.game_world = game_world
         if logger is None:
             logger = logging.getLogger('tmserver')
@@ -158,6 +158,6 @@ class GameServer:
         self.logger.info('Starting up asyncio loop')
         # I'm cargo culting these asyncio calls from the websockets
         # documentation
-        LOOP.run_until_complete(
-            ws.serve(self.handle_connection, self.bind, self.port))
-        LOOP.run_forever()
+        self.loop.run_until_complete(
+            ws.serve(self.handle_connection, self.bind, self.port, loop=self.loop))
+        self.loop.run_forever()
