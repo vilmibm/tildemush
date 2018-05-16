@@ -37,7 +37,7 @@ class TestLogin(TildemushTestCase):
         with self.assertRaisesRegex(
                 ClientException,
                 'no such user'):
-            self.server.handle_login(UserSession(GameWorld, None), msg)
+            self.server.handle_login(UserSession(None, GameWorld, None), msg)
 
     def test_bad_password(self):
         vil = UserAccount.create(username='vilmibm', password='12345678901')
@@ -45,10 +45,10 @@ class TestLogin(TildemushTestCase):
         with self.assertRaisesRegex(
                 ClientException,
                 'bad password'):
-            self.server.handle_login(UserSession(GameWorld, None), msg)
+            self.server.handle_login(UserSession(None, GameWorld, None), msg)
 
     def test_success(self):
-        user_session = UserSession(GameWorld, None)
+        user_session = UserSession(None, GameWorld, None)
         vil = UserAccount.create(username='vilmibm', password='foobarbazquux')
         msg = 'LOGIN vilmibm:foobarbazquux'
         self.server.handle_login(user_session, msg)
@@ -59,7 +59,7 @@ class TestLogin(TildemushTestCase):
 
     def test_detects_already_assoced_user_session(self):
         vil = UserAccount.create(username='vilmibm', password='foobarbazquux')
-        user_session = UserSession(GameWorld, mock.Mock())
+        user_session = UserSession(None, GameWorld, mock.Mock())
         user_session.associate(vil)
         with self.assertRaisesRegex(
                 ClientException,

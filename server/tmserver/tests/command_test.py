@@ -12,7 +12,7 @@ class CommandTest(TildemushTestCase):
         super().setUp()
         self.log_mock = mock.Mock()
         self.server = GameServer(GameWorld, logger=self.log_mock)
-        self.user_session = UserSession(GameWorld, None)
+        self.user_session = UserSession(None, GameWorld, None)
         self.vil = UserAccount.create(username='vilmibm', password='foobarbazquux')
         msg = 'LOGIN vilmibm:foobarbazquux'
         self.server.handle_login(self.user_session, msg)
@@ -56,7 +56,7 @@ class CommandTest(TildemushTestCase):
                 self.server.handle_command(self.user_session, malformed)
 
     def test_rejects_unauthenticated_command(self):
-        user_session = UserSession(GameWorld, None)
+        user_session = UserSession(None, GameWorld, None)
         with self.assertRaisesRegex(
                 ClientException,
                 'not logged in'):
