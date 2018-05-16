@@ -8,7 +8,7 @@ class TestUserAccountModel(TildemushTestCase):
         u = UserAccount(username='vilmibm', password='foobar')
         self.assertIsNotNone(u.password)
         u.save()
-        u = UserAccount.select().where(UserAccount.name=='vilmibm')[0]
+        u = UserAccount.select().where(UserAccount.username=='vilmibm')[0]
         self.assertTrue(u.check_password('foobar'))
 
     def test_can_create(self):
