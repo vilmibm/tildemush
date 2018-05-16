@@ -2,7 +2,7 @@ import peewee as pw
 import playhouse.migrate as m
 
 from .config import get_db
-from .models import MODELS
+from .models import MODELS, GameObject, UserAccount
 import logging
 
 def logging_env_column(db, migrator):
@@ -34,6 +34,18 @@ def migrate(migrations=MIGRATIONS):
 def init_db():
     get_db().create_tables(MODELS, safe=True)
     logging.getLogger('tmserver').info("db tables: {}".format(get_db().get_tables()))
+    god_ua = UserAccount.create(
+        username='god',
+        display_name='Something unknowable.',
+        password='TODO',  # TODO set from config
+        god=True)
+    foyer = GameObject.create(
+        author=god_ua,
+        name='Foyer',
+        description="""
+        A waiting room. Magazines in every language from every decade litter
+        dusty end tables sitting between overstuff armchairs.
+        """.lstrip())
 
 def reset_db():
     get_db().drop_tables(MODELS)
