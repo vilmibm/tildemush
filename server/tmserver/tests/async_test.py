@@ -1,40 +1,28 @@
+import asyncio
 from unittest import mock
 
 import pytest
+import websockets
 
 from .tm_test_case import TildemushTestCase
 from ..core import GameServer
+from ..world import GameWorld
+
+@pytest.fixture
+def mock_logger():
+    yield mock.Mock()
+
+@pytest.mark.asyncio
+async def test_ping(event_loop, mock_logger):
+    gs = GameServer(GameWorld, loop=event_loop, logger=mock_logger, port=5555)
+    asyncio.ensure_future(gs._get_future(), loop=event_loop)
+    client = await websockets.connect('ws://localhost:5555')
+    await client.send('PING')
+    msg = await client.recv()
+    assert msg == 'PONG'
+    await client.close()
 
 
-class ServerSmokeTest(TildemushTestCase):
-
-    def setUp(self):
-        super().setUp()
-        self.boot_server()
-
-    def tearDown(self):
-        self.kill_server()
-
-    def boot_server(self):
-        self.loop = asyncio.get_event_loop()
-        self.mock_server_logger = mock.Mock()
-        GameServer(GameWorld, loop=self.loop, logger=self.mock_server_logger, port=5555).start()
-
-    def kill_server(self):
-        self.loop.stop()
-
-    @pytest.mark.asyncio
-    def test_registration(self):
-        pass
-
-    @pytest.mark.asyncio
-    def test_logging_in(self):
-        pass
-
-    @pytest.mark.asyncio
-    def test_error_popup(self):
-        pass
-
-    @pytest.mark.asyncio
-    def test_send_game_command(self):
-        pass
+# TODO test registration
+# TODO test login
+# TODO test game commands
