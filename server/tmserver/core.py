@@ -164,5 +164,5 @@ class GameServer:
             ws.serve(self.handle_connection, self.bind, self.port, loop=self.loop))
         self.loop.run_forever()
 
-    def _get_future(self):
+    def _get_ws_server(self):
         return ws.serve(self.handle_connection, self.bind, self.port, loop=self.loop)
