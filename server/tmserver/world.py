@@ -1,4 +1,5 @@
 from .errors import ClientException
+from .models import Contains, GameObject, Contains
 
 class GameWorld:
     # TODO logging
@@ -23,10 +24,37 @@ class GameWorld:
 
     @classmethod
     def dispatch_action(cls, sender_obj, action, action_args):
-        # TODO this lacks coverage
+        if action == 'announce':
+            cls.handle_announce(sender_obj, action_args)
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
-            o.handle_action(sender_obj, action, action_args)
+            o.handle_action(cls, sender_obj, action, action_args)
+
+
+    @classmethod
+    def all_active_objects(cls):
+        """This method assumes that if an object is contained by something
+        else, it's "active" in the game; in other words, we're assuming that a
+        player object connected to a not-logged-in user account won't exist in
+        a room."""
+        all_containing_objects = set(GameObject.select()\
+                                               .join(Contains, on=Contains.outer_obj)\
+                                               .distinct(GameObject.id))
+        all_contained_objects = set(GameObject.select()\
+                                              .join(Contains, on=Contains.inner_obj)\
+                                              .distinct(GameObject.id))
+        return all_containing_objects.union(all_contained_objects)
+
+
+    @classmethod
+    def handle_announce(cls, sender_obj, action_args):
+        if not sender_obj.user_account.god:
+            raise ClientException('you are not powerful enough to do that.')
+
+        aoe = cls.all_active_objects()
+        for o in aoe:
+            o.handle_action(cls, sender_obj, 'say', action_args)
+
 
     @classmethod
     def area_of_effect(cls, sender_obj):
