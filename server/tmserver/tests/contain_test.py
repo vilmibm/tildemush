@@ -88,3 +88,36 @@ class ContainTest(TildemushTestCase):
         GameWorld.remove_from(self.phone, self.app)
         assert [] == list(self.phone.contains)
         assert None == self.app.contained_by
+
+    def test_all_active_objects(self):
+        player_obj = self.vil.player_obj
+        cigar = GameObject.create(
+            author=self.vil,
+            name='black and mild',
+            description='with the wood tip, naturally')
+        rug = GameObject.create(
+            author=self.vil,
+            name='rug',
+            description='a beautiful persian rug')
+        ship = GameObject.create(
+            author=self.vil,
+            name='Voyager')
+
+        GameWorld.put_into(self.room, player_obj)
+        GameWorld.put_into(self.phone, self.app)
+        GameWorld.put_into(self.room, cigar)
+        GameWorld.put_into(player_obj, self.phone)
+        GameWorld.put_into(self.room, rug)
+        GameWorld.put_into(ship, self.room)
+
+        aoe = set(GameWorld.all_active_objects())
+
+        assert aoe == {
+            player_obj,
+            cigar,
+            rug,
+            ship,
+            self.room,
+            self.phone,
+            self.app,
+        }

@@ -8,6 +8,7 @@ import websockets
 from .tm_test_case import TildemushTestCase
 from ..core import GameServer
 from ..migrations import reset_db
+from ..models import UserAccount
 from ..world import GameWorld
 
 @pytest.fixture(autouse=True)
@@ -88,3 +89,37 @@ async def test_game_command(event_loop, mock_logger, client):
     assert msg == 'COMMAND OK'
     msg = await client.recv()
     assert msg == 'a gaseous cloud says hello'
+
+
+async def setup_user(client, username, god=False):
+    await client.send('REGISTER {}:foobarbazquux'.format(username))
+    await client.recv()
+
+    if god:
+        ua = UserAccount.get(UserAccount.username==username)
+        ua.god = True
+        ua.save()
+
+    await client.send('LOGIN {}:foobarbazquux'.format(username))
+    await client.recv()
+
+
+@pytest.mark.asyncio
+async def test_announce_forbidden(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    await client.send('COMMAND announce HELLO EVERYONE')
+    msg = await client.recv()
+    assert msg == 'ERROR: you are not powerful enough to do that.'
+
+
+@pytest.mark.asyncio
+async def test_announce(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm', god=True)
+    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
+    await setup_user(snoozy_client, 'snoozy')
+    await client.send('COMMAND announce HELLO EVERYONE')
+    vil_msg = await client.recv()
+    assert vil_msg == 'COMMAND OK'
+    snoozy_msg = await snoozy_client.recv()
+    assert snoozy_msg == 'a gaseous cloud says HELLO EVERYONE'
+    snoozy_client.close()
