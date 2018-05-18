@@ -141,7 +141,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
             script_revision=self.script_rev)
 
     def test_no_script_revision(self):
-        result = self.vil.handle_action(self.snoozy, 'kick', [])
+        result = self.vil.handle_action(GameWorld, self.snoozy, 'kick', [])
         assert result is None
 
     def test_witch_header_read(self):
@@ -152,32 +152,32 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         assert isinstance(eng, ScriptEngine)
 
     def test_handler_added(self):
-        assert type(self.snoozy.engine.handler('pet')) == types.FunctionType
+        assert type(self.snoozy.engine.handler(GameWorld, 'pet')) == types.FunctionType
 
     def test_handler_works(self):
-        self.snoozy.handle_action(self.vil, 'pet', [])
+        self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
         assert self.snoozy.get_data('num-pets') == 1
-        self.snoozy.handle_action(self.vil, 'pet', [])
-        self.snoozy.handle_action(self.vil, 'pet', [])
-        self.snoozy.handle_action(self.vil, 'pet', [])
+        self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
+        self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
+        self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
         with mock.patch('tmserver.models.GameObject.say') as mock_say:
-            self.snoozy.handle_action(self.vil, 'pet', [])
+            self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
             mock_say.assert_called_once_with('neigh neigh neigh i am horse')
 
     def test_debug_handler(self):
-        result = self.snoozy.handle_action(self.vil, 'debug', [])
+        result = self.snoozy.handle_action(GameWorld, self.vil, 'debug', [])
         assert result == '{} <- {} with []'.format(self.snoozy, self.vil)
 
     def test_bad_witch(self):
         self.script_rev.code = '''(witch oops lol haha)'''
         self.script_rev.save()
         with self.assertRaises(WitchException):
-            self.snoozy.handle_action(self.vil, 'pet', [])
+            self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
 
     def test_unhandled_action(self):
-        assert None == self.snoozy.handle_action('poke', self.vil, [])
+        assert None == self.snoozy.handle_action(GameWorld, 'poke', self.vil, [])
         with mock.patch('tmserver.models.ScriptEngine.noop') as mock_noop:
-            self.snoozy.handle_action('poke', self.vil, [])
+            self.snoozy.handle_action(GameWorld, 'poke', self.vil, [])
             assert mock_noop.called
 
 

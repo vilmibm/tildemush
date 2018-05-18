@@ -12,7 +12,6 @@ from playhouse.postgres_ext import JSONField
 
 from . import config
 from .errors import WitchException, UserValidationError
-from .world import GameWorld
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 
@@ -21,24 +20,29 @@ MIN_PASSWORD_LEN = 12
 
 class ScriptEngine:
     def __init__(self):
-        self.handlers = {'debug': self.debug_handler,
-                         'say': self.say_handler}
+        self.handlers = {'debug': self._debug_handler,
+                         'say': self._say_handler}
 
     @staticmethod
     def noop(*args, **kwargs):
         pass
 
-    def debug_handler(self, receiver, sender, action_args):
+    def _ensure_game_world(self, game_world):
+        if not hasattr(self, 'game_world'):
+            self.game_world = game_world
+
+    def _debug_handler(self, receiver, sender, action_args):
         return '{} <- {} with {}'.format(receiver, sender, action_args)
 
-    def say_handler(self, receiver, sender, action_args):
+    def _say_handler(self, receiver, sender, action_args):
         if receiver.user_account:
-            receiver.user_account.hears(sender, action_args)
+            receiver.user_account.hears(self.game_world, sender, action_args)
 
     def add_handler(self, action, fn):
         self.handlers[action] = fn
 
-    def handler(self, action):
+    def handler(self, game_world, action):
+        self._ensure_game_world(game_world)
         return self.handlers.get(action, self.noop)
 
 class BaseModel(Model):
@@ -87,8 +91,8 @@ class UserAccount(BaseModel):
             description=description,
             is_player_obj=True)
 
-    def hears(self, sender_obj, message):
-        GameWorld.get_session(self.id).handle_hears(sender_obj, message)
+    def hears(self, game_world, sender_obj, message):
+        game_world.get_session(self.id).handle_hears(sender_obj, message)
 
     @property
     def player_obj(self):
@@ -139,16 +143,6 @@ class GameObject(BaseModel):
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
     data = JSONField(default=dict)
-
-    @property
-    def game_world(self):
-        # why bother with this? i'm keeping myself open to injecting something
-        # for GameWorld instead of just using a global singleton.
-        #
-        # my brief foray into game dev, though, showed me that a singleton
-        # coordinator like GameWorld is pretty normal, so it might stay like
-        # this.
-        return GameWorld
 
     @property
     def contains(self):
@@ -209,6 +203,10 @@ class GameObject(BaseModel):
         self.data = data_mapping
         self.save()
 
+    def _ensure_world(self, game_world):
+        if not hasattr(self, 'game_world'):
+            self.game_world = game_world
+
     # TODO should these be _ methods too?
     def say(self, message):
         self.game_world.dispatch_action(self, 'say', message)
@@ -224,11 +222,12 @@ class GameObject(BaseModel):
     def get_data(self, key):
         return self.get_by_id(self.id).data.get(key)
 
-    def handle_action(self, sender_obj, action, action_args):
+    def handle_action(self, game_world, sender_obj, action, action_args):
+        self._ensure_world(game_world)
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        return self.engine.handler(action)(self, sender_obj, action_args)
+        return self.engine.handler(game_world, action)(self, sender_obj, action_args)
 
     # containership methods
     # TODO this naming sucks
