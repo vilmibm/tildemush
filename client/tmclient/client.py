@@ -25,7 +25,7 @@ class Client:
 
     def run(self):
         asyncio.wait_for(asyncio.ensure_future(self.connect(), loop=self.loop),60.0, loop=self.loop)
-        self.loop.run()
+        self.ui.loop.run()
 
     def show_menu(self):
         self.ui.base = MainMenu(self.loop, client=self)
