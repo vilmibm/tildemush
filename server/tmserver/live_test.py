@@ -14,11 +14,7 @@ def setup_vil():
 def setup_horse():
     reset_db()
     vil = setup_vil()
-    bridge = GameObject.create(
-        author=vil,
-        name='bridge',
-        description='the bridge of the spaceship Voyager'
-    )
+    foyer = GameObject.get(GameObject.name=='Foyer')
     horse_script = Script.create(
         name='horse',
         author=vil
@@ -38,6 +34,5 @@ def setup_horse():
         script_revision=script_rev
     )
 
-    GameWorld.put_into(bridge, vil)
-    GameWorld.put_into(bridge, snoozy)
+    GameWorld.put_into(foyer, snoozy)
 

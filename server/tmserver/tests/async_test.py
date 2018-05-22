@@ -88,7 +88,7 @@ async def test_game_command(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
-    assert msg == 'a gaseous cloud says hello'
+    assert msg == 'vilmibm says hello'
 
 
 async def setup_user(client, username, god=False):
@@ -121,5 +121,5 @@ async def test_announce(event_loop, mock_logger, client):
     vil_msg = await client.recv()
     assert vil_msg == 'COMMAND OK'
     snoozy_msg = await snoozy_client.recv()
-    assert snoozy_msg == 'a gaseous cloud says HELLO EVERYONE'
+    assert snoozy_msg == "The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE"
     snoozy_client.close()
