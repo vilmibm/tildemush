@@ -19,7 +19,9 @@ setup(
     install_requires=[
         'click==6.7',
         'peewee==3.1.1',
-        'psycopg2==2.7.4',
+        # TODO we may want psycopg2 (ie not binary) once they release 2.8. i'm
+        # not sure.
+        'psycopg2-binary==2.7.4',
         'websockets==4.0.1',
         'bcrypt==3.1.4',
         'hy==0.14.0',
@@ -27,6 +29,7 @@ setup(
     extras_require={
         'testing': [
             'pytest==3.5.0',
+            'pytest-asyncio==0.8.0'
         ]
     },
     include_package_data=True,
