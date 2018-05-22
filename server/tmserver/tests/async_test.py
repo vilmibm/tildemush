@@ -35,6 +35,8 @@ def start_server(event_loop, mock_logger):
 async def client(event_loop):
     client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     yield client
+    # TODO this is getting called after the server is closed :( if we can fix
+    # the ordering, the client.close()s can come out of the test functions
     await client.close()
 
 @pytest.mark.asyncio
@@ -42,24 +44,28 @@ async def test_garbage(event_loop, mock_logger, client):
     await client.send('GARBAGE')
     msg = await client.recv()
     assert msg == 'ERROR: message not understood'
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_ping(event_loop, mock_logger, client):
     await client.send('PING')
     msg = await client.recv()
     assert msg == 'PONG'
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_registration_success(event_loop, mock_logger, client):
     await client.send('REGISTER vilmibm:foobarbazquux')
     msg = await client.recv()
     assert msg == 'REGISTER OK'
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_registration_error(event_loop, mock_logger, client):
     await client.send('REGISTER vilmibm:foo')
     msg = await client.recv()
     assert msg == 'ERROR: password too short'
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_login_success(event_loop, mock_logger, client):
@@ -68,6 +74,7 @@ async def test_login_success(event_loop, mock_logger, client):
     await client.send('LOGIN vilmibm:foobarbazquux')
     msg = await client.recv()
     assert msg == 'LOGIN OK'
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_login_error(event_loop, mock_logger, client):
@@ -76,7 +83,7 @@ async def test_login_error(event_loop, mock_logger, client):
     await client.send('LOGIN evilmibm:foobarbazquux')
     msg = await client.recv()
     assert msg == 'ERROR: no such user'
-
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_game_command(event_loop, mock_logger, client):
@@ -89,7 +96,7 @@ async def test_game_command(event_loop, mock_logger, client):
     assert msg == 'COMMAND OK'
     msg = await client.recv()
     assert msg == 'vilmibm says hello'
-
+    await client.close()
 
 async def setup_user(client, username, god=False):
     await client.send('REGISTER {}:foobarbazquux'.format(username))
@@ -110,7 +117,7 @@ async def test_announce_forbidden(event_loop, mock_logger, client):
     await client.send('COMMAND announce HELLO EVERYONE')
     msg = await client.recv()
     assert msg == 'ERROR: you are not powerful enough to do that.'
-
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_announce(event_loop, mock_logger, client):
@@ -122,8 +129,8 @@ async def test_announce(event_loop, mock_logger, client):
     assert vil_msg == 'COMMAND OK'
     snoozy_msg = await snoozy_client.recv()
     assert snoozy_msg == "The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE"
-    snoozy_client.close()
-
+    await snoozy_client.close()
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_witch_script(event_loop, mock_logger, client):
@@ -155,4 +162,4 @@ async def test_witch_script(event_loop, mock_logger, client):
     await client.recv()
     msg = await client.recv()
     assert msg == 'snoozy says neigh neigh neigh i am horse'
-
+    await client.close()
