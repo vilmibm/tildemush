@@ -8,7 +8,7 @@ import websockets
 from .tm_test_case import TildemushTestCase
 from ..core import GameServer
 from ..migrations import reset_db
-from ..models import UserAccount
+from ..models import UserAccount, Script, GameObject, ScriptRevision
 from ..world import GameWorld
 
 @pytest.fixture(autouse=True)
@@ -123,3 +123,36 @@ async def test_announce(event_loop, mock_logger, client):
     snoozy_msg = await snoozy_client.recv()
     assert snoozy_msg == "The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE"
     snoozy_client.close()
+
+
+@pytest.mark.asyncio
+async def test_witch_script(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm', god=True)
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    horse_script = Script.create(
+        name='horse',
+        author=vil)
+    script_rev = ScriptRevision.create(
+        script=horse_script,
+        code='''
+            (witch "horse" by "vilmibm"
+              (has {"num-pets" 0})
+              (hears "pet"
+                (set-data "num-pets" (+ 1 (get-data "num-pets")))
+                  (if (= 0 (% (get-data "num-pets") 5))
+                    (says "neigh neigh neigh i am horse"))))''')
+    snoozy = GameObject.create(
+        author=vil,
+        name='snoozy',
+        script_revision=script_rev)
+    foyer = GameObject.get(GameObject.name=='Foyer')
+    GameWorld.put_into(foyer, snoozy)
+    for _ in range(0, 4):
+        await client.send('COMMAND pet')
+        msg = await client.recv()
+        assert msg == 'COMMAND OK'
+    await client.send('COMMAND pet')
+    await client.recv()
+    msg = await client.recv()
+    assert msg == 'snoozy says neigh neigh neigh i am horse'
+
