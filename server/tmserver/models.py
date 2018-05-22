@@ -21,7 +21,8 @@ MIN_PASSWORD_LEN = 12
 class ScriptEngine:
     def __init__(self):
         self.handlers = {'debug': self._debug_handler,
-                         'say': self._say_handler}
+                         'say': self._say_handler,
+                         'announce': self._announce_handler}
 
     @staticmethod
     def noop(*args, **kwargs):
@@ -34,9 +35,16 @@ class ScriptEngine:
     def _debug_handler(self, receiver, sender, action_args):
         return '{} <- {} with {}'.format(receiver, sender, action_args)
 
+    def _announce_handler(self, receiver, sender, action_args):
+        if receiver.user_account:
+            msg = "The very air around you seems to shake as {}'s booming voice says {}".format(
+                sender.name, action_args)
+            receiver.user_account.hears(self.game_world, sender, msg)
+
     def _say_handler(self, receiver, sender, action_args):
         if receiver.user_account:
-            receiver.user_account.hears(self.game_world, sender, action_args)
+            msg = '{} says {}'.format(sender.name, action_args)
+            receiver.user_account.hears(self.game_world, sender, msg)
 
     def add_handler(self, action, fn):
         self.handlers[action] = fn

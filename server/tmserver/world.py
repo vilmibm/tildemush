@@ -53,7 +53,7 @@ class GameWorld:
 
         aoe = cls.all_active_objects()
         for o in aoe:
-            o.handle_action(cls, sender_obj, 'say', action_args)
+            o.handle_action(cls, sender_obj, 'announce', action_args)
 
 
     @classmethod

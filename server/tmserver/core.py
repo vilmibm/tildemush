@@ -34,7 +34,7 @@ class UserSession:
 
     def handle_hears(self, sender_obj, message):
         asyncio.ensure_future(
-            self.client_send('{} says {}'.format(sender_obj.name, message)),
+            self.client_send(message),
             loop=self.loop)
 
     async def client_send(self, message):
