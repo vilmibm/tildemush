@@ -14,8 +14,7 @@ class GameObjectDataTest(TildemushTestCase):
         super().setUp()
         self.vil = UserAccount.create(
             username='vilmibm',
-            password='foobarbazquux',
-            display_name='a gaseous cloud')
+            password='foobarbazquux')
         self.snoozy = GameObject.create(
             author=self.vil,
             name='snoozy')
@@ -69,8 +68,7 @@ def GameObjectComparisonTest(self):
         super().setUp()
         self.vil = UserAccount.create(
             username='vilmibm',
-            password='foobarbazquux',
-            display_name='a gaseous cloud')
+            password='foobarbazquux')
         self.snoozy = GameObject.create(
             author=self.vil,
             name='snoozy')
@@ -116,8 +114,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         super().setUp()
         vil_ua = UserAccount.create(
             username='vilmibm',
-            password='foobarbazquux',
-            display_name='a gaseous cloud')
+            password='foobarbazquux')
         self.vil = vil_ua.player_obj
 
         self.script = Script.create(

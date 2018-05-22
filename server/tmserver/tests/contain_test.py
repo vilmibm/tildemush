@@ -8,8 +8,7 @@ class ContainTest(TildemushTestCase):
         super().setUp()
         self.vil = UserAccount.create(
             username='vilmibm',
-            password='foobarbazquux',
-            display_name='a gaseous cloud')
+            password='foobarbazquux')
         self.room = GameObject.create(
             author=self.vil,
             name='foul foyer')
@@ -22,7 +21,7 @@ class ContainTest(TildemushTestCase):
 
     def test_player_obj(self):
         player_obj = self.vil.player_obj
-        assert player_obj.name == self.vil.display_name
+        assert player_obj.name == self.vil.username
         assert player_obj.user_account == self.vil
         assert player_obj.author == self.vil
 

@@ -66,7 +66,6 @@ class UserAccount(BaseModel):
     world."""
 
     username = pw.CharField(unique=True)
-    display_name = pw.CharField(default='a gaseous cloud')
     password = pw.CharField()
     updated_at = pw.DateTimeField(null=True)
     god = pw.BooleanField(default=False)
@@ -92,10 +91,10 @@ class UserAccount(BaseModel):
         if len(self.password) < MIN_PASSWORD_LEN:
             raise UserValidationError('password too short')
 
-    def _init_player_obj(self, description=''):
+    def _init_player_obj(self, description='a gaseous cloud'):
         GameObject.create(
             author=self,
-            name=self.display_name,
+            name=self.username,
             description=description,
             is_player_obj=True)
 
@@ -129,6 +128,7 @@ def pre_save_handler(cls, instance, created):
 
     if created and instance.password:
         instance._hash_password()
+
 
 @post_save(sender=UserAccount)
 def post_save_handler(cls, instance, created):

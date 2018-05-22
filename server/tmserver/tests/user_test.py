@@ -5,18 +5,15 @@ from .tm_test_case import TildemushTestCase
 
 class TestUserAccountModel(TildemushTestCase):
     def test_password_hashing(self):
-        u = UserAccount(username='vilmibm', password='foobar')
+        u = UserAccount(username='vilmibm', password='foobarbazquux')
         self.assertIsNotNone(u.password)
         u.save()
         u = UserAccount.select().where(UserAccount.username=='vilmibm')[0]
-        self.assertTrue(u.check_password('foobar'))
+        self.assertTrue(u.check_password('foobarbazquux'))
 
     def test_can_create(self):
         u = UserAccount.create(username='vilmibm', password='foobar')
         self.assertTrue(u.check_password('foobar'))
-        self.assertEqual(u.display_name, 'a gaseous cloud')
-        u.display_name = 'vil'
-        u.save()
 
     # validation stuff
 
