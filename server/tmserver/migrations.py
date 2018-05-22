@@ -34,18 +34,19 @@ def migrate(migrations=MIGRATIONS):
 def init_db():
     get_db().create_tables(MODELS, safe=True)
     logging.getLogger('tmserver').info("db tables: {}".format(get_db().get_tables()))
-    god_ua = UserAccount.create(
-        username='god',
-        display_name='Something unknowable.',
-        password='TODO',  # TODO set from config
-        god=True)
-    foyer = GameObject.create(
-        author=god_ua,
-        name='Foyer',
-        description="""
-        A waiting room. Magazines in every language from every decade litter
-        dusty end tables sitting between overstuff armchairs.
-        """.lstrip())
+    if 0 == UserAccount.select().where(UserAccount.username=='god').count():
+        god_ua = UserAccount.create(
+            username='god',
+            password='TODO',  # TODO set from config
+            god=True)
+    if 0 == GameObject.select().where(GameObject.name=='Foyer').count():
+        foyer = GameObject.create(
+            author=god_ua,
+            name='Foyer',
+            description="""
+            A waiting room. Magazines in every language from every decade litter
+            dusty end tables sitting between overstuff armchairs.
+            """.lstrip().rstrip())
 
 def reset_db():
     get_db().drop_tables(MODELS)
