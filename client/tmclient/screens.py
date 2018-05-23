@@ -27,7 +27,9 @@ class Splash(Screen):
 class MainMenu(Screen):
     def __init__(self, loop, client=None, exit=lambda _: True):
         self.loop = loop
-        self.base = ui.solidfill('░', 'background')
+        ftr = urwid.Text('press ESC to close windows', align='center')
+        body = ui.solidfill('░', 'background')
+        self.base = urwid.Frame(body=body, footer=ftr)
         super().__init__(self.base, client, exit)
         self.show_menu()
 
@@ -56,7 +58,7 @@ class MainMenu(Screen):
         else:
             un_field = FormField(caption='username: ', name='username')
             pw_field = FormField(caption='password: ', name='password', mask='~')
-            submit_btn = urwid.Button('login!')
+            submit_btn = urwid.Button('login! >')
             login_form = Form([un_field, pw_field], submit_btn)
 
             def wait_for_login(_):
@@ -72,6 +74,7 @@ class MainMenu(Screen):
         await self.client.authenticate(login_data['username'], login_data['password'])
 
     def show_register(self):
+        info = urwid.Text('register a new account! password must be at least 12 characters long.\n')
         un_field = FormField(caption='username: ', name='username')
         pw_field = FormField(caption='password: ', name='password', mask='~')
         pw_confirm_field = FormField(caption='confirm password: ', name='confirm_password', mask='~')
@@ -84,7 +87,7 @@ class MainMenu(Screen):
                 60.0, loop=self.loop)
 
         urwid.connect_signal(submit_btn, 'click', wait_for_register)
-        self.open_box(urwid.Filler(register_form))
+        self.open_box(urwid.Filler(urwid.Pile([info, register_form])))
 
     async def handle_register(self, register_data):
         if not register_data['username']:
