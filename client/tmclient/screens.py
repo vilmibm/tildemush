@@ -113,14 +113,15 @@ class GameMain(urwid.Frame):
         self.loop = loop
         self.banner = urwid.Text('welcome 2 tildemush, u are jacked in')
         self.game_text = urwid.Pile([urwid.Text('lol game stuff happens here')])
-        self.main = urwid.Columns([
+        columns = urwid.Columns([
             urwid.Filler(self.game_text),
             urwid.Pile([
-                urwid.Filler(urwid.Text('details about your current room')),
-                urwid.Filler(urwid.Text('i donno a map?')),
-                urwid.Filler(urwid.Text('character info'))
+                urwid.LineBox(urwid.Filler(urwid.Text('YOU ARE HERE\n(room name) (population) (etc)'), valign='top')),
+                urwid.LineBox(urwid.Filler(urwid.Text('MAP'), valign='top')),
+                urwid.LineBox(urwid.Filler(urwid.Text('character info'), valign='top'))
             ])
         ], dividechars=1)
+        self.main = urwid.Pile([columns])
         self.prompt = GamePrompt()
         self.client_state.set_on_recv(self.on_server_message)
         super().__init__(header=self.banner, body=self.main, footer=self.prompt)
