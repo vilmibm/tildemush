@@ -24,8 +24,15 @@ class GameWorld:
 
     @classmethod
     def dispatch_action(cls, sender_obj, action, action_args):
+        # TODO this list is only going to grow. these are commands that have
+        # special meaning to the game (ie unlike something a game object merely
+        # listens for like "pet"). I'm considering generalizing this as a list
+        # of GAME_COMMANDS that map to a GameWorld handle_* method.
         if action == 'announce':
             cls.handle_announce(sender_obj, action_args)
+        if action == 'whisper':
+            cls.handle_whisper(sender_obj, action_args)
+
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
             o.handle_action(cls, sender_obj, action, action_args)
@@ -61,14 +68,14 @@ class GameWorld:
         if 0 == len(action_args):
             raise ClientException('try /whisper another_username some cool message')
         target_name = action_args[0]
-        message = action_args[1:]
+        message = ' '.join(action_args[1:])
         if 0 == len(message):
             raise ClientException('try /whisper another_username some cool message')
         room = sender_obj.contained_by
         target_obj = [o for o in room.contains if o.name == target_name]
         if 0 == len(target_obj):
             raise ClientException('there is nothing named {} near you'.format(target_name))
-        target_obj.handle_action(cls, sender_obj, 'whisper', message)
+        target_obj[0].handle_action(cls, sender_obj, 'whisper', message)
 
 
     @classmethod

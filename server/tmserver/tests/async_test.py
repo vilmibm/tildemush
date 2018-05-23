@@ -169,20 +169,37 @@ async def test_witch_script(event_loop, mock_logger, client):
 
 @pytest.mark.asyncio
 async def test_whisper_no_args(event_loop, mock_logger, client):
-    # TODO
-    pass
+    await setup_user(client, 'vilmibm')
+    await client.send('COMMAND whisper')
+    msg = await client.recv()
+    assert msg == 'ERROR: try /whisper another_username some cool message'
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_whisper_no_msg(event_loop, mock_logger, client):
-    # TODO
-    pass
+    await setup_user(client, 'vilmibm')
+    await client.send('COMMAND whisper snoozy')
+    msg = await client.recv()
+    assert msg == 'ERROR: try /whisper another_username some cool message'
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_whisper_bad_target(event_loop, mock_logger, client):
-    # TODO
-    pass
+    await setup_user(client, 'vilmibm')
+    await client.send('COMMAND whisper snoozy hey what are the haps')
+    msg = await client.recv()
+    assert msg == 'ERROR: there is nothing named snoozy near you'
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_whisper(event_loop, mock_logger, client):
-    # TODO
-    pass
+    await setup_user(client, 'vilmibm')
+    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
+    await setup_user(snoozy_client, 'snoozy')
+    await client.send('COMMAND whisper snoozy hey here is a conspiracy')
+    vil_msg = await client.recv()
+    assert vil_msg == 'COMMAND OK'
+    snoozy_msg = await snoozy_client.recv()
+    assert snoozy_msg == "vilmibm whispers so only you can hear: hey here is a conspiracy"
+    await snoozy_client.close()
+    await client.close()
