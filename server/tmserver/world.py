@@ -32,6 +32,8 @@ class GameWorld:
             cls.handle_announce(sender_obj, action_args)
         if action == 'whisper':
             cls.handle_whisper(sender_obj, action_args)
+        if action == 'look':
+            cls.handle_look(sender_obj, action_args)
 
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
@@ -76,6 +78,37 @@ class GameWorld:
         if 0 == len(target_obj):
             raise ClientException('there is nothing named {} near you'.format(target_name))
         target_obj[0].handle_action(cls, sender_obj, 'whisper', message)
+
+
+    @classmethod
+    def handle_look(cls, sender_obj, action_args):
+        # TODO it's arguable that this should make use of a look action
+        # dispatched to a game object, but I kind of wanted reality fixed in
+        # place with /look.
+        #
+        # I'm imagining that I want object descriptions that depend on a
+        # GameObject's state, but I think that dynamism can go into an /examine
+        # command. /look is for getting a bearing on what's in front of you.
+
+        msgs = []
+        room = sender_obj.contained_by
+        room_desc = 'You are in the {}'.format(room.name)
+        if room.description:
+            room_desc += ', {}'.format(room.description)
+        msgs.append(room_desc)
+
+        for o in room.contains:
+            if o.user_account:
+                o_desc = 'You see {}'.format(o.name)
+            else:
+                o_desc = 'You see a {}'.format(o.name)
+
+            if o.description:
+                o_desc += ', {}'.format(o.description)
+            msgs.append(o_desc)
+
+        for m in msgs:
+            sender_obj.user_account.hears(cls, sender_obj, m)
 
 
     @classmethod
