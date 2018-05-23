@@ -163,3 +163,26 @@ async def test_witch_script(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'snoozy says neigh neigh neigh i am horse'
     await client.close()
+
+
+# TODO lookup if i can do a websocket client as context manager, i think i can?
+
+@pytest.mark.asyncio
+async def test_whisper_no_args(event_loop, mock_logger, client):
+    # TODO
+    pass
+
+@pytest.mark.asyncio
+async def test_whisper_no_msg(event_loop, mock_logger, client):
+    # TODO
+    pass
+
+@pytest.mark.asyncio
+async def test_whisper_bad_target(event_loop, mock_logger, client):
+    # TODO
+    pass
+
+@pytest.mark.asyncio
+async def test_whisper(event_loop, mock_logger, client):
+    # TODO
+    pass

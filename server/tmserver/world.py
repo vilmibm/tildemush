@@ -55,6 +55,21 @@ class GameWorld:
         for o in aoe:
             o.handle_action(cls, sender_obj, 'announce', action_args)
 
+    @classmethod
+    def handle_whisper(cls, sender_obj, action_args):
+        action_args = action_args.split(' ')
+        if 0 == len(action_args):
+            raise ClientException('try /whisper another_username some cool message')
+        target_name = action_args[0]
+        message = action_args[1:]
+        if 0 == len(message):
+            raise ClientException('try /whisper another_username some cool message')
+        room = sender_obj.contained_by
+        target_obj = [o for o in room.contains if o.name == target_name]
+        if 0 == len(target_obj):
+            raise ClientException('there is nothing named {} near you'.format(target_name))
+        target_obj.handle_action(cls, sender_obj, 'whisper', message)
+
 
     @classmethod
     def area_of_effect(cls, sender_obj):
