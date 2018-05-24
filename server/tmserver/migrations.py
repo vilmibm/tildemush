@@ -43,10 +43,7 @@ def init_db():
         foyer = GameObject.create(
             author=god_ua,
             name='Foyer',
-            description="""
-            A waiting room. Magazines in every language from every decade litter
-            dusty end tables sitting between overstuff armchairs.
-            """.lstrip().rstrip())
+            description="A waiting room. Magazines in every language from every decade litter dusty end tables sitting between overstuffed armchairs.")
 
 def reset_db():
     get_db().drop_tables(MODELS)

@@ -33,6 +33,10 @@ class UserSession:
         # TODO thread through disconnect handling to dematerialize player objects
 
     def handle_hears(self, sender_obj, message):
+        # TODO delete sender_obj argument i think?
+        # we will need to support basic abuse control like blocking other
+        # users, so having a sender_obj here might be useful for interaction
+        # filtering. rn it's unused though.
         asyncio.ensure_future(
             self.client_send(message),
             loop=self.loop)

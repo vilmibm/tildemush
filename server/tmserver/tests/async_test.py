@@ -203,3 +203,38 @@ async def test_whisper(event_loop, mock_logger, client):
     assert snoozy_msg == "vilmibm whispers so only you can hear: hey here is a conspiracy"
     await snoozy_client.close()
     await client.close()
+
+
+@pytest.mark.asyncio
+async def test_look(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
+    await setup_user(snoozy_client, 'snoozy')
+    cigar = GameObject.create(
+        author=vil,
+        name='cigar',
+        description='a fancy cigar ready for lighting')
+    phone = GameObject.create(
+        author=vil,
+        name='smartphone')
+    app = GameObject.create(
+        author=vil,
+        name='Kwam',
+        description='A smartphone application for KWAM')
+    foyer = GameObject.get(GameObject.name=='Foyer')
+    GameWorld.put_into(foyer, phone)
+    GameWorld.put_into(foyer, cigar)
+    GameWorld.put_into(phone, app)
+
+    await client.send('COMMAND look')
+    # we expect 4 messages: snoozy, room, phone, cigar. we *shouldn't* see app.
+    msgs = set()
+    for _ in range(0, 4):
+        msgs.add(await client.recv())
+    assert {'You are in the Foyer, {}'.format(foyer.description),
+            'You see a cigar, a fancy cigar ready for lighting',
+            'You see a smartphone',
+            'You see snoozy, a gaseous cloud'}
+    await client.close()
+    await snoozy_client.close()
