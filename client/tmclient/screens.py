@@ -112,20 +112,22 @@ class GameMain(urwid.Frame):
         self.client_state = client_state
         self.loop = loop
         # TODO: get room and user info passed in on init?
-        self.room_info = {}
-        self.user_info = {}
+        self.room = {}
+        self.user = {}
         self.banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
         self.game_text = urwid.Pile([urwid.Text('you have reconstitued as {desc} in {location}'.format(
-                desc=self.user_info.get("description"),
-                location=self.room_info.get("name")
+                desc=self.user.get("description"),
+                location=self.room.get("name")
                 ))])
-        self.here_text = urwid.Pile([urwid.Text('{}'.format(self.here_info()))])
+        self.here_text = urwid.Pile([urwid.Text(self.here_info())])
+        self.user_text = urwid.Pile([urwid.Text(self.user_info())])
         columns = urwid.Columns([
             urwid.Filler(self.game_text, valign='top'),
             urwid.Pile([
                 urwid.LineBox(urwid.Filler(self.here_text, valign='top')),
                 urwid.LineBox(urwid.Filler(urwid.Text('MAP'), valign='top')),
-                urwid.LineBox(urwid.Filler(urwid.Text('character info'), valign='top'))
+                urwid.LineBox(urwid.Filler(self.user_text, valign='top'))
+                #urwid.LineBox(urwid.Filler(urwid.Text('character info'), valign='top'))
             ])
         ], dividechars=1)
         self.main = urwid.Pile([columns])
@@ -144,6 +146,11 @@ class GameMain(urwid.Frame):
             self.here_text.contents.clear()
             self.here_text.contents.append(
                 (urwid.Text(text), self.here_text.options()))
+        elif server_msg.startswith('info'):
+            text = ' '.join(server_msg.split(' ')[1:])
+            self.user_text.contents.clear()
+            self.user_text.contents.append(
+                (urwid.Text(text), self.user_text.options()))
         else:
             self.game_text.contents.append(
                 (urwid.Text(server_msg), self.game_text.options()))
@@ -174,7 +181,15 @@ class GameMain(urwid.Frame):
         self.prompt.edit_text = ''
 
     def here_info(self):
-        room_name = self.room_info.get("name")
+        room_name = self.room.get("name")
         info = "[{}]".format(room_name)
+
+        return info
+    
+    def user_info(self):
+        info = '<a {desc} named {name}>'.format(
+                desc=self.user.get("description"),
+                name=self.user.get("name")
+                )
 
         return info
