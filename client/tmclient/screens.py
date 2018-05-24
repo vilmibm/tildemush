@@ -127,7 +127,6 @@ class GameMain(urwid.Frame):
                 urwid.LineBox(urwid.Filler(self.here_text, valign='top')),
                 urwid.LineBox(urwid.Filler(urwid.Text('MAP'), valign='top')),
                 urwid.LineBox(urwid.Filler(self.user_text, valign='top'))
-                #urwid.LineBox(urwid.Filler(urwid.Text('character info'), valign='top'))
             ])
         ], dividechars=1)
         self.main = urwid.Pile([columns])
