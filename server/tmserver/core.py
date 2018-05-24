@@ -1,6 +1,8 @@
 import asyncio
+import json
 import logging
 import re
+
 import websockets as ws
 
 from .errors import ClientException, UserValidationError
@@ -9,6 +11,7 @@ from .models import UserAccount, GameObject
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
 REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
 COMMAND_RE = re.compile(r'^COMMAND ([^ ]+) ?(.*)$')
+DATA_RE = re.compile(r'^DATA ([^ ]+)$')
 
 LOOP = asyncio.get_event_loop()
 
@@ -49,6 +52,9 @@ class UserSession:
             self.user_account.player_obj,
             action,
             action_args)
+
+    def data_request(self, path):
+        return self.game_world.data_request(self.user_account, path)
 
     def __str__(self):
         s = 'UserSession<{}>'.format(None)
@@ -106,6 +112,11 @@ class GameServer:
             elif message.startswith('COMMAND'):
                 self.handle_command(user_session, message)
                 await user_session.client_send('COMMAND OK')
+            elif message.startswith('DATA'):
+                path, payload = self.handle_data(user_session, message)
+                await user_session.client_send('DATA {path} {payload}'.format(
+                    path=path,
+                    payload=json.dumps(payload)))
             elif message.startswith('PING'):
                 await user_session.client_send('PONG')
             else:
@@ -127,6 +138,20 @@ class GameServer:
         if match is None:
             raise ClientException('malformed command message: {}'.format(message))
         return match.groups()
+
+    def handle_data(self, user_session, message):
+        if not user_session.associated:
+            # TODO in the future we might want some paths to be accessible
+            # without auth; ie for reporting on world stats
+            raise ClientException('not logged in')
+        path = self.parse_data(message)
+        return path, user_session.data_request(path)
+
+    def parse_data(self, message):
+        match = DATA_RE.fullmatch(message)
+        if match is None:
+            raise ClientException('malformed data request: {}'.format(message))
+        return match.groups()[0]
 
     def handle_login(self, user_session, message):
         if user_session.associated:

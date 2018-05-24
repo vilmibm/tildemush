@@ -1,5 +1,6 @@
 import os
 import asyncio
+import json
 from unittest import mock
 
 import pytest
@@ -238,3 +239,67 @@ async def test_look(event_loop, mock_logger, client):
             'You see snoozy, a gaseous cloud'}
     await client.close()
     await snoozy_client.close()
+
+@pytest.mark.asyncio
+async def test_data_malformed_path(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    bad_data = [
+        'DATA',
+        'DATA roominfo funtimes',
+        'DATAroominfo']
+    for bad in bad_data:
+        await client.send(bad)
+        msg = await client.recv()
+        assert msg == 'ERROR: malformed data request: {}'.format(bad)
+
+    client.close()
+
+@pytest.mark.asyncio
+async def test_data_unknown_path(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+
+    await client.send('DATA ぶぶぶぶぶぶぶ')
+    msg = await client.recv()
+    assert msg == 'ERROR: Unknown data API path ぶぶぶぶぶぶぶ'
+
+    client.close()
+
+@pytest.mark.asyncio
+async def test_roominfo(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    foyer = GameObject.get(GameObject.name=='Foyer')
+    cigar = GameObject.create(
+        author=vil,
+        name='cigar',
+        description='a fancy cigar ready for lighting')
+    GameWorld.put_into(foyer, cigar)
+    await client.send('DATA roominfo')
+    msg = await client.recv()
+    assert msg.startswith('DATA roominfo')
+    payload = msg.split(' ', maxsplit=2)[2]
+    payload = json.loads(payload)
+    assert payload['name'] == foyer.name
+    assert payload['description'] == foyer.description
+    assert payload['objects'] == [
+        {'name': 'vilmibm',
+         'description': 'a gaseous cloud'},
+        {'name': 'cigar',
+         'description': 'a fancy cigar ready for lighting'}]
+    client.close()
+
+@pytest.mark.asyncio
+async def test_playerinfo(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    await client.send('DATA playerinfo')
+    msg = await client.recv()
+    assert msg.startswith('DATA playerinfo')
+    payload = msg.split(' ', maxsplit=2)[2]
+    payload = json.loads(payload)
+    assert payload == {
+        'username': vil.username,
+        'playername': vil.player_obj.name,
+        'description': vil.player_obj.description
+    }
+    client.close()
