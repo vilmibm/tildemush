@@ -34,6 +34,8 @@ class GameWorld:
             cls.handle_whisper(sender_obj, action_args)
         if action == 'look':
             cls.handle_look(sender_obj, action_args)
+        if action == 'refresh':
+            cls.handle_refresh(sender_obj, action_args)
 
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
@@ -116,6 +118,15 @@ class GameWorld:
 
         for o in cls.area_of_effect(sender_obj):
             o.handle_action(cls, sender_obj, 'look', action_args)
+
+    @classmethod
+    def handle_refresh(cls, sender_obj, action_args):
+        msgs = []
+        here = sender_obj.contained_by
+        msgs.append('meta Current location: {}'.format(here.name))
+
+        for m in msgs:
+            sender_obj.user_account.hears(cls, sender_obj, m)
 
     @classmethod
     def area_of_effect(cls, sender_obj):
