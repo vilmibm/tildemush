@@ -121,12 +121,21 @@ class GameWorld:
 
     @classmethod
     def handle_refresh(cls, sender_obj, action_args):
+        # TODO: should the server dictate what text goes into the client's look
+        # panel, or should it pass through data for the client to format?
         msgs = []
-        here = sender_obj.contained_by
-        msgs.append('meta Current location: {}'.format(here.name))
+        room = sender_obj.contained_by
+        msgs.append('here [{}]'.format(room.name))
+        msgs.append('{}'.format(room.description))
 
-        for m in msgs:
-            sender_obj.user_account.hears(cls, sender_obj, m)
+        contents = []
+        for o in room.contains:
+            contents.append(o.name)
+        msgs.append('you see here ({pop}): {contents}'.format(
+            pop=len(contents),
+            contents=', '.join(contents)))
+
+        sender_obj.user_account.hears(cls, sender_obj, '\n'.join(msgs))
 
     @classmethod
     def area_of_effect(cls, sender_obj):

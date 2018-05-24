@@ -114,12 +114,12 @@ class GameMain(urwid.Frame):
         # TODO: get room and user info passed in on init?
         self.room_info = {}
         self.user_info = {}
-        self.banner = urwid.Text('welcome 2 tildemush, u are jacked in')
-        self.game_text = urwid.Pile([urwid.Text('you are reconstitued as {desc} in {location}'.format(
+        self.banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
+        self.game_text = urwid.Pile([urwid.Text('you have reconstitued as {desc} in {location}'.format(
                 desc=self.user_info.get("description"),
                 location=self.room_info.get("name")
                 ))])
-        self.here_text = urwid.Pile([urwid.Text('YOU ARE HERE'), urwid.Text('{}'.format(self.here_info()))])
+        self.here_text = urwid.Pile([urwid.Text('{}'.format(self.here_info()))])
         columns = urwid.Columns([
             urwid.Filler(self.game_text, valign='top'),
             urwid.Pile([
@@ -137,11 +137,11 @@ class GameMain(urwid.Frame):
     async def on_server_message(self, server_msg):
         if server_msg == 'COMMAND OK':
             pass
-        elif server_msg.startswith('meta'):
+        elif server_msg.startswith('here'):
             # TODO: this is kind of filler for now for updating the here
             # panel; consider better data format
             text = ' '.join(server_msg.split(' ')[1:])
-            self.here_text.contents.pop()
+            self.here_text.contents.clear()
             self.here_text.contents.append(
                 (urwid.Text(text), self.here_text.options()))
         else:
@@ -175,6 +175,6 @@ class GameMain(urwid.Frame):
 
     def here_info(self):
         room_name = self.room_info.get("name")
-        info = "Current location: {}".format(room_name)
+        info = "[{}]".format(room_name)
 
         return info
