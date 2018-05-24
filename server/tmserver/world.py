@@ -114,7 +114,7 @@ class GameWorld:
         # objects can hook off of this if they want. By default, this does
         # nothing.
 
-        for o in self.area_of_effect(sender_obj):
+        for o in cls.area_of_effect(sender_obj):
             o.handle_action(cls, sender_obj, 'look', action_args)
 
     @classmethod
