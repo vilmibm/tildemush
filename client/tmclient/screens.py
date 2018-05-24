@@ -128,6 +128,8 @@ class GameMain(urwid.Frame):
         self.focus_prompt()
 
     async def on_server_message(self, server_msg):
+        if server_msg == 'COMMAND OK':
+            pass
         self.game_text.contents.append(
             (urwid.Text(server_msg), self.game_text.options()))
 

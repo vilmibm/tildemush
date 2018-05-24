@@ -24,8 +24,17 @@ class GameWorld:
 
     @classmethod
     def dispatch_action(cls, sender_obj, action, action_args):
+        # TODO this list is only going to grow. these are commands that have
+        # special meaning to the game (ie unlike something a game object merely
+        # listens for like "pet"). I'm considering generalizing this as a list
+        # of GAME_COMMANDS that map to a GameWorld handle_* method.
         if action == 'announce':
             cls.handle_announce(sender_obj, action_args)
+        if action == 'whisper':
+            cls.handle_whisper(sender_obj, action_args)
+        if action == 'look':
+            cls.handle_look(sender_obj, action_args)
+
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
             o.handle_action(cls, sender_obj, action, action_args)
@@ -55,6 +64,58 @@ class GameWorld:
         for o in aoe:
             o.handle_action(cls, sender_obj, 'announce', action_args)
 
+    @classmethod
+    def handle_whisper(cls, sender_obj, action_args):
+        action_args = action_args.split(' ')
+        if 0 == len(action_args):
+            raise ClientException('try /whisper another_username some cool message')
+        target_name = action_args[0]
+        message = ' '.join(action_args[1:])
+        if 0 == len(message):
+            raise ClientException('try /whisper another_username some cool message')
+        room = sender_obj.contained_by
+        target_obj = [o for o in room.contains if o.name == target_name]
+        if 0 == len(target_obj):
+            raise ClientException('there is nothing named {} near you'.format(target_name))
+        target_obj[0].handle_action(cls, sender_obj, 'whisper', message)
+
+
+    @classmethod
+    def handle_look(cls, sender_obj, action_args):
+        # TODO it's arguable that this should make use of a look action
+        # dispatched to a game object, but I kind of wanted reality fixed in
+        # place with /look.
+        #
+        # I'm imagining that I want object descriptions that depend on a
+        # GameObject's state, but I think that dynamism can go into an /examine
+        # command. /look is for getting a bearing on what's in front of you.
+
+        msgs = []
+        room = sender_obj.contained_by
+        room_desc = 'You are in the {}'.format(room.name)
+        if room.description:
+            room_desc += ', {}'.format(room.description)
+        msgs.append(room_desc)
+
+        for o in room.contains:
+            if o.user_account:
+                o_desc = 'You see {}'.format(o.name)
+            else:
+                o_desc = 'You see a {}'.format(o.name)
+
+            if o.description:
+                o_desc += ', {}'.format(o.description)
+            msgs.append(o_desc)
+
+        for m in msgs:
+            sender_obj.user_account.hears(cls, sender_obj, m)
+
+        # finally, alert everything in the room that it's been looked at. game
+        # objects can hook off of this if they want. By default, this does
+        # nothing.
+
+        for o in cls.area_of_effect(sender_obj):
+            o.handle_action(cls, sender_obj, 'look', action_args)
 
     @classmethod
     def area_of_effect(cls, sender_obj):

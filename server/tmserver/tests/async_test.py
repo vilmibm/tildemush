@@ -163,3 +163,78 @@ async def test_witch_script(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'snoozy says neigh neigh neigh i am horse'
     await client.close()
+
+
+# TODO lookup if i can do a websocket client as context manager, i think i can?
+
+@pytest.mark.asyncio
+async def test_whisper_no_args(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    await client.send('COMMAND whisper')
+    msg = await client.recv()
+    assert msg == 'ERROR: try /whisper another_username some cool message'
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_whisper_no_msg(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    await client.send('COMMAND whisper snoozy')
+    msg = await client.recv()
+    assert msg == 'ERROR: try /whisper another_username some cool message'
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_whisper_bad_target(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    await client.send('COMMAND whisper snoozy hey what are the haps')
+    msg = await client.recv()
+    assert msg == 'ERROR: there is nothing named snoozy near you'
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_whisper(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
+    await setup_user(snoozy_client, 'snoozy')
+    await client.send('COMMAND whisper snoozy hey here is a conspiracy')
+    vil_msg = await client.recv()
+    assert vil_msg == 'COMMAND OK'
+    snoozy_msg = await snoozy_client.recv()
+    assert snoozy_msg == "vilmibm whispers so only you can hear: hey here is a conspiracy"
+    await snoozy_client.close()
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_look(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
+    await setup_user(snoozy_client, 'snoozy')
+    cigar = GameObject.create(
+        author=vil,
+        name='cigar',
+        description='a fancy cigar ready for lighting')
+    phone = GameObject.create(
+        author=vil,
+        name='smartphone')
+    app = GameObject.create(
+        author=vil,
+        name='Kwam',
+        description='A smartphone application for KWAM')
+    foyer = GameObject.get(GameObject.name=='Foyer')
+    GameWorld.put_into(foyer, phone)
+    GameWorld.put_into(foyer, cigar)
+    GameWorld.put_into(phone, app)
+
+    await client.send('COMMAND look')
+    # we expect 4 messages: snoozy, room, phone, cigar. we *shouldn't* see app.
+    msgs = set()
+    for _ in range(0, 4):
+        msgs.add(await client.recv())
+    assert {'You are in the Foyer, {}'.format(foyer.description),
+            'You see a cigar, a fancy cigar ready for lighting',
+            'You see a smartphone',
+            'You see snoozy, a gaseous cloud'}
+    await client.close()
+    await snoozy_client.close()
