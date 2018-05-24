@@ -252,7 +252,7 @@ async def test_data_malformed_path(event_loop, mock_logger, client):
         msg = await client.recv()
         assert msg == 'ERROR: malformed data request: {}'.format(bad)
 
-    client.close()
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_data_unknown_path(event_loop, mock_logger, client):
@@ -262,7 +262,7 @@ async def test_data_unknown_path(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'ERROR: Unknown data API path ぶぶぶぶぶぶぶ'
 
-    client.close()
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_roominfo(event_loop, mock_logger, client):
@@ -286,7 +286,7 @@ async def test_roominfo(event_loop, mock_logger, client):
          'description': 'a gaseous cloud'},
         {'name': 'cigar',
          'description': 'a fancy cigar ready for lighting'}]
-    client.close()
+    await client.close()
 
 @pytest.mark.asyncio
 async def test_playerinfo(event_loop, mock_logger, client):
@@ -302,4 +302,4 @@ async def test_playerinfo(event_loop, mock_logger, client):
         'playername': vil.player_obj.name,
         'description': vil.player_obj.description
     }
-    client.close()
+    await client.close()
