@@ -110,6 +110,12 @@ class GameWorld:
         for m in msgs:
             sender_obj.user_account.hears(cls, sender_obj, m)
 
+        # finally, alert everything in the room that it's been looked at. game
+        # objects can hook off of this if they want. By default, this does
+        # nothing.
+
+        for o in self.area_of_effect(sender_obj):
+            o.handle_action(cls, sender_obj, 'look', action_args)
 
     @classmethod
     def area_of_effect(cls, sender_obj):
