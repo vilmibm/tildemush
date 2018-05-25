@@ -156,3 +156,23 @@ class GameWorld:
     def remove_from(cls, outer_obj, inner_obj):
         outer_obj.remove_from(inner_obj)
 
+
+    @classmethod
+    def data_request(cls, user_account, path):
+        # TODO generalize a bit
+        # TODO add 'world' path for dumping the world state. consider threading
+        # since it could lock up the CPU.
+        if path == 'roominfo':
+            room = user_account.player_obj.contained_by
+            return {'name': room.name,
+                    'description': room.description,
+                    'objects': [dict(name=o.name,
+                                     description=o.description)
+                                for o in room.contains]}
+        elif path == 'playerinfo':
+            player_obj = user_account.player_obj
+            return {'username': user_account.username,
+                    'playername': player_obj.name,
+                    'description': player_obj.description}
+        else:
+            raise ClientException('Unknown data API path {}'.format(path))
