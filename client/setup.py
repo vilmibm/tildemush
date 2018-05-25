@@ -19,7 +19,7 @@ setup(
     dependency_links=['git+https://github.com/tildetown/urwid.git#egg=urwid-3.0.0'],
     install_requires=[
         'click==6.7',
-        'urwid==3.0.0'
+        'urwid==3.0.0',
     ],
     extras_require={
         'testing': [
