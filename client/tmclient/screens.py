@@ -69,6 +69,7 @@ class MainMenu(Screen):
             self.open_box(urwid.Filler(login_form))
 
     async def handle_login(self, login_data):
+        raise Exception('I know Python!')
         await self.client.authenticate(login_data['username'], login_data['password'])
 
     def show_register(self):
