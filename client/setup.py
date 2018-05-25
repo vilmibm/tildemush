@@ -18,7 +18,6 @@ setup(
     packages=['tmclient'],
     install_requires=[
         'click==6.7',
-        'urwid==2.0.1',
     ],
     extras_require={
         'testing': [
