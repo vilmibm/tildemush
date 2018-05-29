@@ -115,24 +115,47 @@ class GameMain(urwid.Frame):
         self.room = {}
         self.user = {}
         self.banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
+
+        # TODO: un-hardcode tab appearances
+        self.header = urwid.Columns([
+                    urwid.LineBox(urwid.Text("F1 MAIN"), bline='.', blcorner='│',
+                        brcorner='└'),
+                    urwid.LineBox(urwid.Text("F2 WITCH"), brcorner='┴',
+                        blcorner='┴'),
+                    urwid.LineBox(urwid.Text("F3 WORLDMAP"), blcorner='┴',
+                        brcorner='┴'),
+                    urwid.LineBox(urwid.Text("F4 SETTINGS"), blcorner='┴',
+                        brcorner='┴'),
+                    urwid.LineBox(urwid.Text("F12 QUIT"), blcorner='┴',
+                        brcorner='┤')
+                    ])
+
+        # game view stuff
         self.game_text = urwid.Pile([urwid.Text('you have reconstitued as {desc} in {location}'.format(
                 desc=self.user.get("description"),
                 location=self.room.get("name")
                 ))])
         self.here_text = urwid.Pile([urwid.Text(self.here_info())])
         self.user_text = urwid.Pile([urwid.Text(self.user_info())])
-        columns = urwid.Columns([
+        self.world_body = urwid.LineBox(urwid.Columns([
             urwid.Filler(self.game_text, valign='top'),
             urwid.Pile([
                 urwid.LineBox(urwid.Filler(self.here_text, valign='top')),
                 urwid.LineBox(urwid.Filler(urwid.Text('MAP'), valign='top')),
                 urwid.LineBox(urwid.Filler(self.user_text, valign='top'))
             ])
-        ], dividechars=1)
-        self.main = urwid.Pile([columns])
+        ], dividechars=1), tlcorner='│', trcorner='│', tline='')
+        self.world_prompt = GamePrompt()
+        self.world_banner = urwid.Text("WORLD VIEW")
+
+        self.world_view = urwid.Frame(header=self.world_banner,
+                body=self.world_body, footer=self.world_prompt)
+
+        # set starting conditions
         self.prompt = GamePrompt()
+        self.main = self.world_body
         self.client_state.set_on_recv(self.on_server_message)
-        super().__init__(header=self.banner, body=self.main, footer=self.prompt)
+        super().__init__(header=self.header, body=self.main, footer=self.prompt)
         self.focus_prompt()
 
     async def on_server_message(self, server_msg):
