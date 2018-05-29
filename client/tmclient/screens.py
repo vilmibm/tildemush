@@ -133,8 +133,7 @@ class GameMain(urwid.Frame):
         # TODO: get room and user info passed in on init?
         self.room = {}
         self.user = {}
-        self.banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
-        self.tabs = [
+        self.tab_headers = [
                     TabHeader(urwid.Text("F1 MAIN"), position='first'),
                     TabHeader(urwid.Text("F2 WITCH")),
                     TabHeader(urwid.Text("F3 WORLDMAP")),
@@ -142,38 +141,38 @@ class GameMain(urwid.Frame):
                     TabHeader(urwid.Text("F12 QUIT"), position='last')
                 ]
 
-        self.header = urwid.Columns(self.tabs)
+        self.header = urwid.Columns(self.tab_headers)
 
         # game view stuff
-        self.game_text = urwid.Pile([
-            urwid.Text('you have reconstitued as {desc} in {location}'.format(
-                desc=self.user.get("description"),
-                location=self.room.get("name")
-                ))
+        self.game_walker = urwid.SimpleListWalker([
+            urwid.Text('you have reconstituted into tildemush')
             ])
-        self.here_text = urwid.Text(self.here_info())
-        self.user_text = urwid.Text(self.user_info())
-        self.minimap_text = urwid.Text("MAP")
-        self.world_body = urwid.LineBox(urwid.Columns([
-            urwid.Filler(self.game_text, valign='top'),
+        self.game_text = urwid.ListBox(self.game_walker)
+        self.here_text = urwid.Pile([urwid.Text(self.here_info())])
+        self.user_text = urwid.Pile([urwid.Text(self.user_info())])
+        self.minimap_text = urwid.Pile([urwid.Text("MAP")])
+        self.world_body = urwid.Columns([
+            self.game_text,
             urwid.Pile([
                 DashedBox(urwid.Filler(self.here_text, valign='top')),
                 DashedBox(urwid.Filler(self.minimap_text, valign='top')),
                 DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
-        ]), tlcorner='│', trcorner='│', tline='')
+        ])
 
+        self.world_banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
         self.world_prompt = GamePrompt()
-        self.world_banner = urwid.Text("WORLD VIEW")
-
         self.world_view = urwid.Frame(header=self.world_banner,
                 body=self.world_body, footer=self.world_prompt)
+        self.world_view.focus_position = 'footer'
+        self.world_view_wrapper = urwid.LineBox(self.world_view, tlcorner='│', trcorner='│', tline='')
 
         # set starting conditions
-        self.prompt = GamePrompt()
-        self.main = self.world_body
+        self.prompt = self.world_prompt
+        self.main = self.world_view_wrapper
+        self.footer = urwid.Text("connection okay!", align='right')
         self.client_state.set_on_recv(self.on_server_message)
-        super().__init__(header=self.header, body=self.main, footer=self.prompt)
+        super().__init__(header=self.header, body=self.main, footer=self.footer)
         self.focus_prompt()
 
     async def on_server_message(self, server_msg):
@@ -192,18 +191,21 @@ class GameMain(urwid.Frame):
             self.user_text.contents.append(
                 (urwid.Text(text), self.user_text.options()))
         else:
-            self.game_text.contents.append(
-                (urwid.Text(server_msg), self.game_text.options()))
+            new_line = urwid.Text(server_msg)
+            self.game_walker.append(new_line)
+            self.game_walker.set_focus(len(self.game_walker)-1)
+
+        self.focus_prompt()
 
     def focus_prompt(self):
-        self.focus_position = 'footer'
+        self.focus_position = 'body'
+        self.world_view.focus_position = 'footer'
 
     def keypress(self, size, key):
-        if self.focus is self.prompt:
-            if key == 'enter':
-                self.handle_game_input(self.prompt.get_edit_text())
-            else:
-                self.prompt.keypress((size[0],), key)
+        if key == 'enter':
+            self.handle_game_input(self.prompt.get_edit_text())
+        else:
+            self.prompt.keypress((size[0],), key)
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
