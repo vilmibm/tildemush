@@ -114,7 +114,7 @@ class DashedBox(urwid.LineBox):
                 rline='╎', bline='╌', brcorner='┘'
                 )
 
-class GameTab(urwid.LineBox):
+class TabHeader(urwid.LineBox):
     def __init__(self, contents, position=""):
         if position == 'first':
             super().__init__(contents, tlcorner='╭', trcorner='╮',
@@ -135,30 +135,34 @@ class GameMain(urwid.Frame):
         self.user = {}
         self.banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
         self.tabs = [
-                    GameTab(urwid.Text("F1 MAIN"), position='first'),
-                    GameTab(urwid.Text("F2 WITCH")),
-                    GameTab(urwid.Text("F3 WORLDMAP")),
-                    GameTab(urwid.Text("F4 SETTINGS")),
-                    GameTab(urwid.Text("F12 QUIT"), position='last')
+                    TabHeader(urwid.Text("F1 MAIN"), position='first'),
+                    TabHeader(urwid.Text("F2 WITCH")),
+                    TabHeader(urwid.Text("F3 WORLDMAP")),
+                    TabHeader(urwid.Text("F4 SETTINGS")),
+                    TabHeader(urwid.Text("F12 QUIT"), position='last')
                 ]
 
         self.header = urwid.Columns(self.tabs)
 
         # game view stuff
-        self.game_text = urwid.Pile([urwid.Text('you have reconstitued as {desc} in {location}'.format(
+        self.game_text = urwid.Pile([
+            urwid.Text('you have reconstitued as {desc} in {location}'.format(
                 desc=self.user.get("description"),
                 location=self.room.get("name")
-                ))])
-        self.here_text = urwid.Pile([urwid.Text(self.here_info())])
-        self.user_text = urwid.Pile([urwid.Text(self.user_info())])
+                ))
+            ])
+        self.here_text = urwid.Text(self.here_info())
+        self.user_text = urwid.Text(self.user_info())
+        self.minimap_text = urwid.Text("MAP")
         self.world_body = urwid.LineBox(urwid.Columns([
             urwid.Filler(self.game_text, valign='top'),
             urwid.Pile([
                 DashedBox(urwid.Filler(self.here_text, valign='top')),
-                urwid.LineBox(urwid.Filler(urwid.Text('MAP'), valign='top')),
-                urwid.LineBox(urwid.Filler(self.user_text, valign='top'))
+                DashedBox(urwid.Filler(self.minimap_text, valign='top')),
+                DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
-        ], dividechars=1), tlcorner='│', trcorner='│', tline='')
+        ]), tlcorner='│', trcorner='│', tline='')
+
         self.world_prompt = GamePrompt()
         self.world_banner = urwid.Text("WORLD VIEW")
 
