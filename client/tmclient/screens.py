@@ -107,6 +107,25 @@ class GamePrompt(urwid.Edit):
     def __init__(self):
         super().__init__(caption='> ', multiline=True)
 
+class DashedBox(urwid.LineBox):
+    def __init__(self, box_item):
+        super().__init__(box_item,
+                tlcorner='┌', tline='╌', lline='╎', trcorner='┐', blcorner='└',
+                rline='╎', bline='╌', brcorner='┘'
+                )
+
+class GameTab(urwid.LineBox):
+    def __init__(self, contents, position=""):
+        if position == 'first':
+            super().__init__(contents, tlcorner='╭', trcorner='╮',
+                    bline=' ', blcorner='│', brcorner='└')
+        elif position == 'last':
+            super().__init__(contents, tlcorner='╭', trcorner='╮',
+                    blcorner='┴', brcorner='┤')
+        else:
+            super().__init__(contents, tlcorner='╭', trcorner='╮',
+                    blcorner='┴', brcorner='┴')
+
 class GameMain(urwid.Frame):
     def __init__(self, client_state, loop):
         self.client_state = client_state
@@ -115,20 +134,15 @@ class GameMain(urwid.Frame):
         self.room = {}
         self.user = {}
         self.banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
+        self.tabs = [
+                    GameTab(urwid.Text("F1 MAIN"), position='first'),
+                    GameTab(urwid.Text("F2 WITCH")),
+                    GameTab(urwid.Text("F3 WORLDMAP")),
+                    GameTab(urwid.Text("F4 SETTINGS")),
+                    GameTab(urwid.Text("F12 QUIT"), position='last')
+                ]
 
-        # TODO: un-hardcode tab appearances
-        self.header = urwid.Columns([
-                    urwid.LineBox(urwid.Text("F1 MAIN"), bline='.', blcorner='│',
-                        brcorner='└'),
-                    urwid.LineBox(urwid.Text("F2 WITCH"), brcorner='┴',
-                        blcorner='┴'),
-                    urwid.LineBox(urwid.Text("F3 WORLDMAP"), blcorner='┴',
-                        brcorner='┴'),
-                    urwid.LineBox(urwid.Text("F4 SETTINGS"), blcorner='┴',
-                        brcorner='┴'),
-                    urwid.LineBox(urwid.Text("F12 QUIT"), blcorner='┴',
-                        brcorner='┤')
-                    ])
+        self.header = urwid.Columns(self.tabs)
 
         # game view stuff
         self.game_text = urwid.Pile([urwid.Text('you have reconstitued as {desc} in {location}'.format(
@@ -140,7 +154,7 @@ class GameMain(urwid.Frame):
         self.world_body = urwid.LineBox(urwid.Columns([
             urwid.Filler(self.game_text, valign='top'),
             urwid.Pile([
-                urwid.LineBox(urwid.Filler(self.here_text, valign='top')),
+                DashedBox(urwid.Filler(self.here_text, valign='top')),
                 urwid.LineBox(urwid.Filler(urwid.Text('MAP'), valign='top')),
                 urwid.LineBox(urwid.Filler(self.user_text, valign='top'))
             ])
