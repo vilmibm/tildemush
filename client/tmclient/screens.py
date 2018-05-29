@@ -206,6 +206,7 @@ class GameMain(urwid.Frame):
             self.handle_game_input(self.prompt.get_edit_text())
         else:
             self.prompt.keypress((size[0],), key)
+            self.handle_keypress(key)
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
@@ -221,6 +222,15 @@ class GameMain(urwid.Frame):
 
         asyncio.ensure_future(self.client_state.send(server_msg), loop=self.loop)
         self.prompt.edit_text = ''
+
+    def handle_keypress(self, key):
+        # debugging output
+        self.footer = urwid.Text(key)
+
+        if key == 'f12':
+            # TODO: this isn't getting caught by the server for some reason
+            asyncio.ensure_future(self.client_state.send('COMMAND QUIT'), loop=self.loop)
+            quit_client('')
 
     def here_info(self):
         room_name = self.room.get("name")
