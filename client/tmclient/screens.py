@@ -150,13 +150,26 @@ class GameMain(urwid.Frame):
         self.world_view.focus_position = 'footer'
 
         self.main_tab = ui.GameTab(self.world_view, self.tab_headers[0], "MAIN")
-        #self.world_view_wrapper = urwid.LineBox(self.world_view, tlcorner='│', trcorner='│', tline='')
 
+        # witch view stuff
         self.witch_view = urwid.Filler(urwid.Text("witch editor in progress", align='center'), valign='middle')
-
         self.witch_tab = ui.GameTab(self.witch_view, self.tab_headers[1], "WITCH")
 
-        self.tabs = {"f1": self.main_tab, "f2": self.witch_tab}
+        # worldmap view stuff
+        self.worldmap_view = urwid.Filler(urwid.Text("worldmap coming soon", align='center'), valign='middle')
+        self.worldmap_tab = ui.GameTab(self.worldmap_view, self.tab_headers[2],
+                "WORLDMAP")
+
+        # settings view stuff
+        self.settings_view = urwid.Filler(urwid.Text("settings menu under construction", align='center'), valign='middle')
+        self.settings_tab = ui.GameTab(self.settings_view, self.tab_headers[3],
+                "SETTINGS")
+
+        self.tabs = {
+                "f1": self.main_tab,
+                "f2": self.witch_tab,
+                "f3": self.worldmap_tab,
+                "f4": self.settings_tab}
 
         # set starting conditions
         self.prompt = self.world_prompt
@@ -224,7 +237,18 @@ class GameMain(urwid.Frame):
             asyncio.ensure_future(self.client_state.send('COMMAND QUIT'), loop=self.loop)
             quit_client('')
         elif key in self.tabs.keys():
+            # tab switcher
+            self.body.unfocus()
             self.body = self.tabs.get(key)
+            self.body.focus()
+            self.refresh_tabs()
+
+    def refresh_tabs(self):
+        self.tab_headers.clear()
+        for tab in sorted(self.tabs.keys()):
+            self.tab_headers.append(self.tabs.get(tab).tab)
+        self.header = urwid.Columns(self.tab_headers)
+
 
     def here_info(self):
         room_name = self.room.get("name")

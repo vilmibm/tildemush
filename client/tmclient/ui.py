@@ -69,6 +69,9 @@ class TabHeader(urwid.LineBox):
         tl = '╭'
         tr = '╮'
 
+        self.contents = contents
+        self.position = position
+
         if position == 'first':
             bl = '│'
             br = '└'
@@ -85,6 +88,13 @@ class TabHeader(urwid.LineBox):
 
         super().__init__(contents, tlcorner=tl, trcorner=tr,
                 blcorner=bl, brcorner=br, bline = b)
+
+    def unselect(self):
+        self.__init__(self.contents, self.position, False)
+
+    def select(self):
+        self.__init__(self.contents, self.position, True)
+
 
 
 class Screen(urwid.WidgetPlaceholder):
@@ -144,7 +154,17 @@ class GameTab(urwid.WidgetPlaceholder):
         self.main = urwid.LineBox(widget, tlcorner='│', trcorner='│', tline='')
         self.tab = tab
         self.title = title
+        self.in_focus = False
         super().__init__(self.main)
+
+    def focus(self):
+        self.in_focus = True
+        self.tab.select()
+
+    def unfocus(self):
+        self.in_focus = False
+        self.tab.unselect()
+
         
 
 palettes = [
