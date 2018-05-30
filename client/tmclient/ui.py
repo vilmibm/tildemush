@@ -64,37 +64,49 @@ class TabHeader(urwid.LineBox):
     the tab contents.
     """
 
-    def __init__(self, contents, position="", selected=False):
+    def __init__(self, label, position="", selected=False):
 
         tl = '╭'
         tr = '╮'
 
-        self.contents = contents
+        self.label = label
+        self.contents = urwid.Text(self.label, align='center')
         self.position = position
 
         if position == 'first':
-            bl = '│'
-            br = '└'
+            if selected:
+                bl = '║'
+                br = '╙'
+            else:
+                bl = '├'
+                br = '┴'
         elif position == 'last':
-            bl = '┴'
-            br = '┤'
+            if selected:
+                bl = '╜'
+                bl = '║'
+            else:
+                bl = '┴'
+                br = '┤'
         else:
-            bl = '┴'
-            br = '┴'
+            if selected:
+                bl = '╜'
+                br = '╙'
+            else:
+                bl = '┴'
+                br = '┴'
+
         if selected:
             b = ' '
+            r = '║'
+            l = '║'
         else:
             b = '─'
+            r = '│'
+            l = '│'
 
-        super().__init__(contents, tlcorner=tl, trcorner=tr,
-                blcorner=bl, brcorner=br, bline = b)
-
-    def unselect(self):
-        self.__init__(self.contents, self.position, False)
-
-    def select(self):
-        self.__init__(self.contents, self.position, True)
-
+        super().__init__(self.contents, tlcorner=tl, trcorner=tr,
+                blcorner=bl, brcorner=br, bline=b,
+                lline =l, rline=r)
 
 
 class Screen(urwid.WidgetPlaceholder):
@@ -150,20 +162,19 @@ class GameTab(urwid.WidgetPlaceholder):
     Base interface for a tab within the main game area.
     """
 
-    def __init__(self, widget, tab, title):
+    def __init__(self, widget, tab_header):
         self.main = urwid.LineBox(widget, tlcorner='│', trcorner='│', tline='')
-        self.tab = tab
-        self.title = title
+        self.tab_header = tab_header
         self.in_focus = False
         super().__init__(self.main)
 
     def focus(self):
         self.in_focus = True
-        self.tab.select()
+        self.tab_header = TabHeader(self.tab_header.label, self.tab_header.position, True)
 
     def unfocus(self):
         self.in_focus = False
-        self.tab.unselect()
+        self.tab_header = TabHeader(self.tab_header.label, self.tab_header.position, False)
 
         
 

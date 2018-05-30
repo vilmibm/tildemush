@@ -115,16 +115,6 @@ class GameMain(urwid.Frame):
         # TODO: get room and user info passed in on init?
         self.room = {}
         self.user = {}
-        self.tab_headers = [
-                    ui.TabHeader(urwid.Text("F1 MAIN"), position='first',
-                        selected=True),
-                    ui.TabHeader(urwid.Text("F2 WITCH")),
-                    ui.TabHeader(urwid.Text("F3 WORLDMAP")),
-                    ui.TabHeader(urwid.Text("F4 SETTINGS")),
-                    ui.TabHeader(urwid.Text("F12 QUIT"), position='last')
-                ]
-
-        self.header = urwid.Columns(self.tab_headers)
 
         # game view stuff
         self.game_walker = urwid.SimpleListWalker([
@@ -149,35 +139,46 @@ class GameMain(urwid.Frame):
                 body=self.world_body, footer=self.world_prompt)
         self.world_view.focus_position = 'footer'
 
-        self.main_tab = ui.GameTab(self.world_view, self.tab_headers[0], "MAIN")
+        self.main_tab = ui.GameTab(self.world_view,
+                ui.TabHeader("F1 MAIN", position='first',
+                    selected=True))
 
         # witch view stuff
         self.witch_view = urwid.Filler(urwid.Text("witch editor in progress", align='center'), valign='middle')
-        self.witch_tab = ui.GameTab(self.witch_view, self.tab_headers[1], "WITCH")
+        self.witch_tab = ui.GameTab(self.witch_view,
+                ui.TabHeader("F2 WITCH"))
 
         # worldmap view stuff
         self.worldmap_view = urwid.Filler(urwid.Text("worldmap coming soon", align='center'), valign='middle')
-        self.worldmap_tab = ui.GameTab(self.worldmap_view, self.tab_headers[2],
-                "WORLDMAP")
+        self.worldmap_tab = ui.GameTab(self.worldmap_view,
+                ui.TabHeader("F3 WORLDMAP"))
 
         # settings view stuff
         self.settings_view = urwid.Filler(urwid.Text("settings menu under construction", align='center'), valign='middle')
-        self.settings_tab = ui.GameTab(self.settings_view, self.tab_headers[3],
-                "SETTINGS")
+        self.settings_tab = ui.GameTab(self.settings_view,
+                ui.TabHeader("F4 SETTINGS"))
 
+        # quit placeholder
+        self.quit_view = self.world_view
+        self.quit_tab = ui.GameTab(self.quit_view,
+                ui.TabHeader("F9 QUIT", position='last'))
+
+        # set starting conditions
         self.tabs = {
                 "f1": self.main_tab,
                 "f2": self.witch_tab,
                 "f3": self.worldmap_tab,
-                "f4": self.settings_tab}
-
-        # set starting conditions
+                "f4": self.settings_tab,
+                "f9": self.quit_tab
+                }
+        self.tab_headers = urwid.Columns([])
+        self.header = self.tab_headers
+        self.refresh_tabs()
         self.prompt = self.world_prompt
         self.main = self.main_tab
-        #self.main = self.world_view_wrapper
-        self.footer = urwid.Text("connection okay!", align='right')
+        self.statusbar = urwid.Text("connection okay!", align='right')
         self.client_state.set_on_recv(self.on_server_message)
-        super().__init__(header=self.header, body=self.main, footer=self.footer)
+        super().__init__(header=self.header, body=self.main, footer=self.statusbar)
         self.focus_prompt()
 
     async def on_server_message(self, server_msg):
@@ -232,7 +233,7 @@ class GameMain(urwid.Frame):
         # debugging output
         self.footer = urwid.Text(key)
 
-        if key == 'f12':
+        if key == 'f9':
             # TODO: this isn't getting caught by the server for some reason
             asyncio.ensure_future(self.client_state.send('COMMAND QUIT'), loop=self.loop)
             quit_client('')
@@ -244,11 +245,13 @@ class GameMain(urwid.Frame):
             self.refresh_tabs()
 
     def refresh_tabs(self):
-        self.tab_headers.clear()
+        self.tab_headers.contents.clear()
+        headers = []
         for tab in sorted(self.tabs.keys()):
-            self.tab_headers.append(self.tabs.get(tab).tab)
-        self.header = urwid.Columns(self.tab_headers)
+            headers.append(self.tabs.get(tab).tab_header)
 
+        self.tab_headers = urwid.Columns(headers)
+        self.header = self.tab_headers
 
     def here_info(self):
         room_name = self.room.get("name")
