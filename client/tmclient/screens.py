@@ -107,24 +107,6 @@ class GamePrompt(urwid.Edit):
     def __init__(self):
         super().__init__(caption='> ', multiline=True)
 
-class DashedBox(urwid.LineBox):
-    def __init__(self, box_item):
-        super().__init__(box_item,
-                tlcorner='┌', tline='╌', lline='╎', trcorner='┐', blcorner='└',
-                rline='╎', bline='╌', brcorner='┘'
-                )
-
-class TabHeader(urwid.LineBox):
-    def __init__(self, contents, position=""):
-        if position == 'first':
-            super().__init__(contents, tlcorner='╭', trcorner='╮',
-                    bline=' ', blcorner='│', brcorner='└')
-        elif position == 'last':
-            super().__init__(contents, tlcorner='╭', trcorner='╮',
-                    blcorner='┴', brcorner='┤')
-        else:
-            super().__init__(contents, tlcorner='╭', trcorner='╮',
-                    blcorner='┴', brcorner='┴')
 
 class GameMain(urwid.Frame):
     def __init__(self, client_state, loop):
@@ -134,11 +116,12 @@ class GameMain(urwid.Frame):
         self.room = {}
         self.user = {}
         self.tab_headers = [
-                    TabHeader(urwid.Text("F1 MAIN"), position='first'),
-                    TabHeader(urwid.Text("F2 WITCH")),
-                    TabHeader(urwid.Text("F3 WORLDMAP")),
-                    TabHeader(urwid.Text("F4 SETTINGS")),
-                    TabHeader(urwid.Text("F12 QUIT"), position='last')
+                    ui.TabHeader(urwid.Text("F1 MAIN"), position='first',
+                        selected=True),
+                    ui.TabHeader(urwid.Text("F2 WITCH")),
+                    ui.TabHeader(urwid.Text("F3 WORLDMAP")),
+                    ui.TabHeader(urwid.Text("F4 SETTINGS")),
+                    ui.TabHeader(urwid.Text("F12 QUIT"), position='last')
                 ]
 
         self.header = urwid.Columns(self.tab_headers)
@@ -154,9 +137,9 @@ class GameMain(urwid.Frame):
         self.world_body = urwid.Columns([
             self.game_text,
             urwid.Pile([
-                DashedBox(urwid.Filler(self.here_text, valign='top')),
-                DashedBox(urwid.Filler(self.minimap_text, valign='top')),
-                DashedBox(urwid.Filler(self.user_text, valign='top'))
+                ui.DashedBox(urwid.Filler(self.here_text, valign='top')),
+                ui.DashedBox(urwid.Filler(self.minimap_text, valign='top')),
+                ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
         ])
 

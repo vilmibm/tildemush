@@ -50,6 +50,42 @@ def solidfill(s, theme='basic'):
     return urwid.AttrMap(urwid.SolidFill(s), theme)
 
 
+class DashedBox(urwid.LineBox):
+    def __init__(self, box_item):
+        super().__init__(box_item,
+                tlcorner='┌', tline='╌', lline='╎', trcorner='┐', blcorner='└',
+                rline='╎', bline='╌', brcorner='┘'
+                )
+
+class TabHeader(urwid.LineBox):
+    """
+    Stylizations for tab headers. Position can be 'first', 'last', or none for
+    default/medial tabs. Selected tab displays with no bottom, so it opens into
+    the tab contents.
+    """
+
+    def __init__(self, contents, position="", selected=False):
+
+        tl = '╭'
+        tr = '╮'
+
+        if position == 'first':
+            bl = '│'
+            br = '└'
+        elif position == 'last':
+            bl = '┴'
+            br = '┤'
+        else:
+            bl = '┴'
+            br = '┴'
+        if selected:
+            b = ' '
+        else:
+            b = '─'
+
+        super().__init__(contents, tlcorner=tl, trcorner=tr,
+                blcorner=bl, brcorner=br, bline = b)
+
 
 class Screen(urwid.WidgetPlaceholder):
     """
