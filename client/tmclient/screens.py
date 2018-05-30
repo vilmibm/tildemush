@@ -124,7 +124,7 @@ class GameMain(urwid.Frame):
         self.here_text = urwid.Pile([urwid.Text(self.here_info())])
         self.user_text = urwid.Pile([urwid.Text(self.user_info())])
         self.minimap_text = urwid.Pile([urwid.Text("MAP")])
-        self.world_body = urwid.Columns([
+        self.main_body = urwid.Columns([
             self.game_text,
             urwid.Pile([
                 ui.DashedBox(urwid.Filler(self.here_text, valign='top')),
@@ -132,14 +132,13 @@ class GameMain(urwid.Frame):
                 ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
         ])
+        self.main_banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
+        self.main_prompt = GamePrompt()
+        self.main_view = urwid.Frame(header=self.main_banner,
+                body=self.main_body, footer=self.main_prompt)
+        self.main_view.focus_position = 'footer'
 
-        self.world_banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
-        self.world_prompt = GamePrompt()
-        self.world_view = urwid.Frame(header=self.world_banner,
-                body=self.world_body, footer=self.world_prompt)
-        self.world_view.focus_position = 'footer'
-
-        self.main_tab = ui.GameTab(self.world_view,
+        self.main_tab = ui.GameTab(self.main_view,
                 ui.TabHeader("F1 MAIN", position='first',
                     selected=True))
 
@@ -159,7 +158,7 @@ class GameMain(urwid.Frame):
                 ui.TabHeader("F4 SETTINGS"))
 
         # quit placeholder
-        self.quit_view = self.world_view
+        self.quit_view = self.main_view
         self.quit_tab = ui.GameTab(self.quit_view,
                 ui.TabHeader("F9 QUIT", position='last'))
 
@@ -174,7 +173,7 @@ class GameMain(urwid.Frame):
         self.tab_headers = urwid.Columns([])
         self.header = self.tab_headers
         self.refresh_tabs()
-        self.prompt = self.world_prompt
+        self.prompt = self.main_prompt
         self.main = self.main_tab
         self.statusbar = urwid.Text("connection okay!", align='right')
         self.client_state.set_on_recv(self.on_server_message)
@@ -205,7 +204,7 @@ class GameMain(urwid.Frame):
 
     def focus_prompt(self):
         self.focus_position = 'body'
-        self.world_view.focus_position = 'footer'
+        self.main_view.focus_position = 'footer'
 
     def keypress(self, size, key):
         if key == 'enter':
@@ -245,11 +244,9 @@ class GameMain(urwid.Frame):
             self.refresh_tabs()
 
     def refresh_tabs(self):
-        self.tab_headers.contents.clear()
         headers = []
         for tab in sorted(self.tabs.keys()):
             headers.append(self.tabs.get(tab).tab_header)
-
         self.tab_headers = urwid.Columns(headers)
         self.header = self.tab_headers
 

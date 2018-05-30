@@ -176,7 +176,6 @@ class GameTab(urwid.WidgetPlaceholder):
         self.in_focus = False
         self.tab_header = TabHeader(self.tab_header.label, self.tab_header.position, False)
 
-        
 
 palettes = [
     ('reversed', 'standout', ''),
