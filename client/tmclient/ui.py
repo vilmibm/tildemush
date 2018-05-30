@@ -135,6 +135,17 @@ class Screen(urwid.WidgetPlaceholder):
             return super(Screen, self).keypress(size, key)
 
 
+class GameTab(urwid.WidgetPlaceholder):
+    """
+    Base interface for a tab within the main game area.
+    """
+
+    def __init__(self, widget, tab, title):
+        self.main = urwid.LineBox(widget, tlcorner='│', trcorner='│', tline='')
+        self.tab = tab
+        self.title = title
+        super().__init__(self.main)
+        
 
 palettes = [
     ('reversed', 'standout', ''),

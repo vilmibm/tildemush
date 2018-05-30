@@ -148,11 +148,20 @@ class GameMain(urwid.Frame):
         self.world_view = urwid.Frame(header=self.world_banner,
                 body=self.world_body, footer=self.world_prompt)
         self.world_view.focus_position = 'footer'
-        self.world_view_wrapper = urwid.LineBox(self.world_view, tlcorner='│', trcorner='│', tline='')
+
+        self.main_tab = ui.GameTab(self.world_view, self.tab_headers[0], "MAIN")
+        #self.world_view_wrapper = urwid.LineBox(self.world_view, tlcorner='│', trcorner='│', tline='')
+
+        self.witch_view = urwid.Filler(urwid.Text("witch editor in progress", align='center'), valign='middle')
+
+        self.witch_tab = ui.GameTab(self.witch_view, self.tab_headers[1], "WITCH")
+
+        self.tabs = {"f1": self.main_tab, "f2": self.witch_tab}
 
         # set starting conditions
         self.prompt = self.world_prompt
-        self.main = self.world_view_wrapper
+        self.main = self.main_tab
+        #self.main = self.world_view_wrapper
         self.footer = urwid.Text("connection okay!", align='right')
         self.client_state.set_on_recv(self.on_server_message)
         super().__init__(header=self.header, body=self.main, footer=self.footer)
@@ -214,6 +223,8 @@ class GameMain(urwid.Frame):
             # TODO: this isn't getting caught by the server for some reason
             asyncio.ensure_future(self.client_state.send('COMMAND QUIT'), loop=self.loop)
             quit_client('')
+        elif key in self.tabs.keys():
+            self.body = self.tabs.get(key)
 
     def here_info(self):
         room_name = self.room.get("name")
