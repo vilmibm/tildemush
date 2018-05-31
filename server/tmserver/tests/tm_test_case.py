@@ -4,7 +4,7 @@ import unittest
 import pytest
 
 from ..migrations import reset_db
-from ..world import GameWorld
+from ..game_world import GameWorld
 
 
 class TildemushTestCase(unittest.TestCase):

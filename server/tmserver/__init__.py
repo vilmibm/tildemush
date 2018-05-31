@@ -4,7 +4,7 @@ import click
 
 from .core import GameServer
 from .logs import get_logger
-from .world import GameWorld
+from .game_world import GameWorld
 from .migrations import init_db
 
 

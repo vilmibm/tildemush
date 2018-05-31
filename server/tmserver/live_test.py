@@ -3,7 +3,7 @@ vilmibm:foobarbazquux, then you should be in a room with a horse."""
 
 from .migrations import reset_db
 from .models import UserAccount, GameObject, Script, ScriptRevision
-from .world import GameWorld
+from .game_world import GameWorld
 
 def setup_vil():
     return UserAccount.create(

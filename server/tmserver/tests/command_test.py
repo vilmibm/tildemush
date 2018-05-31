@@ -3,7 +3,7 @@ import unittest.mock as mock
 from ..errors import ClientException
 from ..models import UserAccount
 from ..core import GameServer, UserSession
-from ..world import GameWorld
+from ..game_world import GameWorld
 
 from .tm_test_case import TildemushTestCase
 

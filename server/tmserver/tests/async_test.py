@@ -9,7 +9,7 @@ from .tm_test_case import TildemushTestCase
 from ..core import GameServer
 from ..migrations import reset_db
 from ..models import UserAccount
-from ..world import GameWorld
+from ..game_world import GameWorld
 
 @pytest.fixture(autouse=True)
 def state():

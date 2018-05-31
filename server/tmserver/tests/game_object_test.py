@@ -3,7 +3,7 @@ from unittest import mock
 from .. import models
 from ..errors import WitchException
 from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision, ScriptEngine
-from ..world import GameWorld
+from ..game_world import GameWorld
 
 from .tm_test_case import TildemushTestCase
 
