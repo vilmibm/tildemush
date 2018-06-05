@@ -188,16 +188,11 @@ class GameMain(urwid.Frame):
             pass
         elif server_msg.startswith('here'):
             # TODO: this is kind of filler for now for updating the here
-            # panel; consider better data format
+            # panel; will need to be updated when DATA payload is implemented
             text = ' '.join(server_msg.split(' ')[1:])
             self.here_text.contents.clear()
-            self.here_text.contents.append(
-                (urwid.Text(text), self.here_text.options()))
-        elif server_msg.startswith('info'):
-            text = ' '.join(server_msg.split(' ')[1:])
-            self.user_text.contents.clear()
-            self.user_text.contents.append(
-                (urwid.Text(text), self.user_text.options()))
+            self.here_text.contents.append(urwid.Text(text),
+                    self.here_text.options())
         else:
             new_line = urwid.Text(server_msg)
             self.game_walker.append(new_line)
@@ -239,7 +234,8 @@ class GameMain(urwid.Frame):
         self.footer = urwid.Text(key)
 
         if key == 'f9':
-            # TODO: this isn't getting caught by the server for some reason
+            # TODO: quit command isn't getting caught by the server for some
+            # reason?
             asyncio.ensure_future(self.client_state.send('COMMAND QUIT'), loop=self.loop)
             quit_client('')
         elif key in self.tabs.keys():

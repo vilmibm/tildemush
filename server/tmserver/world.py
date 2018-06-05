@@ -34,8 +34,6 @@ class GameWorld:
             cls.handle_whisper(sender_obj, action_args)
         if action == 'look':
             cls.handle_look(sender_obj, action_args)
-        if action == 'refresh':
-            cls.handle_refresh(sender_obj, action_args)
 
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
@@ -118,40 +116,6 @@ class GameWorld:
 
         for o in cls.area_of_effect(sender_obj):
             o.handle_action(cls, sender_obj, 'look', action_args)
-
-    @classmethod
-    def handle_refresh(cls, sender_obj, action_args):
-        # TODO: should the server dictate what text goes into the client's info
-        # panel, or should it pass through data for the client to format?
-
-        msgs = []
-
-        ## here panel
-        here = []
-        room = sender_obj.contained_by
-        here.append('here [{}]'.format(room.name))
-        here.append('{}'.format(room.description))
-
-        contents = []
-        for o in room.contains:
-            contents.append(o.name)
-        here.append('you see here ({pop}): {contents}'.format(
-            pop=len(contents),
-            contents=', '.join(contents)))
-
-        msgs.append('\n'.join(here))
-
-        ## user info panel
-        user = []
-        # TODO: where did user names actually go? the 'name' field returns a
-        # description instead.
-        user.append('info <{desc} named "{name}">'.format(
-            desc=sender_obj.name,
-            name=sender_obj.description
-            ))
-        msgs.append('\n'.join(user))
-        for m in msgs:
-            sender_obj.user_account.hears(cls, sender_obj, m)
 
     @classmethod
     def area_of_effect(cls, sender_obj):
