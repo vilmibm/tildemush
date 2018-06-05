@@ -162,9 +162,10 @@ class GameTab(urwid.WidgetPlaceholder):
     Base interface for a tab within the main game area.
     """
 
-    def __init__(self, widget, tab_header):
+    def __init__(self, widget, tab_header, prompt):
         self.main = urwid.LineBox(widget, tlcorner='│', trcorner='│', tline='')
         self.tab_header = tab_header
+        self.prompt = prompt
         self.in_focus = False
         super().__init__(self.main)
 

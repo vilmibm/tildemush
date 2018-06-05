@@ -140,27 +140,31 @@ class GameMain(urwid.Frame):
 
         self.main_tab = ui.GameTab(self.main_view,
                 ui.TabHeader("F1 MAIN", position='first',
-                    selected=True))
+                    selected=True), self.main_prompt)
 
         # witch view stuff
-        self.witch_view = urwid.Filler(urwid.Text("witch editor in progress", align='center'), valign='middle')
+        self.witch_prompt = urwid.Edit()
+        self.witch_view= urwid.Filler(urwid.Text("witch editor in progress", align='center'), valign='middle')
         self.witch_tab = ui.GameTab(self.witch_view,
-                ui.TabHeader("F2 WITCH"))
+                ui.TabHeader("F2 WITCH"), self.witch_prompt)
 
         # worldmap view stuff
+        self.worldmap_prompt = urwid.Edit()
         self.worldmap_view = urwid.Filler(urwid.Text("worldmap coming soon", align='center'), valign='middle')
         self.worldmap_tab = ui.GameTab(self.worldmap_view,
-                ui.TabHeader("F3 WORLDMAP"))
+                ui.TabHeader("F3 WORLDMAP"), self.worldmap_prompt)
 
         # settings view stuff
+        self.settings_prompt = urwid.Edit()
         self.settings_view = urwid.Filler(urwid.Text("settings menu under construction", align='center'), valign='middle')
         self.settings_tab = ui.GameTab(self.settings_view,
-                ui.TabHeader("F4 SETTINGS"))
+                ui.TabHeader("F4 SETTINGS"), self.settings_prompt)
 
         # quit placeholder
+        self.quit_prompt = urwid.Edit()
         self.quit_view = self.main_view
         self.quit_tab = ui.GameTab(self.quit_view,
-                ui.TabHeader("F9 QUIT", position='last'))
+                ui.TabHeader("F9 QUIT", position='last'), self.quit_prompt)
 
         # set starting conditions
         self.tabs = {
@@ -174,10 +178,9 @@ class GameMain(urwid.Frame):
         self.header = self.tab_headers
         self.refresh_tabs()
         self.prompt = self.main_prompt
-        self.main = self.main_tab
         self.statusbar = urwid.Text("connection okay!", align='right')
         self.client_state.set_on_recv(self.on_server_message)
-        super().__init__(header=self.header, body=self.main, footer=self.statusbar)
+        super().__init__(header=self.header, body=self.main_tab, footer=self.statusbar)
         self.focus_prompt()
 
     async def on_server_message(self, server_msg):
@@ -204,11 +207,14 @@ class GameMain(urwid.Frame):
 
     def focus_prompt(self):
         self.focus_position = 'body'
-        self.main_view.focus_position = 'footer'
+        self.prompt = self.body.prompt
 
     def keypress(self, size, key):
         if key == 'enter':
-            self.handle_game_input(self.prompt.get_edit_text())
+            if self.prompt == self.main_tab.prompt:
+                self.handle_game_input(self.prompt.get_edit_text())
+            else:
+                self.prompt.edit_text = ''
         else:
             self.prompt.keypress((size[0],), key)
             self.handle_keypress(key)
@@ -241,6 +247,7 @@ class GameMain(urwid.Frame):
             self.body.unfocus()
             self.body = self.tabs.get(key)
             self.body.focus()
+            self.focus_prompt()
             self.refresh_tabs()
 
     def refresh_tabs(self):
