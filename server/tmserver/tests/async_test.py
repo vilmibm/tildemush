@@ -348,3 +348,4 @@ async def test_client_state(event_loop, mock_logger, client):
         ],
         'scripts': []
     }
+    await client.close()
