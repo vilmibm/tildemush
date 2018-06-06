@@ -1,5 +1,5 @@
 from .errors import ClientException
-from .models import Contains, GameObject, Contains
+from .models import Contains, GameObject, Contains, Script
 
 class GameWorld:
     # TODO logging
@@ -15,12 +15,65 @@ class GameWorld:
         cls._sessions[user_account.id] = user_session
 
     @classmethod
+    def is_connected(cls, user_account_id):
+        return user_account_id in cls._sessions
+
+    @classmethod
     def get_session(cls, user_account_id):
         session = cls._sessions.get(user_account_id)
         if session is None:
             raise ClientException('No session found. Log in again.')
 
         return session
+
+    @classmethod
+    def client_state(cls, user_account):
+        """Given a user account, returns a dictionary of information relevant
+        to the game client."""
+        player_obj = user_account.player_obj
+        room = player_obj.contained_by
+        return {
+            'motd': 'welcome to tildemush',  # TODO
+            'user': {
+                'username': user_account.username,
+                'display_name': player_obj.name,
+                'description': player_obj.description
+            },
+            'room': {
+                'name': room.name,
+                'description': room.description,
+                'contains': [dict(name=o.name, description=o.description)
+                             for o in room.contains
+                             if o.name != player_obj.name],
+                'exits': {
+                    # TODO
+                    'north': None,
+                    'south': None,
+                    'east': None,
+                    'west': None,
+                    'above': None,
+                    'below': None,
+                }
+            },
+            'inventory': cls.contains_tree(player_obj),
+            'scripts': [s.name for s
+                        in Script.select(Script.name).where(Script.author==user_account)],
+        }
+
+    @classmethod
+    def contains_tree(cls, obj):
+        """Given an object, this function recursively builds up the tree of
+        objects it contains."""
+
+        out = []
+        for o in obj.contains:
+            out.append({
+                'name': o.name,
+                'description': o.description,
+                'contains': cls.contains_tree(o)
+            })
+        return out
+
 
     @classmethod
     def dispatch_action(cls, sender_obj, action, action_args):
@@ -151,8 +204,12 @@ class GameWorld:
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
         outer_obj.put_into(inner_obj)
+        outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
+        inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
         outer_obj.remove_from(inner_obj)
+        outer_obj.handle_action(cls, inner_obj, 'contain', 'lost')
+        inner_obj.handle_action(cls, outer_obj, 'contain', 'freed')
 

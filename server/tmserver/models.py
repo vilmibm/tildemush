@@ -11,7 +11,7 @@ from playhouse.signals import Model, pre_save, post_save
 from playhouse.postgres_ext import JSONField
 
 from . import config
-from .errors import WitchException, UserValidationError
+from .errors import WitchException, UserValidationError, ClientException
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 
@@ -19,8 +19,10 @@ BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
 MIN_PASSWORD_LEN = 12
 
 class ScriptEngine:
+    CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
     def __init__(self):
         self.handlers = {'debug': self._debug_handler,
+                         'contain': self._contain_handler,
                          'say': self._say_handler,
                          'announce': self._announce_handler,
                          'whisper': self._whisper_handler}
@@ -35,6 +37,17 @@ class ScriptEngine:
 
     def _debug_handler(self, receiver, sender, action_args):
         return '{} <- {} with {}'.format(receiver, sender, action_args)
+
+    def _contain_handler(self, receiver, sender, action_args):
+        contain_type = action_args
+        if contain_type not in self.CONTAIN_TYPES:
+            raise ClientException('Bad container relation: {}'.format(contain_type))
+        if receiver.user_account:
+            receiver.user_account.send_client_update(self.game_world)
+            # TODO we actually want the client to show messages about these
+            # events, i think. we can implement that once we actually implement
+            # movement and inventory commands. until then we just care that the
+            # client_state payload is sent.
 
     def _announce_handler(self, receiver, sender, action_args):
         if receiver.user_account:
@@ -107,6 +120,10 @@ class UserAccount(BaseModel):
     def hears(self, game_world, sender_obj, message):
         game_world.get_session(self.id).handle_hears(sender_obj, message)
 
+    def send_client_update(self, game_world):
+        if game_world.is_connected(self.id):
+            game_world.get_session(self.id).handle_client_update(game_world.client_state(self))
+
     @property
     def player_obj(self):
         gos = GameObject.select().where(
@@ -168,8 +185,7 @@ class GameObject(BaseModel):
         if not model_set:
             return None
         if len(model_set) > 1:
-            # TODO uhh
-            pass
+            raise ClientException("Bad state: contained by multiple things.")
         return model_set[0].outer_obj
 
     @property
@@ -246,6 +262,8 @@ class GameObject(BaseModel):
     # containership methods
     # TODO this naming sucks
     def put_into(self, inner_obj):
+        if inner_obj.contained_by:
+            inner_obj.contained_by.remove_from(inner_obj)
         Contains.create(outer_obj=self, inner_obj=inner_obj)
 
     def remove_from(self, inner_obj):
