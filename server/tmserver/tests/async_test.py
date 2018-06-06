@@ -1,5 +1,6 @@
 import os
 import asyncio
+import json
 from unittest import mock
 
 import pytest
@@ -238,3 +239,112 @@ async def test_look(event_loop, mock_logger, client):
             'You see snoozy, a gaseous cloud'}
     await client.close()
     await snoozy_client.close()
+
+
+@pytest.mark.asyncio
+async def test_client_state(event_loop, mock_logger, client):
+    await client.send('REGISTER vilmibm:foobarbazquux')
+    await client.recv()
+
+    vilmibm = UserAccount.get(UserAccount.username=='vilmibm')
+
+    room = GameObject.create(
+        name='ten forward',
+        description='the bar lounge of the starship enterprise.',
+    )
+    quadchess = GameObject.create(
+        name='quadchess',
+        description='a chess game with four decks',
+    )
+    chess_piece = GameObject.create(
+        name='chess piece',
+        description='a chess piece. Looks like a bishop.'
+    )
+    drink = GameObject.create(
+        name='weird drink',
+        description='an in-house invention of Guinan. It is purple and fizzes ominously.')
+    tricorder = GameObject.create(
+        name='tricorder',
+        description='looks like someone left their tricorder here.'
+    )
+    medical_app = GameObject.create(
+        name='medical program',
+        description='you can use this to scan or call up data about a patient.')
+    patient_file = GameObject.create(
+        name='patient file',
+        description='a scan of Lt Barclay.')
+    phase_analyzer_app = GameObject.create(
+        name='phase analyzer program',
+        description='you can use this to scan for phase shift anomalies'
+    )
+    music_app = GameObject.create(
+        name='media app',
+        description='this program turns your tricorder into a jukebox')
+    klingon_opera = GameObject.create(
+        name='klingon opera music',
+        description='a recording of a klingon opera'
+    )
+    GameWorld.put_into(room, holochess)
+    GameWorld.put_into(quadchess, chess_piece)
+    GameWorld.put_into(room, drink)
+    GameWorld.put_into(vilmibm, tricorder)
+    GameWorld.put_into(tricorder, medical_app)
+    GameWorld.put_into(medical_app, patient_file)
+    GameWorld.put_into(tricorder, phase_analyzer)
+    GameWorld.put_into(tricorder, music_app)
+    GameWorld.put_into(music_app, klingon_opera)
+
+    await client.send('LOGIN vilmibm:foobarbazquux')
+    await client.recv()
+
+    GameWorld.put_into(room, vilmibm)
+
+    data_msg = await client.recv()
+    assert data_msg.startswith('STATE ')
+    payload = json.loads(data_msg[len('STATE '):])
+    assert payload == {
+        'motd': 'welcome to tildemush',
+        'user': {
+            'username': 'vilmibm',
+            'display_name': 'vilmibm',
+            'description': 'a gaseous cloud'
+        },
+        'room': {
+            'name': 'ten forward',
+            'description': 'the bar lounge of the starship enterprise.',
+            'contains': [
+                {'name': 'quadchess',
+                 'description': 'a chess game with four decks'},
+                {'name': 'weird drink',
+                 'description': 'an in-house invention of Guinan. It is purple and fizzes ominously.'},
+            ],
+            'exits': {
+                'north': None,
+                'south': None,
+                'east': None,
+                'west': None,
+                'above': None,
+                'below': None,
+            }
+        },
+        'inventory': [
+            {'name':'tricorder',
+             'description': 'looks like someone left their tricorder here.',
+             'contains': [
+                 {'name': 'medical program',
+                  'description': 'you can use this to scan or call up data about a patient.',
+                  'contains': [{'name': 'patient file',
+                                'description': 'a scan of Lt Barclay',
+                                'contains': []}]},
+                 {'name': 'phase analyzer program',
+                  'description': 'you can use this to scan for phase shift anomalies',
+                  'contains': []},
+                 {'name': 'media app',
+                  'description': 'this program turns your tricorder into a jukebox',
+                  'contains': [
+                      {'name': 'klingon opera music',
+                       'description': 'a recording of a klingon opera',
+                       'contains': []}]}]}
+        ],
+        'scripts': []
+    }
