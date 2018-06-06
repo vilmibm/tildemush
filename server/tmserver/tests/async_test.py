@@ -307,7 +307,6 @@ async def test_client_state(event_loop, mock_logger, client):
     await client.recv()
     await client.recv()
 
-    # vil is still in the foyer....
     GameWorld.put_into(room, vilmibm.player_obj)
 
     data_msg = await client.recv()
