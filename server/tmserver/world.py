@@ -15,6 +15,10 @@ class GameWorld:
         cls._sessions[user_account.id] = user_session
 
     @classmethod
+    def is_connected(cls, user_account_id):
+        return user_account_id in cls._sessions
+
+    @classmethod
     def get_session(cls, user_account_id):
         session = cls._sessions.get(user_account_id)
         if session is None:
@@ -66,7 +70,7 @@ class GameWorld:
             out.append({
                 'name': o.name,
                 'description': o.description,
-                'contains': contains_tree(o)
+                'contains': cls.contains_tree(o)
             })
         return out
 
@@ -200,12 +204,12 @@ class GameWorld:
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
         outer_obj.put_into(inner_obj)
-        outer_obj.handle_action('contain', inner_obj, 'acquired')
-        inner_obj.handle_action('contain', outer_obj, 'entered')
+        outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
+        inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
         outer_obj.remove_from(inner_obj)
-        outer_obj.handle_action('contain', inner_obj, 'lost')
-        inner_obj.handle_action('contain', outer_obj, 'freed')
+        outer_obj.handle_action(cls, inner_obj, 'contain', 'lost')
+        inner_obj.handle_action(cls, outer_obj, 'contain', 'freed')
 

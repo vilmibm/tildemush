@@ -92,6 +92,7 @@ async def test_game_command(event_loop, mock_logger, client):
     await client.recv()
     await client.send('LOGIN vilmibm:foobarbazquux')
     await client.recv()
+    await client.recv()
     await client.send('COMMAND say hello')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
@@ -109,6 +110,9 @@ async def setup_user(client, username, god=False):
         ua.save()
 
     await client.send('LOGIN {}:foobarbazquux'.format(username))
+    # once for LOGIN OK
+    await client.recv()
+    # once for the client state update
     await client.recv()
 
 
@@ -247,57 +251,64 @@ async def test_client_state(event_loop, mock_logger, client):
     await client.recv()
 
     vilmibm = UserAccount.get(UserAccount.username=='vilmibm')
+    god = UserAccount.get(UserAccount.username=='god')
 
     room = GameObject.create(
         name='ten forward',
         description='the bar lounge of the starship enterprise.',
-    )
+        author=god)
     quadchess = GameObject.create(
         name='quadchess',
         description='a chess game with four decks',
-    )
+        author=god)
     chess_piece = GameObject.create(
         name='chess piece',
-        description='a chess piece. Looks like a bishop.'
-    )
+        description='a chess piece. Looks like a bishop.',
+        author=god)
     drink = GameObject.create(
         name='weird drink',
-        description='an in-house invention of Guinan. It is purple and fizzes ominously.')
+        description='an in-house invention of Guinan. It is purple and fizzes ominously.',
+        author=god)
     tricorder = GameObject.create(
         name='tricorder',
-        description='looks like someone left their tricorder here.'
-    )
+        description='looks like someone left their tricorder here.',
+        author=god)
     medical_app = GameObject.create(
         name='medical program',
-        description='you can use this to scan or call up data about a patient.')
+        description='you can use this to scan or call up data about a patient.',
+        author=god)
     patient_file = GameObject.create(
         name='patient file',
-        description='a scan of Lt Barclay.')
+        description='a scan of Lt Barclay.',
+        author=god)
     phase_analyzer_app = GameObject.create(
         name='phase analyzer program',
-        description='you can use this to scan for phase shift anomalies'
-    )
+        description='you can use this to scan for phase shift anomalies',
+        author=god)
     music_app = GameObject.create(
         name='media app',
-        description='this program turns your tricorder into a jukebox')
+        description='this program turns your tricorder into a jukebox',
+        author=god)
     klingon_opera = GameObject.create(
         name='klingon opera music',
-        description='a recording of a klingon opera'
-    )
-    GameWorld.put_into(room, holochess)
+        description='a recording of a klingon opera',
+        author=god)
+    GameWorld.put_into(room, quadchess)
     GameWorld.put_into(quadchess, chess_piece)
     GameWorld.put_into(room, drink)
-    GameWorld.put_into(vilmibm, tricorder)
+    GameWorld.put_into(vilmibm.player_obj, tricorder)
     GameWorld.put_into(tricorder, medical_app)
     GameWorld.put_into(medical_app, patient_file)
-    GameWorld.put_into(tricorder, phase_analyzer)
+    GameWorld.put_into(tricorder, phase_analyzer_app)
     GameWorld.put_into(tricorder, music_app)
     GameWorld.put_into(music_app, klingon_opera)
 
     await client.send('LOGIN vilmibm:foobarbazquux')
     await client.recv()
+    await client.recv()
 
-    GameWorld.put_into(room, vilmibm)
+    # vil is still in the foyer....
+    GameWorld.put_into(room, vilmibm.player_obj)
 
     data_msg = await client.recv()
     assert data_msg.startswith('STATE ')

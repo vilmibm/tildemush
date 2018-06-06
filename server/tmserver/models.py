@@ -121,7 +121,8 @@ class UserAccount(BaseModel):
         game_world.get_session(self.id).handle_hears(sender_obj, message)
 
     def send_client_update(self, game_world):
-        game_world.get_session(self.id).handle_client_update(game_world.client_state(self))
+        if game_world.is_connected(self.id):
+            game_world.get_session(self.id).handle_client_update(game_world.client_state(self))
 
     @property
     def player_obj(self):
