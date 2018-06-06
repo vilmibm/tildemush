@@ -231,7 +231,7 @@ class GameMain(urwid.Frame):
 
     def handle_keypress(self, key):
         # debugging output
-        self.footer = urwid.Text(key)
+        #self.footer = urwid.Text(key)
 
         if key == 'f9':
             # TODO: quit command isn't getting caught by the server for some
