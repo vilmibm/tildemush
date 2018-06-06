@@ -185,8 +185,7 @@ class GameObject(BaseModel):
         if not model_set:
             return None
         if len(model_set) > 1:
-            # TODO uhh
-            pass
+            raise ClientException("Bad state: contained by multiple things.")
         return model_set[0].outer_obj
 
     @property
@@ -263,6 +262,8 @@ class GameObject(BaseModel):
     # containership methods
     # TODO this naming sucks
     def put_into(self, inner_obj):
+        if inner_obj.contained_by:
+            inner_obj.contained_by.remove_from(inner_obj)
         Contains.create(outer_obj=self, inner_obj=inner_obj)
 
     def remove_from(self, inner_obj):

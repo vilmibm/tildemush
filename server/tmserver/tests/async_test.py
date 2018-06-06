@@ -279,7 +279,7 @@ async def test_client_state(event_loop, mock_logger, client):
         author=god)
     patient_file = GameObject.create(
         name='patient file',
-        description='a scan of Lt Barclay.',
+        description='a scan of Lt Barclay',
         author=god)
     phase_analyzer_app = GameObject.create(
         name='phase analyzer program',
