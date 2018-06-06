@@ -44,7 +44,7 @@ class ScriptEngine:
 
     def _say_handler(self, receiver, sender, action_args):
         if receiver.user_account:
-            msg = '{} says {}'.format(sender.name, action_args)
+            msg = '{} says, \"{}\"'.format(sender.name, action_args)
             receiver.user_account.hears(self.game_world, sender, msg)
 
     def _whisper_handler(self, receiver, sender, action_args):

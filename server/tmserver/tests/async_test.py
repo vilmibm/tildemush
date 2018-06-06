@@ -95,7 +95,7 @@ async def test_game_command(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
-    assert msg == 'vilmibm says hello'
+    assert msg == 'vilmibm says, "hello"'
     await client.close()
 
 async def setup_user(client, username, god=False):
@@ -161,7 +161,7 @@ async def test_witch_script(event_loop, mock_logger, client):
     await client.send('COMMAND pet')
     await client.recv()
     msg = await client.recv()
-    assert msg == 'snoozy says neigh neigh neigh i am horse'
+    assert msg == 'snoozy says, "neigh neigh neigh i am horse"'
     await client.close()
 
 

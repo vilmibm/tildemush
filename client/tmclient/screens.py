@@ -27,7 +27,9 @@ class Splash(Screen):
 class MainMenu(Screen):
     def __init__(self, loop, client=None, exit=lambda _: True):
         self.loop = loop
-        self.base = ui.solidfill('░', 'background')
+        ftr = urwid.Text('press ESC to close windows', align='center')
+        body = ui.solidfill('░', 'background')
+        self.base = urwid.Frame(body=body, footer=ftr)
         super().__init__(self.base, client, exit)
         self.show_menu()
 
@@ -56,7 +58,7 @@ class MainMenu(Screen):
         else:
             un_field = FormField(caption='username: ', name='username')
             pw_field = FormField(caption='password: ', name='password', mask='~')
-            submit_btn = urwid.Button('login!')
+            submit_btn = urwid.Button('login! >')
             login_form = Form([un_field, pw_field], submit_btn)
 
             def wait_for_login(_):
@@ -72,6 +74,7 @@ class MainMenu(Screen):
         await self.client.authenticate(login_data['username'], login_data['password'])
 
     def show_register(self):
+        info = urwid.Text('register a new account! password must be at least 12 characters long.\n')
         un_field = FormField(caption='username: ', name='username')
         pw_field = FormField(caption='password: ', name='password', mask='~')
         pw_confirm_field = FormField(caption='confirm password: ', name='confirm_password', mask='~')
@@ -84,7 +87,7 @@ class MainMenu(Screen):
                 60.0, loop=self.loop)
 
         urwid.connect_signal(submit_btn, 'click', wait_for_register)
-        self.open_box(urwid.Filler(register_form))
+        self.open_box(urwid.Filler(urwid.Pile([info, register_form])))
 
     async def handle_register(self, register_data):
         if not register_data['username']:
@@ -104,46 +107,112 @@ class GamePrompt(urwid.Edit):
     def __init__(self):
         super().__init__(caption='> ', multiline=True)
 
+
 class GameMain(urwid.Frame):
     def __init__(self, client_state, loop):
         self.client_state = client_state
         self.loop = loop
-        self.banner = urwid.Text('welcome 2 tildemush, u are jacked in')
+        # TODO: get room and user info passed in on init?
+        self.room = {}
+        self.user = {}
+
+        # game view stuff
         self.game_walker = urwid.SimpleListWalker([
             urwid.Text('you have reconstituted into tildemush')
             ])
         self.game_text = urwid.ListBox(self.game_walker)
-        self.main = urwid.Columns([
+        self.here_text = urwid.Pile([urwid.Text(self.here_info())])
+        self.user_text = urwid.Pile([urwid.Text(self.user_info())])
+        self.minimap_text = urwid.Pile([urwid.Text("MAP")])
+        self.main_body = urwid.Columns([
             self.game_text,
             urwid.Pile([
-                urwid.Filler(urwid.Text('details about your current room')),
-                urwid.Filler(urwid.Text('i donno a map?')),
-                urwid.Filler(urwid.Text('character info'))
+                ui.DashedBox(urwid.Filler(self.here_text, valign='top')),
+                ui.DashedBox(urwid.Filler(self.minimap_text, valign='top')),
+                ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
-        ], dividechars=1)
-        self.prompt = GamePrompt()
+        ])
+        self.main_banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
+        self.main_prompt = GamePrompt()
+        self.main_view = urwid.Frame(header=self.main_banner,
+                body=self.main_body, footer=self.main_prompt)
+        self.main_view.focus_position = 'footer'
+
+        self.main_tab = ui.GameTab(self.main_view,
+                ui.TabHeader("F1 MAIN", position='first',
+                    selected=True), self.main_prompt)
+
+        # witch view stuff
+        self.witch_prompt = urwid.Edit()
+        self.witch_view= urwid.Filler(urwid.Text("witch editor in progress", align='center'), valign='middle')
+        self.witch_tab = ui.GameTab(self.witch_view,
+                ui.TabHeader("F2 WITCH"), self.witch_prompt)
+
+        # worldmap view stuff
+        self.worldmap_prompt = urwid.Edit()
+        self.worldmap_view = urwid.Filler(urwid.Text("worldmap coming soon", align='center'), valign='middle')
+        self.worldmap_tab = ui.GameTab(self.worldmap_view,
+                ui.TabHeader("F3 WORLDMAP"), self.worldmap_prompt)
+
+        # settings view stuff
+        self.settings_prompt = urwid.Edit()
+        self.settings_view = urwid.Filler(urwid.Text("settings menu under construction", align='center'), valign='middle')
+        self.settings_tab = ui.GameTab(self.settings_view,
+                ui.TabHeader("F4 SETTINGS"), self.settings_prompt)
+
+        # quit placeholder
+        self.quit_prompt = urwid.Edit()
+        self.quit_view = self.main_view
+        self.quit_tab = ui.GameTab(self.quit_view,
+                ui.TabHeader("F9 QUIT", position='last'), self.quit_prompt)
+
+        # set starting conditions
+        self.tabs = {
+                "f1": self.main_tab,
+                "f2": self.witch_tab,
+                "f3": self.worldmap_tab,
+                "f4": self.settings_tab,
+                "f9": self.quit_tab
+                }
+        self.tab_headers = urwid.Columns([])
+        self.header = self.tab_headers
+        self.refresh_tabs()
+        self.prompt = self.main_prompt
+        self.statusbar = urwid.Text("connection okay!", align='right')
         self.client_state.set_on_recv(self.on_server_message)
-        super().__init__(header=self.banner, body=self.main, footer=self.prompt)
+        super().__init__(header=self.header, body=self.main_tab, footer=self.statusbar)
         self.focus_prompt()
 
     async def on_server_message(self, server_msg):
         if server_msg == 'COMMAND OK':
             pass
+        elif server_msg.startswith('here'):
+            # TODO: this is kind of filler for now for updating the here
+            # panel; will need to be updated when DATA payload is implemented
+            text = ' '.join(server_msg.split(' ')[1:])
+            self.here_text.contents.clear()
+            self.here_text.contents.append(urwid.Text(text),
+                    self.here_text.options())
+        else:
+            new_line = urwid.Text(server_msg)
+            self.game_walker.append(new_line)
+            self.game_walker.set_focus(len(self.game_walker)-1)
 
-        new_line = urwid.Text(server_msg)
-        self.game_walker.append(new_line)
-        self.game_walker.set_focus(len(self.game_walker)-1)
         self.focus_prompt()
 
     def focus_prompt(self):
-        self.focus_position = 'footer'
+        self.focus_position = 'body'
+        self.prompt = self.body.prompt
 
     def keypress(self, size, key):
-        if self.focus is self.prompt:
-            if key == 'enter':
+        if key == 'enter':
+            if self.prompt == self.main_tab.prompt:
                 self.handle_game_input(self.prompt.get_edit_text())
             else:
-                self.prompt.keypress((size[0],), key)
+                self.prompt.edit_text = ''
+        else:
+            self.prompt.keypress((size[0],), key)
+            self.handle_keypress(key)
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
@@ -159,3 +228,41 @@ class GameMain(urwid.Frame):
 
         asyncio.ensure_future(self.client_state.send(server_msg), loop=self.loop)
         self.prompt.edit_text = ''
+
+    def handle_keypress(self, key):
+        # debugging output
+        #self.footer = urwid.Text(key)
+
+        if key == 'f9':
+            # TODO: quit command isn't getting caught by the server for some
+            # reason?
+            asyncio.ensure_future(self.client_state.send('COMMAND QUIT'), loop=self.loop)
+            quit_client('')
+        elif key in self.tabs.keys():
+            # tab switcher
+            self.body.unfocus()
+            self.body = self.tabs.get(key)
+            self.body.focus()
+            self.focus_prompt()
+            self.refresh_tabs()
+
+    def refresh_tabs(self):
+        headers = []
+        for tab in sorted(self.tabs.keys()):
+            headers.append(self.tabs.get(tab).tab_header)
+        self.tab_headers = urwid.Columns(headers)
+        self.header = self.tab_headers
+
+    def here_info(self):
+        room_name = self.room.get("name")
+        info = "[{}]".format(room_name)
+
+        return info
+    
+    def user_info(self):
+        info = '<a {desc} named {name}>'.format(
+                desc=self.user.get("description"),
+                name=self.user.get("name")
+                )
+
+        return info

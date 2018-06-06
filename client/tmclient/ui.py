@@ -50,6 +50,64 @@ def solidfill(s, theme='basic'):
     return urwid.AttrMap(urwid.SolidFill(s), theme)
 
 
+class DashedBox(urwid.LineBox):
+    def __init__(self, box_item):
+        super().__init__(box_item,
+                tlcorner='┌', tline='╌', lline='╎', trcorner='┐', blcorner='└',
+                rline='╎', bline='╌', brcorner='┘'
+                )
+
+class TabHeader(urwid.LineBox):
+    """
+    Stylizations for tab headers. Position can be 'first', 'last', or none for
+    default/medial tabs. Selected tab displays with no bottom, so it opens into
+    the tab contents.
+    """
+
+    def __init__(self, label, position="", selected=False):
+
+        tl = '╭'
+        tr = '╮'
+
+        self.label = label
+        self.contents = urwid.Text(self.label, align='center')
+        self.position = position
+
+        if position == 'first':
+            if selected:
+                bl = '║'
+                br = '╙'
+            else:
+                bl = '├'
+                br = '┴'
+        elif position == 'last':
+            if selected:
+                bl = '╜'
+                bl = '║'
+            else:
+                bl = '┴'
+                br = '┤'
+        else:
+            if selected:
+                bl = '╜'
+                br = '╙'
+            else:
+                bl = '┴'
+                br = '┴'
+
+        if selected:
+            b = ' '
+            r = '║'
+            l = '║'
+        else:
+            b = '─'
+            r = '│'
+            l = '│'
+
+        super().__init__(self.contents, tlcorner=tl, trcorner=tr,
+                blcorner=bl, brcorner=br, bline=b,
+                lline =l, rline=r)
+
 
 class Screen(urwid.WidgetPlaceholder):
     """
@@ -98,6 +156,26 @@ class Screen(urwid.WidgetPlaceholder):
         else:
             return super(Screen, self).keypress(size, key)
 
+
+class GameTab(urwid.WidgetPlaceholder):
+    """
+    Base interface for a tab within the main game area.
+    """
+
+    def __init__(self, widget, tab_header, prompt):
+        self.main = urwid.LineBox(widget, tlcorner='│', trcorner='│', tline='')
+        self.tab_header = tab_header
+        self.prompt = prompt
+        self.in_focus = False
+        super().__init__(self.main)
+
+    def focus(self):
+        self.in_focus = True
+        self.tab_header = TabHeader(self.tab_header.label, self.tab_header.position, True)
+
+    def unfocus(self):
+        self.in_focus = False
+        self.tab_header = TabHeader(self.tab_header.label, self.tab_header.position, False)
 
 
 palettes = [
