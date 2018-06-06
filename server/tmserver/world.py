@@ -200,8 +200,12 @@ class GameWorld:
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
         outer_obj.put_into(inner_obj)
+        outer_obj.handle_action('contain', inner_obj, 'acquired')
+        inner_obj.handle_action('contain', outer_obj, 'entered')
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
         outer_obj.remove_from(inner_obj)
+        outer_obj.handle_action('contain', inner_obj, 'lost')
+        inner_obj.handle_action('contain', outer_obj, 'freed')
 
