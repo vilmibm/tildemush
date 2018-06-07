@@ -126,12 +126,9 @@ class UserAccount(BaseModel):
 
     @property
     def player_obj(self):
-        gos = GameObject.select().where(
-            GameObject.author==self,
-            GameObject.is_player_obj==True)
-        if gos:
-            return gos[0]
-        return None
+        return GameObject.get_or_none(
+            GameObject.author == self,
+            GameObject.is_player_obj == True)
 
     def __eq__(self, other):
         if not hasattr(other, 'username'):
