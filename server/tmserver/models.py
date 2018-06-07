@@ -53,17 +53,17 @@ class ScriptEngine:
         if receiver.user_account:
             msg = "The very air around you seems to shake as {}'s booming voice says {}".format(
                 sender.name, action_args)
-            receiver.user_account.hears(self.game_world, sender, msg)
+            self.game_world.user_hears(receiver, sender, msg)
 
     def _say_handler(self, receiver, sender, action_args):
         if receiver.user_account:
             msg = '{} says, \"{}\"'.format(sender.name, action_args)
-            receiver.user_account.hears(self.game_world, sender, msg)
+            self.game_world.user_hears(receiver, sender, msg)
 
     def _whisper_handler(self, receiver, sender, action_args):
         if receiver.user_account:
             msg = '{} whispers so only you can hear: {}'.format(sender.name, action_args)
-            receiver.user_account.hears(self.game_world, sender, msg)
+            self.game_world.user_hears(receiver, sender, msg)
 
     def add_handler(self, action, fn):
         self.handlers[action] = fn
@@ -117,9 +117,6 @@ class UserAccount(BaseModel):
             description=description,
             is_player_obj=True)
 
-    def hears(self, game_world, sender_obj, message):
-        game_world.get_session(self.id).handle_hears(sender_obj, message)
-
     def send_client_update(self, game_world):
         if game_world.is_connected(self.id):
             game_world.get_session(self.id).handle_client_update(game_world.client_state(self))
@@ -160,9 +157,11 @@ class Script(BaseModel):
     author = pw.ForeignKeyField(UserAccount)
     name = pw.CharField()
 
+
 class ScriptRevision(BaseModel):
     code = pw.TextField()
     script = pw.ForeignKeyField(Script)
+
 
 class GameObject(BaseModel):
     author = pw.ForeignKeyField(UserAccount)
@@ -234,7 +233,9 @@ class GameObject(BaseModel):
         if not hasattr(self, 'game_world'):
             self.game_world = game_world
 
-    # TODO should these be _ methods too?
+    # say, set_data, and get_data are part of the WITCH scripting API. that
+    # should probably be explicit somehow?
+
     def say(self, message):
         self.game_world.dispatch_action(self, 'say', message)
 
@@ -280,6 +281,7 @@ class GameObject(BaseModel):
             script_revision = self.script_revision.id
 
         return hash((self.author.username, self.name, script_revision))
+
 
 class Contains(BaseModel):
     outer_obj = pw.ForeignKeyField(GameObject)

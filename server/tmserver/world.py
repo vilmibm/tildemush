@@ -161,7 +161,7 @@ class GameWorld:
             msgs.append(o_desc)
 
         for m in msgs:
-            sender_obj.user_account.hears(cls, sender_obj, m)
+            cls.user_hears(sender_obj, sender_obj, m)
 
         # finally, alert everything in the room that it's been looked at. game
         # objects can hook off of this if they want. By default, this does
@@ -218,3 +218,6 @@ class GameWorld:
         outer_obj.handle_action(cls, inner_obj, 'contain', 'lost')
         inner_obj.handle_action(cls, outer_obj, 'contain', 'freed')
 
+    @classmethod
+    def user_hears(cls, receiver_obj, sender_obj, msg):
+        cls.get_session(receiver_obj.user_account.id).handle_hears(sender_obj, msg)
