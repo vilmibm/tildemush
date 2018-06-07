@@ -15,10 +15,6 @@ class GameWorld:
         cls._sessions[user_account.id] = user_session
 
     @classmethod
-    def is_connected(cls, user_account_id):
-        return user_account_id in cls._sessions
-
-    @classmethod
     def get_session(cls, user_account_id):
         session = cls._sessions.get(user_account_id)
         if session is None:
@@ -61,6 +57,12 @@ class GameWorld:
         }
 
     @classmethod
+    def send_client_update(cls, user_account):
+        if user_account.id in cls._sessions:
+            cls.get_session(user_account.id).handle_client_update(
+                cls.client_state(user_account))
+
+    @classmethod
     def contains_tree(cls, obj):
         """Given an object, this function recursively builds up the tree of
         objects it contains."""
@@ -73,7 +75,6 @@ class GameWorld:
                 'contains': cls.contains_tree(o)
             })
         return out
-
 
     @classmethod
     def dispatch_action(cls, sender_obj, action, action_args):

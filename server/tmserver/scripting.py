@@ -3,8 +3,6 @@ import os
 
 import hy
 
-
-# TODO finish moving imports and then test
 from .errors import ClientException, WitchException
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
@@ -34,7 +32,7 @@ class ScriptEngine:
         if contain_type not in self.CONTAIN_TYPES:
             raise ClientException('Bad container relation: {}'.format(contain_type))
         if receiver.user_account:
-            receiver.user_account.send_client_update(self.game_world)
+            self.game_world.send_client_update(receiver.user_account)
             # TODO we actually want the client to show messages about these
             # events, i think. we can implement that once we actually implement
             # movement and inventory commands. until then we just care that the
@@ -141,4 +139,3 @@ class ScriptedObjectMixin:
                         ';_; There is a problem with your witch script: {}'.format(e))
 
         return self._engine
-        pass

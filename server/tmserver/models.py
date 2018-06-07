@@ -52,17 +52,6 @@ class UserAccount(BaseModel):
         if len(self.password) < MIN_PASSWORD_LEN:
             raise UserValidationError('password too short')
 
-    def _init_player_obj(self, description='a gaseous cloud'):
-        GameObject.create(
-            author=self,
-            name=self.username,
-            description=description,
-            is_player_obj=True)
-
-    def send_client_update(self, game_world):
-        if game_world.is_connected(self.id):
-            game_world.get_session(self.id).handle_client_update(game_world.client_state(self))
-
     @property
     def player_obj(self):
         return GameObject.get_or_none(
@@ -80,6 +69,7 @@ class UserAccount(BaseModel):
     def __hash__(self):
         return hash((self.username,))
 
+
 @pre_save(sender=UserAccount)
 def pre_save_handler(cls, instance, created):
     if not created:
@@ -92,7 +82,11 @@ def pre_save_handler(cls, instance, created):
 @post_save(sender=UserAccount)
 def post_save_handler(cls, instance, created):
     if created:
-        instance._init_player_obj()
+        GameObject.create(
+            author=instance,
+            name=instance.username,
+            description='a gaseous cloud',
+            is_player_obj=True)
 
 
 class Script(BaseModel):
