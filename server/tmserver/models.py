@@ -256,18 +256,6 @@ class GameObject(BaseModel):
         # of a transaction:
         return self.engine.handler(game_world, action)(self, sender_obj, action_args)
 
-    # containership methods
-    # TODO this naming sucks
-    def put_into(self, inner_obj):
-        if inner_obj.contained_by:
-            inner_obj.contained_by.remove_from(inner_obj)
-        Contains.create(outer_obj=self, inner_obj=inner_obj)
-
-    def remove_from(self, inner_obj):
-        Contains.delete().where(
-            Contains.outer_obj==self,
-            Contains.inner_obj==inner_obj).execute()
-
     def __str__(self):
         return 'GameObject<{}> authored by {}'.format(self.name, self.author)
 

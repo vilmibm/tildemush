@@ -203,13 +203,18 @@ class GameWorld:
 
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
-        outer_obj.put_into(inner_obj)
+        if inner_obj.contained_by:
+            Contains.delete().where(Contains.inner_obj==inner_obj).execute()
+        Contains.create(outer_obj=outer_obj, inner_obj=inner_obj)
+
         outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
         inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
-        outer_obj.remove_from(inner_obj)
+        Contains.delete().where(
+            Contains.outer_obj==outer_obj,
+            Contains.inner_obj==inner_obj).execute()
         outer_obj.handle_action(cls, inner_obj, 'contain', 'lost')
         inner_obj.handle_action(cls, outer_obj, 'contain', 'freed')
 
