@@ -2,7 +2,8 @@ import types
 from unittest import mock
 from .. import models
 from ..errors import WitchException
-from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision, ScriptEngine
+from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision
+from ..scripting import ScriptEngine
 from ..world import GameWorld
 
 from .tm_test_case import TildemushTestCase
@@ -141,9 +142,6 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         result = self.vil.handle_action(GameWorld, self.snoozy, 'kick', [])
         assert result is None
 
-    def test_witch_header_read(self):
-        assert models.WITCH_HEADER is not None
-
     def test_engine_is_created(self):
         eng = self.snoozy.engine
         assert isinstance(eng, ScriptEngine)
@@ -173,7 +171,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
 
     def test_unhandled_action(self):
         assert None == self.snoozy.handle_action(GameWorld, 'poke', self.vil, [])
-        with mock.patch('tmserver.models.ScriptEngine.noop') as mock_noop:
+        with mock.patch('tmserver.scripting.ScriptEngine.noop') as mock_noop:
             self.snoozy.handle_action(GameWorld, 'poke', self.vil, [])
             assert mock_noop.called
 

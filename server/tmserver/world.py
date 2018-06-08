@@ -15,10 +15,6 @@ class GameWorld:
         cls._sessions[user_account.id] = user_session
 
     @classmethod
-    def is_connected(cls, user_account_id):
-        return user_account_id in cls._sessions
-
-    @classmethod
     def get_session(cls, user_account_id):
         session = cls._sessions.get(user_account_id)
         if session is None:
@@ -61,6 +57,12 @@ class GameWorld:
         }
 
     @classmethod
+    def send_client_update(cls, user_account):
+        if user_account.id in cls._sessions:
+            cls.get_session(user_account.id).handle_client_update(
+                cls.client_state(user_account))
+
+    @classmethod
     def contains_tree(cls, obj):
         """Given an object, this function recursively builds up the tree of
         objects it contains."""
@@ -73,7 +75,6 @@ class GameWorld:
                 'contains': cls.contains_tree(o)
             })
         return out
-
 
     @classmethod
     def dispatch_action(cls, sender_obj, action, action_args):
@@ -161,7 +162,7 @@ class GameWorld:
             msgs.append(o_desc)
 
         for m in msgs:
-            sender_obj.user_account.hears(cls, sender_obj, m)
+            cls.user_hears(sender_obj, sender_obj, m)
 
         # finally, alert everything in the room that it's been looked at. game
         # objects can hook off of this if they want. By default, this does
@@ -203,13 +204,21 @@ class GameWorld:
 
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
-        outer_obj.put_into(inner_obj)
+        if inner_obj.contained_by:
+            Contains.delete().where(Contains.inner_obj==inner_obj).execute()
+        Contains.create(outer_obj=outer_obj, inner_obj=inner_obj)
+
         outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
         inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
-        outer_obj.remove_from(inner_obj)
+        Contains.delete().where(
+            Contains.outer_obj==outer_obj,
+            Contains.inner_obj==inner_obj).execute()
         outer_obj.handle_action(cls, inner_obj, 'contain', 'lost')
         inner_obj.handle_action(cls, outer_obj, 'contain', 'freed')
 
+    @classmethod
+    def user_hears(cls, receiver_obj, sender_obj, msg):
+        cls.get_session(receiver_obj.user_account.id).handle_hears(sender_obj, msg)
