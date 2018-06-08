@@ -129,11 +129,31 @@ class GameMain(urwid.Frame):
         self.here_text = urwid.Pile(self.here_info())
         self.user_text = urwid.Pile(self.user_info())
         self.minimap_text = urwid.Text("MAP", align='center')
+
+        self.minimap_grid = urwid.Pile([
+                self.minimap_text,
+                urwid.Columns([
+                    urwid.LineBox(urwid.Text("A", align='center')),
+                    urwid.LineBox(urwid.Text("B", align='center')),
+                    urwid.LineBox(urwid.Text("C", align='center'))
+                    ]),
+                urwid.Columns([
+                    urwid.LineBox(urwid.Text("D", align='center')),
+                    urwid.LineBox(urwid.Text("E", align='center')),
+                    urwid.LineBox(urwid.Text("F", align='center'))
+                    ]),
+                urwid.Columns([
+                    urwid.LineBox(urwid.Text("G", align='center')),
+                    urwid.LineBox(urwid.Text("H", align='center')),
+                    urwid.LineBox(urwid.Text("I", align='center'))
+                    ])
+            ])
         self.main_body = urwid.Columns([
             self.game_text,
             urwid.Pile([
                 ui.DashedBox(urwid.Filler(self.here_text, valign='top')),
-                ui.DashedBox(urwid.Filler(self.minimap_text, valign='middle')),
+                ui.DashedBox(urwid.Filler(self.minimap_grid, valign='middle')),
+                #ui.DashedBox(urwid.Filler(self.minimap_text, valign='middle')),
                 ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
         ])
