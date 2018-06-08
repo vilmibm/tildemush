@@ -112,7 +112,14 @@ class GameMain(urwid.Frame):
     def __init__(self, client_state, loop):
         self.client_state = client_state
         self.loop = loop
-        self.state = {}
+        self.state = {"user":{
+                    "description": "a shadow",
+                    "display_name": "nothing"},
+                    "room": {
+                        "name": "limbo",
+                        "description": "a liminal space. type /look to open your eyes.",
+                        "contains":[]}
+                    }
 
         # game view stuff
         self.game_walker = urwid.SimpleListWalker([
@@ -121,12 +128,12 @@ class GameMain(urwid.Frame):
         self.game_text = urwid.ListBox(self.game_walker)
         self.here_text = urwid.Pile(self.here_info())
         self.user_text = urwid.Pile(self.user_info())
-        self.minimap_text = urwid.Pile([urwid.Text("MAP")])
+        self.minimap_text = urwid.Text("MAP", align='center')
         self.main_body = urwid.Columns([
             self.game_text,
             urwid.Pile([
                 ui.DashedBox(urwid.Filler(self.here_text, valign='top')),
-                ui.DashedBox(urwid.Filler(self.minimap_text, valign='top')),
+                ui.DashedBox(urwid.Filler(self.minimap_text, valign='middle')),
                 ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
         ])
