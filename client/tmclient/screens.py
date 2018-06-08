@@ -120,7 +120,7 @@ class GameMain(urwid.Frame):
             ])
         self.game_text = urwid.ListBox(self.game_walker)
         self.here_text = urwid.Pile(self.here_info())
-        self.user_text = urwid.Pile([urwid.Text(self.user_info())])
+        self.user_text = urwid.Pile(self.user_info())
         self.minimap_text = urwid.Pile([urwid.Text("MAP")])
         self.main_body = urwid.Columns([
             self.game_text,
@@ -247,19 +247,30 @@ class GameMain(urwid.Frame):
         self.header = self.tab_headers
 
     def update_state(self, raw_state):
-        pass
-        self.game_walker.append(urwid.Text(raw_state))
-        self.game_walker.set_focus(len(self.game_walker)-1)
+        #self.game_walker.append(urwid.Text(raw_state))
+        #self.game_walker.set_focus(len(self.game_walker)-1)
 
         self.state = json.loads(raw_state)
-
         self.here_text.contents.clear()
+        self.user_text.contents.clear()
 
         #TODO: this is kind of hardcoded for the current three-widget
-        #here_info()
-        new_here = zip(self.here_info(), [self.here_text.options(),
-            self.here_text.options(), self.here_text.options()])
-        self.here_text.contents.extend(list(new_here))
+        #here_info() and two-widget user_info()
+
+        self.here_text.contents.extend(list(
+            zip(self.here_info(),
+                [self.here_text.options(),
+                    self.here_text.options(),
+                    self.here_text.options()]
+                )
+            ))
+
+        self.user_text.contents.extend(list(
+            zip(self.user_info(),
+                [self.here_text.options(),
+                    self.here_text.options()]
+                )
+            ))
 
     def here_info(self):
         room = self.state.get("room", {})
@@ -281,9 +292,15 @@ class GameMain(urwid.Frame):
         return lines
 
     def user_info(self):
-        info = '<a {desc} named {name}>'.format(
-                desc=self.state.get("description"),
-                name=self.state.get("name")
-                )
+        user = self.state.get("user", {})
+        inventory = user.get("inventory", [])
+        lines = [
+                urwid.Text("<{desc} named {name}>\n".format(
+                desc=user.get("description"),
+                name=user.get("display_name")), align='center'),
+                urwid.Text("Inventory ({count}): {inv}".format(
+                    count=len(inventory),
+                    inv=", ".join(inventory)))
+                ]
 
-        return info
+        return lines
