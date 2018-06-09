@@ -120,9 +120,10 @@ class GameMain(urwid.Frame):
                         "description": "a liminal space. type /look to open your eyes.",
                         "contains":[]}
                     }
+        self.hotkeys = self.load_hotkeys()
 
         # game view stuff
-        self.game_walker = urwid.SimpleListWalker([
+        self.game_walker = urwid.SimpleFocusListWalker([
             urwid.Text('you have reconstituted into tildemush')
             ])
         self.game_text = urwid.ListBox(self.game_walker)
@@ -212,7 +213,7 @@ class GameMain(urwid.Frame):
                 self.prompt.edit_text = ''
         else:
             self.prompt.keypress((size[0],), key)
-            self.handle_keypress(key)
+            self.handle_keypress(size, key)
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
@@ -229,9 +230,9 @@ class GameMain(urwid.Frame):
         asyncio.ensure_future(self.client_state.send(server_msg), loop=self.loop)
         self.prompt.edit_text = ''
 
-    def handle_keypress(self, key):
+    def handle_keypress(self, size, key):
         # debugging output
-        #self.footer = urwid.Text(key)
+        self.footer = urwid.Text(key)
 
         if key == 'f9':
             # TODO: quit command isn't getting caught by the server for some
@@ -245,6 +246,9 @@ class GameMain(urwid.Frame):
             self.body.focus()
             self.focus_prompt()
             self.refresh_tabs()
+        elif key in self.hotkeys.get("scrolling"):
+            #self.game_text.keypress(size, key)
+            self.scroll(size, self.hotkeys.get("scrolling").get(key))
 
     def refresh_tabs(self):
         headers = []
@@ -279,6 +283,19 @@ class GameMain(urwid.Frame):
                 )
             ))
 
+    def scroll(self, size, direction):
+        top = self.game_text.calculate_visible(size, True)[1][0]
+        if direction == 'up':
+            new_pos = max(top - 5, 0)
+            shift = 5
+        else:
+            shift = -5
+            new_pos = min(top + 5, len(self.game_walker)-1)
+
+        self.game_walker.set_focus(new_pos)
+        self.footer = urwid.Text("scrolling {} to {} from {}".format(direction,
+            new_pos, top))
+
     def here_info(self):
         room = self.state.get("room", {})
         info = "[{}]".format(room.get("name"))
@@ -311,3 +328,19 @@ class GameMain(urwid.Frame):
                 ]
 
         return lines
+
+    def load_hotkeys(self):
+        # TODO: defaults are listed here, but this should also eventually
+        # load user's custom keybindings/overrides
+        hotkeys = {
+                "scrolling": {
+                    "page up": "up",
+                    "page down": "down",
+                    "ctrl n": "up",
+                    "ctrl p": "down",
+                    "up": "up",
+                    "down": "down"
+                    }
+                }
+
+        return hotkeys
