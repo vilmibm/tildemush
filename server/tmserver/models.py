@@ -101,8 +101,10 @@ class ScriptRevision(BaseModel):
 
 class GameObject(BaseModel, ScriptedObjectMixin):
     author = pw.ForeignKeyField(UserAccount)
+    # TODO remove these in favor of data k/v
     name = pw.CharField()
     description = pw.TextField(default='')
+    shortname = pw.CharField(null=False, unique=True)
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
     data = JSONField(default=dict)
