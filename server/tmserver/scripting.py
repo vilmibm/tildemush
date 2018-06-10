@@ -137,7 +137,8 @@ class ScriptedObjectMixin:
             try:
                 tree = hy.read(buff)
                 result = hy.eval(tree,
-                                 namespace={'ScriptEngine': ScriptEngine})
+                                 namespace={'ScriptEngine': ScriptEngine,
+                                            'ensure_obj_data': lambda data: self._ensure_data(data)})
             except EOFError:
                 stop = True
         return result

@@ -4,18 +4,19 @@
 
 #_("TODO what to do with script_name and author_name?")
 #_("TODO eventually decide on cmd-args handling")
+
 (defmacro witch
   [script_name _ author_name data &rest actions]
   (setv se (gensym))
   (setv hp (gensym))
   `(do
      (setv ~se (ScriptEngine))
+     (ensure-obj-data ~(get data 1))
      ~@(map
          (fn [hp] `(.add-handler
                      ~se
                      ~(get hp 1)
                      (fn [receiver sender action-args]
-                       (._ensure-data receiver ~(get data 1))
                        ~@(cut hp 2))) )
          actions)
      ~se))
