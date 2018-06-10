@@ -71,7 +71,7 @@ class UserAccount(BaseModel):
 
 
 @pre_save(sender=UserAccount)
-def pre_save_handler(cls, instance, created):
+def pre_user_save(cls, instance, created):
     if not created:
         instance.updated_at = datetime.utcnow()
 
@@ -80,7 +80,7 @@ def pre_save_handler(cls, instance, created):
 
 
 @post_save(sender=UserAccount)
-def post_save_handler(cls, instance, created):
+def post_user_save(cls, instance, created):
     if created:
         GameObject.create(
             author=instance,
@@ -98,6 +98,10 @@ class Script(BaseModel):
 class ScriptRevision(BaseModel):
     code = pw.TextField()
     script = pw.ForeignKeyField(Script)
+
+@pre_save(sender=ScriptRevision)
+def pre_scriptrev_save(cls, instance, created):
+    instance.code = instance.code.lstrip().rstrip()
 
 
 class GameObject(BaseModel, ScriptedObjectMixin):
