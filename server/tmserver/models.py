@@ -85,6 +85,7 @@ def post_save_handler(cls, instance, created):
         GameObject.create(
             author=instance,
             name=instance.username,
+            shortname=instance.username,
             description='a gaseous cloud',
             is_player_obj=True)
 
