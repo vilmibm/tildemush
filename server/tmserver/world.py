@@ -1,5 +1,10 @@
+import re
+
+from slugify import slugify
+
+from .config import get_db
 from .errors import ClientException
-from .models import Contains, GameObject, Contains, Script
+from .models import Contains, GameObject, Contains, Script, ScriptRevision
 
 
 # questions at the top of my head:
@@ -71,7 +76,8 @@ from .models import Contains, GameObject, Contains, Script
 # *default. tomorrow, sketch out how script forking will work, since i want
 # *scripts to be one-to-one with objects but also re-usable.
 
-
+CREATE_TYPES = {'room', 'exit', 'item'}
+CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
 
 
 class GameWorld:
@@ -161,6 +167,8 @@ class GameWorld:
             cls.handle_whisper(sender_obj, action_args)
         if action == 'look':
             cls.handle_look(sender_obj, action_args)
+        if action == 'create':
+            cls.handle_create(sender_obj, action_args)
 
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
@@ -181,6 +189,105 @@ class GameWorld:
                                               .distinct(GameObject.id))
         return all_containing_objects.union(all_contained_objects)
 
+
+
+    @classmethod
+    def handle_create(cls, sender_obj, action_args):
+        """When a player runs /create, our goal is to create a default version
+        of whatever thing they want. If they want to customize a thing further,
+        they can run /edit on any object for which they are the author.
+
+        For now, the types of things that can be created: room, exit, item.
+
+        All three of these are just GameObjects. What is different are the
+        initial behaviors attached to the objects. It's at this point
+        theoretically possible to /create an item and then script it into an
+        exit and I don't think that's a problem. It would just be super tedious
+        to do that every time one just wants to make a room.
+
+        For now, all pretty names must be in double quotes. In other words, a call to create should look like:
+
+        /create room "Dank Hallway" The musty carpet here seems to ooze as you walk across it.
+
+        # TODO having description be an argument is stupid, maybe?; you can't
+        # make anything long form. I think the first change this needs is just
+        # dropping description. Want to test what I've just written first,
+        # though. I guess for simple things it's handy to not have to drop into WITCH...
+        """
+
+        match = CREATE_RE.fullmatch(action_args)
+        if match is None:
+            raise ClientException(
+                'malformed call to /create. the syntax is /create object-type "pretty name" [additional arguments]')
+
+        obj_type, pretty_name, additional_args = match.groups()
+        if obj_type not in CREATE_TYPES:
+            raise ClientException(
+                'Unknown type for /create. Try one of {}'.format(CREATE_TYPES))
+
+        create_fn = None
+        if obj_type == 'item':
+            create_fn = cls.create_item
+        elif obj_type == 'room':
+            create_fn = cls.create_room
+        elif obj_type == 'exit':
+            create_fn = cls.create_exit
+
+        # TODO see if repeatedly calling get_db is bad
+        with get_db().atomic():
+            game_obj = create_fn(sender_obj, pretty_name, additional_args)
+
+        cls.user_hears(sender_obj, sender_obj,
+                       'You breathed light into a whole new {}. Its true name is {}'.format(
+                           obj_type,
+                           game_obj.shortname))
+
+    @classmethod
+    def derive_shortname(sender_obj, *strings):
+        slugged = [slugify(s) for s in strings]
+        shortname = slugged.join('-')
+        if GameObject.get_or_none(GameObject.shortname==shortname):
+            obj_count = GameObject.select().where(GameObject.author==sender_obj.user_account).count()
+            shortname += '-' + str(obj_count)
+        return shortname
+
+    @classmethod
+    def create_item(cls, sender_obj, pretty_name, additional_args):
+        # TODO I think the splitting out of script vs. scriptrevision vs.
+        # gameobject ought to be cleaned up...for now to reduce the number of
+        # things in flight i'm going with it, but it was originally inteded to
+        # have scripts exist outside of GameObject rows.
+        short_name = cls.derive_shortname(sender_obj, pretty_name, sender_obj.user_account.username)
+        script = Script.create(
+            author=sender_obj.user_account,
+            name=shortname)
+        # TODO the redundancy of pretty_name and description is due to those
+        # things not yet being moved to a gameobject's key value data yet.
+        # clean that up.
+        script_code = scripting.get_template('item', pretty_name, additional_args)
+        sciptrev = ScriptRevision.create(
+            script=script,
+            code=script_code)
+        item = GameObject.create(
+            author=sender_obj.user_account,
+            name=pretty_name,
+            description=additional_args,
+            shortname=shortname,
+            script_revision=scriptrev)
+
+        cls.put_into(sender_obj, item)
+
+        return item
+
+    @classmethod
+    def create_room(cls, sender_obj, pretty_name, additional_args):
+        # TODO
+        pass
+
+    @classmethod
+    def create_exit(cls, sender_obj, pretty_name, additional_args):
+        # TODO
+        pass
 
     @classmethod
     def handle_announce(cls, sender_obj, action_args):
