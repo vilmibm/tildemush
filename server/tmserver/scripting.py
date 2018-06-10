@@ -6,6 +6,16 @@ import hy
 from .errors import ClientException, WitchException
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
+SCRIPT_TEMPLATES = {
+    'item': '''
+    (witch "{pretty_name}" by "TODO fix macro to not need author"
+      (has {"name" "{pretty_name}"
+            "description" "{description}"}))
+    '''}
+
+def get_template(obj_type, pretty_name, description="A trinket"):
+    return SCRIPT_TEMPLATES[obj_type].format(pretty_name=pretty_name,
+                                             description=description)
 
 class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
