@@ -1,6 +1,16 @@
 from .errors import ClientException
 from .models import Contains, GameObject, Contains, Script
 
+
+# questions at the top of my head:
+
+# - should name and description be moved to a GameObject's k/v data? and out of the sql schema?
+# - should all objects have a script? should scripts exist outside of the objects they describe?
+#   - in an unorphaned script world, how are scripts shared?
+# - should i start off today with the /create command? that will force me to do
+#   script refactoring and name/desc/shortname stuff. I'm concerned it is too
+#   big a of a thing to start with, but if it is, i can back off.
+
 # TODO exits
 #
 # ## Aside: shortnames
