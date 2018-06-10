@@ -156,8 +156,9 @@ async def test_witch_script(event_loop, mock_logger, client):
     snoozy = GameObject.create(
         author=vil,
         name='snoozy',
+        shortname='snoozy',
         script_revision=script_rev)
-    foyer = GameObject.get(GameObject.name=='Foyer')
+    foyer = GameObject.get(GameObject.shortname=='foyer')
     GameWorld.put_into(foyer, snoozy)
     for _ in range(0, 4):
         await client.send('COMMAND pet')
@@ -219,13 +220,16 @@ async def test_look(event_loop, mock_logger, client):
     cigar = GameObject.create(
         author=vil,
         name='cigar',
+        shortname='cigar',
         description='a fancy cigar ready for lighting')
     phone = GameObject.create(
         author=vil,
-        name='smartphone')
+        name='smartphone',
+        shortname='smartphone')
     app = GameObject.create(
         author=vil,
         name='Kwam',
+        shortname='kwam',
         description='A smartphone application for KWAM')
     foyer = GameObject.get(GameObject.name=='Foyer')
     GameWorld.put_into(foyer, phone)
@@ -255,41 +259,51 @@ async def test_client_state(event_loop, mock_logger, client):
 
     room = GameObject.create(
         name='ten forward',
+        shortname='ten-forward',
         description='the bar lounge of the starship enterprise.',
         author=god)
     quadchess = GameObject.create(
+        shortname='quadchess',
         name='quadchess',
         description='a chess game with four decks',
         author=god)
     chess_piece = GameObject.create(
         name='chess piece',
+        shortname='chess-piece',
         description='a chess piece. Looks like a bishop.',
         author=god)
     drink = GameObject.create(
         name='weird drink',
+        shortname='weird-drink',
         description='an in-house invention of Guinan. It is purple and fizzes ominously.',
         author=god)
     tricorder = GameObject.create(
         name='tricorder',
+        shortname='tricorder',
         description='looks like someone left their tricorder here.',
         author=god)
     medical_app = GameObject.create(
         name='medical program',
+        shortname='medical-program',
         description='you can use this to scan or call up data about a patient.',
         author=god)
     patient_file = GameObject.create(
         name='patient file',
+        shortname='patient-file',
         description='a scan of Lt Barclay',
         author=god)
     phase_analyzer_app = GameObject.create(
         name='phase analyzer program',
+        shortname='phase-analyzer-program',
         description='you can use this to scan for phase shift anomalies',
         author=god)
     music_app = GameObject.create(
         name='media app',
+        shortname='media-app',
         description='this program turns your tricorder into a jukebox',
         author=god)
     klingon_opera = GameObject.create(
+        shortname='klingon-opera-music',
         name='klingon opera music',
         description='a recording of a klingon opera',
         author=god)
