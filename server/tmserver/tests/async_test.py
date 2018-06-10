@@ -6,7 +6,6 @@ from unittest import mock
 import pytest
 import websockets
 
-from .tm_test_case import TildemushTestCase
 from ..core import GameServer
 from ..migrations import reset_db
 from ..models import UserAccount, Script, GameObject, ScriptRevision
@@ -372,4 +371,43 @@ async def test_client_state(event_loop, mock_logger, client):
         ],
         'scripts': []
     }
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_create_item(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+
+    msg = await client.recv()
+    assert msg == 'You breathed light into a whole new item. Its true name is a-fresh-cigar-vilmibm'
+
+    # create a dupe
+    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+
+    msg = await client.recv()
+    assert msg == 'You breathed light into a whole new item. Its true name is a-fresh-cigar-vilmibm-2'
+
+    cigar = GameObject.get_or_none(GameObject.shortname=='a-fresh-cigar-vilmibm')
+    dupe = GameObject.get_or_none(GameObject.shortname=='a-fresh-cigar-vilmibm-2')
+
+    assert cigar is not None
+    assert dupe is not None
+
+    # TODO make ensure-data not lazy
+    #assert 'A fresh cigar' == cigar.get_data('name')
+    #assert 'A fresh cigar' == dupe.get_data('name')
+    #assert 'An untouched black and mild with a wood tip' == cigar.get_data('description')
+    #assert 'An untouched black and mild with a wood tip' == dupe.get_data('description')
+
     await client.close()

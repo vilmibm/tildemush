@@ -5,6 +5,7 @@ from slugify import slugify
 from .config import get_db
 from .errors import ClientException
 from .models import Contains, GameObject, Contains, Script, ScriptRevision
+from .scripting import get_template
 
 
 # questions at the top of my head:
@@ -243,9 +244,9 @@ class GameWorld:
                            game_obj.shortname))
 
     @classmethod
-    def derive_shortname(sender_obj, *strings):
+    def derive_shortname(cls, sender_obj, *strings):
         slugged = [slugify(s) for s in strings]
-        shortname = slugged.join('-')
+        shortname = '-'.join(slugged)
         if GameObject.get_or_none(GameObject.shortname==shortname):
             obj_count = GameObject.select().where(GameObject.author==sender_obj.user_account).count()
             shortname += '-' + str(obj_count)
@@ -257,15 +258,15 @@ class GameWorld:
         # gameobject ought to be cleaned up...for now to reduce the number of
         # things in flight i'm going with it, but it was originally inteded to
         # have scripts exist outside of GameObject rows.
-        short_name = cls.derive_shortname(sender_obj, pretty_name, sender_obj.user_account.username)
+        shortname = cls.derive_shortname(sender_obj, pretty_name, sender_obj.user_account.username)
         script = Script.create(
             author=sender_obj.user_account,
             name=shortname)
         # TODO the redundancy of pretty_name and description is due to those
         # things not yet being moved to a gameobject's key value data yet.
         # clean that up.
-        script_code = scripting.get_template('item', pretty_name, additional_args)
-        sciptrev = ScriptRevision.create(
+        script_code = get_template('item', pretty_name, additional_args)
+        scriptrev = ScriptRevision.create(
             script=script,
             code=script_code)
         item = GameObject.create(

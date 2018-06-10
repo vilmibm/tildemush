@@ -6,11 +6,15 @@ import hy
 from .errors import ClientException, WitchException
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
+
+# Note an awful thing here; since we call .format on the script templates, we
+# have to escape the WITCH macro's {}. {{}} is not the Hy that we want, but we
+# need it in the templates.
 SCRIPT_TEMPLATES = {
     'item': '''
     (witch "{pretty_name}" by "TODO fix macro to not need author"
-      (has {"name" "{pretty_name}"
-            "description" "{description}"}))
+      (has {{"name" "{pretty_name}"
+            "description" "{description}"}}))
     '''}
 
 def get_template(obj_type, pretty_name, description="A trinket"):
