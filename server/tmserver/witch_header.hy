@@ -11,7 +11,6 @@
   (setv hp (gensym))
   `(do
      (setv ~se (ScriptEngine))
-     (ensure-obj-data ~(get data 1))
      ~@(map
          (fn [hp] `(.add-handler
                      ~se
@@ -19,6 +18,7 @@
                      (fn [receiver sender action-args]
                        ~@(cut hp 2))) )
          actions)
+     (ensure-obj-data ~(get data 1))
      ~se))
 
 
