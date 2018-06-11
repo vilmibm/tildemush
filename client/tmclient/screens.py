@@ -247,8 +247,9 @@ class GameMain(urwid.Frame):
             self.focus_prompt()
             self.refresh_tabs()
         elif key in self.hotkeys.get("scrolling"):
-            #self.game_text.keypress(size, key)
-            self.scroll(size, self.hotkeys.get("scrolling").get(key))
+            if self.body == self.main_tab:
+                self.game_text.keypress(size, key)
+                #self.scroll(size, self.hotkeys.get("scrolling").get(key))
 
     def refresh_tabs(self):
         headers = []
@@ -284,7 +285,9 @@ class GameMain(urwid.Frame):
             ))
 
     def scroll(self, size, direction):
-        top = self.game_text.calculate_visible(size, True)[1][0]
+        # this function doesn't really work and isn't being used.
+        height = size[1]
+        top = max(0, self.game_walker.get_focus()[1]-height)
         if direction == 'up':
             new_pos = max(top - 5, 0)
             shift = 5
@@ -293,8 +296,8 @@ class GameMain(urwid.Frame):
             new_pos = min(top + 5, len(self.game_walker)-1)
 
         self.game_walker.set_focus(new_pos)
-        self.footer = urwid.Text("scrolling {} to {} from {}".format(direction,
-            new_pos, top))
+        self.footer = urwid.Text("scrolling {} to {} from {} ({})".format(direction,
+            new_pos, top, size))
 
     def here_info(self):
         room = self.state.get("room", {})
@@ -336,8 +339,6 @@ class GameMain(urwid.Frame):
                 "scrolling": {
                     "page up": "up",
                     "page down": "down",
-                    "ctrl n": "up",
-                    "ctrl p": "down",
                     "up": "up",
                     "down": "down"
                     }
