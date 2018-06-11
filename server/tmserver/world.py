@@ -215,16 +215,7 @@ class GameWorld:
         # dropping description. Want to test what I've just written first,
         # though. I guess for simple things it's handy to not have to drop into WITCH...
         """
-
-        match = CREATE_RE.fullmatch(action_args)
-        if match is None:
-            raise ClientException(
-                'malformed call to /create. the syntax is /create object-type "pretty name" [additional arguments]')
-
-        obj_type, pretty_name, additional_args = match.groups()
-        if obj_type not in CREATE_TYPES:
-            raise ClientException(
-                'Unknown type for /create. Try one of {}'.format(CREATE_TYPES))
+        obj_type, pretty_name, additional_args = cls.parse_create(action_args)
 
         create_fn = None
         if obj_type == 'item':
@@ -244,8 +235,22 @@ class GameWorld:
                            game_obj.shortname))
 
     @classmethod
+    def parse_create(cls, action_args):
+        match = CREATE_RE.fullmatch(action_args)
+        if match is None:
+            raise ClientException(
+                'malformed call to /create. the syntax is /create object-type "pretty name" [additional arguments]')
+
+        obj_type, pretty_name, additional_args = match.groups()
+        if obj_type not in CREATE_TYPES:
+            raise ClientException(
+                'Unknown type for /create. Try one of {}'.format(CREATE_TYPES))
+
+        return obj_type, pretty_name, additional_args
+
+    @classmethod
     def derive_shortname(cls, sender_obj, *strings):
-        slugged = [slugify(s) for s in strings]
+        slugged = [slugify(s) for s in strings] + [sender_obj.user_account.username]
         shortname = '-'.join(slugged)
         if GameObject.get_or_none(GameObject.shortname==shortname):
             obj_count = GameObject.select().where(GameObject.author==sender_obj.user_account).count()
