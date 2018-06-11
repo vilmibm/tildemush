@@ -263,7 +263,7 @@ class GameWorld:
         # gameobject ought to be cleaned up...for now to reduce the number of
         # things in flight i'm going with it, but it was originally inteded to
         # have scripts exist outside of GameObject rows.
-        shortname = cls.derive_shortname(sender_obj, pretty_name, sender_obj.user_account.username)
+        shortname = cls.derive_shortname(sender_obj, pretty_name)
         script = Script.create(
             author=sender_obj.user_account,
             name=shortname)

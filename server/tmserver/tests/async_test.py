@@ -404,7 +404,6 @@ async def test_create_item(event_loop, mock_logger, client):
     assert cigar is not None
     assert dupe is not None
 
-    # TODO make ensure-data not lazy
     assert 'A fresh cigar' == cigar.get_data('name')
     assert 'A fresh cigar' == dupe.get_data('name')
     assert 'An untouched black and mild with a wood tip' == cigar.get_data('description')
