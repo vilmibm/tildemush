@@ -99,6 +99,8 @@ class GameWorld:
             cls.handle_look(sender_obj, action_args)
         if action == 'create':
             cls.handle_create(sender_obj, action_args)
+        if action == 'move':
+            cls.handle_move(sender_obj, action_args)
 
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
@@ -313,6 +315,18 @@ class GameWorld:
 
         for o in cls.area_of_effect(sender_obj):
             o.handle_action(cls, sender_obj, 'look', action_args)
+
+    @classmethod
+    def handle_move(cls, sender_obj, action_args):
+        # We need to move sender_obj to whatever room is specified by the
+        # action_args string. Right now actions_args has to exactly match the
+        # shortname of a room in the database. In the future we might need
+        # fuzzy matching but for now I think moves are largely programmatic?
+        room = GameObject.get_or_none(
+            GameObject.shortname==action_args,
+            GameObject.is_sanctum==False)
+        cls.put_into(room, sender_obj)
+        cls.user_hears(sender_obj, sender_obj, 'You materalize in a new place!')
 
     @classmethod
     def area_of_effect(cls, sender_obj):
