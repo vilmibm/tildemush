@@ -101,6 +101,10 @@ class GameWorld:
             cls.handle_create(sender_obj, action_args)
         if action == 'move':
             cls.handle_move(sender_obj, action_args)
+            return
+        if action == 'go':
+            cls.handle_go(sender_obj, action_args)
+            return
 
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
@@ -352,6 +356,23 @@ class GameWorld:
             GameObject.is_sanctum==False)
         cls.put_into(room, sender_obj)
         cls.user_hears(sender_obj, sender_obj, 'You materalize in a new place!')
+
+    @classmethod
+    def handle_go(cls, sender_obj, action_args):
+        # Originally we discussed having exit items be found via their
+        # shortname; ie, north-a-door-vilmibm. I realized this is terrifying
+        # since any other user could create a drop a trap door named
+        # north-something. The resolution of the door would become undefined.
+        # Thus, while it pains me and I'm hoping for an alternative, I'm going
+        # to add some structure to rooms. Namely, their kv data is going to
+        # store a mapping of direction -> room shortname. This data can only be
+        # changed (TODO: actually ensure this is true) by the author of the
+        # room.
+        current_room = sender_obj.contained_by
+        exit_obj = current_room.find_exit(action_args)
+        if exit_obj is None:
+            cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
+        exit_obj.handle_action(cls, sender_obj, 'touch', '')
 
     @classmethod
     def area_of_effect(cls, sender_obj):
