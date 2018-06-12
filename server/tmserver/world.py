@@ -146,6 +146,9 @@ class GameWorld:
         """
         obj_type, pretty_name, additional_args = cls.parse_create(action_args)
 
+        # TODO these can all be collapsed into
+        # create_scripted_object(owner_obj, obj_type, pretty_name, addtl_args).
+        # The branches here can decide where to put an object.
         create_fn = None
         if obj_type == 'item':
             create_fn = cls.create_item
@@ -186,12 +189,13 @@ class GameWorld:
             shortname += '-' + str(obj_count)
         return shortname
 
+    # TODO I think the splitting out of script vs. scriptrevision vs.
+    # gameobject ought to be cleaned up...for now to reduce the number of
+    # things in flight i'm going with it, but it was originally inteded to
+    # have scripts exist outside of GameObject rows.
+
     @classmethod
     def create_item(cls, sender_obj, pretty_name, additional_args):
-        # TODO I think the splitting out of script vs. scriptrevision vs.
-        # gameobject ought to be cleaned up...for now to reduce the number of
-        # things in flight i'm going with it, but it was originally inteded to
-        # have scripts exist outside of GameObject rows.
         shortname = cls.derive_shortname(sender_obj, pretty_name)
         script = Script.create(
             author=sender_obj.user_account,
@@ -214,6 +218,7 @@ class GameWorld:
 
         return item
 
+    # TODO rename sender_obj -> owner in this and above method
     @classmethod
     def create_room(cls, sender_obj, pretty_name, additional_args):
         # This is going to end up nearly a clone of create_item, but where the
