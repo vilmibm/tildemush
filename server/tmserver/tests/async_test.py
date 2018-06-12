@@ -418,14 +418,14 @@ async def test_create_room(event_loop, mock_logger, client):
     await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
+    assert msg.startswith('You breathed light into a whole new room')
+    msg = await client.recv()
 
     sanctum = GameObject.get(
         GameObject.author==vil,
         GameObject.is_sanctum==True
     )
     GameWorld.put_into(sanctum, vil.player_obj)
-    msg = await client.recv()
-    assert msg.startswith('You breathed light into a whole new room')
     msg = await client.recv()
     assert msg.startswith('STATE')
     # TODO eventually when we have transitive commands, touch the actual right
@@ -437,3 +437,35 @@ async def test_create_room(event_loop, mock_logger, client):
     assert msg.startswith('STATE')
     msg = await client.recv()
     assert msg.startswith('You materialize')
+
+@pytest.mark.asyncio
+async def test_create_oneway_exit(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    sanctum = GameObject.get(
+        GameObject.author==vil,
+        GameObject.is_sanctum==True
+    )
+    GameWorld.put_into(sanctum, vil.player_obj)
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    await client.send('COMMAND create exit "Rusty Door" east foyer A rusted, metal door')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('You breathed light into a whole new exit')
+    await client.send('COMMAND go east')
+    # TODO hanging here
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg.startswith('You materialize')
+
+    foyer = GameObject.get(GameObject.shortname=='foyer')
+    assert vil.player_obj in foyer.contains
+
+#@pytest.mark.asyncio
+#async def test_create_twoway_exit(event_loop, mock_logger, client):
+#    pass

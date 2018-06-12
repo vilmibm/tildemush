@@ -244,7 +244,7 @@ class GameWorld:
             GameObject.shortname == target_room_name)
         if target_room is None:
             raise ClientException('Could not find a room with the ID {}'.format(target_room_name))
-        if not owner_obj.user_account.is_god:
+        if not owner_obj.user_account.god:
             if current_room.author != owner_obj.user_account:
                 raise ClientException('In order to create an exit, run this command from a room you own.')
 
@@ -253,25 +253,29 @@ class GameWorld:
         here_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
             'pretty_name': pretty_name,
             'description': description,
-            target_room_name: target_room.shortname})
+            'target_room_name': target_room.shortname})
 
         with get_db().atomic():
-            exits = current_room.get_data('exits', {})
+            exits = current_room.get_data('exits')
+            if exits is None:
+                exits = {}
             exits[direction] = target_room.shortname
             current_room.set_data('exits', exits)
             cls.put_into(current_room, here_exit)
 
 
-        if owner_obj.user_account.is_god or target_room.author == owner_obj.user_account:
+        if owner_obj.user_account.god or target_room.author == owner_obj.user_account:
             # make the there_exit
             shortname = cls.derive_shortname(owner_obj, pretty_name, 'reverse')
             there_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
                 'pretty_name': pretty_name,
                 'description': description,
-                target_room_name: current_room.shortname})
+                'target_room_name': current_room.shortname})
             rev_dir = REVERSE_DIRS[direction]
             with get_db().atomic():
-                exits = target_room.get_data('exits', {})
+                exits = target_room.get_data('exits')
+                if exits is None:
+                    exits = {}
                 exits[rev_dir] = current_room.shortname
                 target_room.set_data('exits', exits)
                 cls.put_into(target_room, there_exit)
@@ -374,6 +378,11 @@ class GameWorld:
         # store a mapping of direction -> room shortname. This data can only be
         # changed (TODO: actually ensure this is true) by the author of the
         # room.
+        import ipdb; ipdb.set_trace()
+        # TODO this is all broken. find_exit should return the actual exit obj
+        # but it's returning the place the exit goes. look at this with fresh
+        # eyes and fix that code path, i think a fair bit is broken with how
+        # exits are being stored.
         current_room = sender_obj.contained_by
         exit_obj = current_room.find_exit(action_args)
         if exit_obj is None:
