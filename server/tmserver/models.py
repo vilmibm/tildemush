@@ -82,12 +82,19 @@ def pre_user_save(cls, instance, created):
 @post_save(sender=UserAccount)
 def post_user_save(cls, instance, created):
     if created:
+        # TODO set the name/desc in kv data for these objects
         GameObject.create(
             author=instance,
             name=instance.username,
             shortname=instance.username,
             description='a gaseous cloud',
             is_player_obj=True)
+        GameObject.create(
+            author=instance,
+            name="{username}'s Sanctum".format(instance.username),
+            description="This is your private space. Only you (and gods) can enter here. Any new rooms you create will be attached to this hub. You are free to store items here for safekeeping that you don't want to carry around.",
+            shortname='{}-sanctum'.format(instance.username),
+            is_sanctum=True)
 
 
 class Script(BaseModel):
@@ -112,6 +119,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
     shortname = pw.CharField(null=False, unique=True)
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
+    is_sanctum = pw.BooleanField(default=False)
     data = JSONField(default=dict)
 
     @property
