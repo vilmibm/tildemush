@@ -183,11 +183,11 @@ class GameWorld:
         return obj_type, pretty_name, additional_args
 
     @classmethod
-    def derive_shortname(cls, sender_obj, *strings):
-        slugged = [slugify(s) for s in strings] + [sender_obj.user_account.username]
+    def derive_shortname(cls, owner_obj, *strings):
+        slugged = [slugify(s) for s in strings] + [owner_obj.user_account.username]
         shortname = '-'.join(slugged)
         if GameObject.get_or_none(GameObject.shortname==shortname):
-            obj_count = GameObject.select().where(GameObject.author==sender_obj.user_account).count()
+            obj_count = GameObject.select().where(GameObject.author==owner_obj.user_account).count()
             shortname += '-' + str(obj_count)
         return shortname
 
@@ -197,10 +197,10 @@ class GameWorld:
     # have scripts exist outside of GameObject rows.
 
     @classmethod
-    def create_item(cls, sender_obj, pretty_name, additional_args):
-        shortname = cls.derive_shortname(sender_obj, pretty_name)
+    def create_item(cls, owner_obj, pretty_name, additional_args):
+        shortname = cls.derive_shortname(owner_obj, pretty_name)
         script = Script.create(
-            author=sender_obj.user_account,
+            author=owner_obj.user_account,
             name=shortname)
         # TODO the redundancy of pretty_name and description is due to those
         # things not yet being moved to a gameobject's key value data yet.
@@ -210,22 +210,21 @@ class GameWorld:
             script=script,
             code=script_code)
         item = GameObject.create(
-            author=sender_obj.user_account,
+            author=owner_obj.user_account,
             name=pretty_name,
             description=additional_args,
             shortname=shortname,
             script_revision=scriptrev)
 
-        cls.put_into(sender_obj, item)
+        cls.put_into(owner_obj, item)
 
         return item
 
-    # TODO rename sender_obj -> owner in this and above method
     @classmethod
-    def create_room(cls, sender_obj, pretty_name, additional_args):
-        shortname = cls.derive_shortname(sender_obj, pretty_name)
+    def create_room(cls, owner_obj, pretty_name, additional_args):
+        shortname = cls.derive_shortname(owner_obj, pretty_name)
         script = Script.create(
-            author=sender_obj.user_account,
+            author=owner_obj.user_account,
             name=shortname)
         # TODO the redundancy of pretty_name and description is due to those
         # things not yet being moved to a gameobject's key value data yet.
@@ -235,7 +234,7 @@ class GameWorld:
             script=script,
             code=script_code)
         room = GameObject.create(
-            author=sender_obj.user_account,
+            author=owner_obj.user_account,
             name=pretty_name,
             description=additional_args,
             shortname=shortname,
@@ -243,9 +242,9 @@ class GameWorld:
 
         # TODO hub creation
         sanctum = GameObject.get(
-            GameObject.author==sender_obj.user_account,
+            GameObject.author==owner_obj.user_account,
             GameObject.is_sanctum==True)
-        portkey = cls.create_portkey(sender_obj, room)
+        portkey = cls.create_portkey(owner_obj, room)
         cls.put_into(sanctum, portkey)
 
         return room
