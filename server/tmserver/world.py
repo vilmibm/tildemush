@@ -6,8 +6,17 @@ from .config import get_db
 from .errors import ClientException
 from .models import Contains, GameObject, Contains, Script, ScriptRevision
 from .scripting import get_template
+DIRECTIONS = {'north', 'south', 'west', 'east', 'above', 'below'}
 CREATE_TYPES = {'room', 'exit', 'item'}
 CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
+CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*+)$')
+REVERSE_DIRS = {
+    'north': 'south',
+    'south': 'north',
+    'east': 'west',
+    'west': 'east',
+    'above': 'below',
+    'below': 'above'}
 
 
 class GameWorld:
@@ -254,9 +263,74 @@ class GameWorld:
         return room
 
     @classmethod
-    def create_exit(cls, owner, pretty_name, additional_args):
-        # TODO
-        pass
+    def create_exit(cls, owner_obj, pretty_name, additional_args):
+        match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
+        if not match:
+            raise ClientException('To make an exit, try /create exit A Door north foyer A rusted, metal door')
+        direction, target_room_name, description = match.groups()
+        if direction not in DIRECTIONS:
+            raise ClientException('Try one of these directions: {}'.format(DIRECTIONS))
+
+        current_room = owner_obj.contained_by
+        target_room = GameObject.get_or_none(
+            GameObject.shortname == target_room_name)
+        if target_room is None:
+            raise ClientException('Could not find a room with the ID {}'.format(target_room_name))
+        if not owner_obj.user_account.is_god:
+            if current_room.author != owner_obj.user_account:
+                raise ClientException('In order to create an exit, run this command from a room you own.')
+
+        # make the here_exit
+        shortname = cls.derive_shortname(owner_obj, pretty_name)
+        script = Script.create(
+            author=owner_obj.user_account,
+            name=shortname)
+        script_code = get_template('exit', pretty_name, description).format(
+            target_room_name=target_room.shortname)
+        scriptrev = ScriptRevision.create(
+            script=script,
+            code=script_code)
+        here_exit = GameObject.create(
+            author=owner_obj.user_account,
+            # TODO deprecating name/desc
+            name=pretty_name,
+            description=description,
+            shortname=shortname,
+            script_revision=scriptrev)
+
+        with get_db().atomic():
+            exits = current_room.get_data('exits', {})
+            exits[direction] = target_room.shortname
+            current_room.set_data('exits', exits)
+            cls.put_into(current_room, here_exit)
+
+
+        if owner_obj.user_account.is_god or target_room.author == owner_obj.user_account:
+            # make the there_exit
+            shortname = cls.derive_shortname(owner_obj, pretty_name, 'reverse')
+            script = Script.create(
+                author=owner_obj.user_account,
+                name=shortname)
+            script_code = get_template('exit', pretty_name, description).format(
+                target_room_name=current_room.shortname)
+            scriptrev = ScriptRevision.create(
+                script=script,
+                code=script_code)
+            there_exit = GameObject.create(
+                author=owner_obj.user_account,
+                # TODO deprecating name/desc
+                name=pretty_name,
+                description=description,
+                shortname=shortname,
+                script_revision=scriptrev)
+            rev_dir = REVERSE_DIRS[direction]
+            with get_db().atomic():
+                exits = target_room.get_data('exits', {})
+                exits[rev_dir] = current_room.shortname
+                target_room.set_data('exits', exits)
+                cls.put_into(target_room, there_exit)
+
+        return here_exit
 
     @classmethod
     def create_portkey(cls, owner_obj, target, pretty_name=None):
