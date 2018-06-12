@@ -9,7 +9,7 @@ from .scripting import get_template
 DIRECTIONS = {'north', 'south', 'west', 'east', 'above', 'below'}
 CREATE_TYPES = {'room', 'exit', 'item'}
 CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
-CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*+)$')
+CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*)$')
 REVERSE_DIRS = {
     'north': 'south',
     'south': 'north',
