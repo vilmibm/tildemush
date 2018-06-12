@@ -19,7 +19,7 @@ class DeriveShortnameTest(TildemushTestCase):
         # we end up with 1. Nothing's really wrong, but it's an accidental test
         # of the dupe case.
         result = GameWorld.derive_shortname(self.vil.player_obj)
-        assert result == 'vilmibm-1'
+        assert result == 'vilmibm-2'
 
     def test_one_string(self):
         result = GameWorld.derive_shortname(self.vil.player_obj, 'foot')
@@ -40,7 +40,7 @@ class DeriveShortnameTest(TildemushTestCase):
                 name='whatever',
                 shortname='foot-vilmibm-{}'.format(x))
         result = GameWorld.derive_shortname(self.vil.player_obj, 'foot')
-        assert result == 'foot-vilmibm-12'
+        assert result == 'foot-vilmibm-13'
 
 class ParseCreateCommandTest(TildemushTestCase):
     def setUp(self):

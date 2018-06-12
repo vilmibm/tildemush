@@ -396,10 +396,10 @@ async def test_create_item(event_loop, mock_logger, client):
     assert msg.startswith('STATE')
 
     msg = await client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is a-fresh-cigar-vilmibm-2'
+    assert msg == 'You breathed light into a whole new item. Its true name is a-fresh-cigar-vilmibm-3'
 
     cigar = GameObject.get_or_none(GameObject.shortname=='a-fresh-cigar-vilmibm')
-    dupe = GameObject.get_or_none(GameObject.shortname=='a-fresh-cigar-vilmibm-2')
+    dupe = GameObject.get_or_none(GameObject.shortname=='a-fresh-cigar-vilmibm-3')
 
     assert cigar is not None
     assert dupe is not None

@@ -99,7 +99,7 @@ def post_user_save(cls, instance, created):
             is_player_obj=True)
         GameObject.create(
             author=instance,
-            name="{username}'s Sanctum".format(instance.username),
+            name="{}'s Sanctum".format(instance.username),
             description="This is your private space. Only you (and gods) can enter here. Any new rooms you create will be attached to this hub. You are free to store items here for safekeeping that you don't want to carry around.",
             shortname='{}-sanctum'.format(instance.username),
             is_sanctum=True)
