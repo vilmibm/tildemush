@@ -21,6 +21,14 @@ SCRIPT_TEMPLATES = {
       (has {{"name" "{pretty_name}"
             "description" "{description}"}}))
     ''',
+    'exit': '''
+    (witch "{pretty_name}" by "TODO fix macro to not need author"
+      (has {{"name" "{pretty_name}"
+            "description" "{description}"
+            "target" "{target_room_name}"}})
+      (hears "touch"
+        (tell-sender "move" (get-data "target"))))
+    ''',
     'portkey': '''
     (witch "{pretty_name}" by "TODO fix macro to not need author"
       (has {{"name" "{pretty_name}"
