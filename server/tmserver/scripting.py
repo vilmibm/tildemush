@@ -15,9 +15,23 @@ SCRIPT_TEMPLATES = {
     (witch "{pretty_name}" by "TODO fix macro to not need author"
       (has {{"name" "{pretty_name}"
             "description" "{description}"}}))
+    ''',
+    'room': '''
+    (witch "{pretty_name}" by "TODO fix macro to not need author"
+      (has {{"name" "{pretty_name}"
+            "description" "{description}"}}))
+    ''',
+    'portkey': '''
+    (witch "{pretty_name}" by "TODO fix macro to not need author"
+      (has {{"name" "{pretty_name}"
+            "description" "{description}"
+            "target" "{target_room_name}"}})
+      (hears "touch"
+        (tell-sender "move" (get-data "target"))))
     '''}
 
 def get_template(obj_type, pretty_name, description="A trinket"):
+    # TODO accept an arbitrary dict for formatting
     return SCRIPT_TEMPLATES[obj_type].format(pretty_name=pretty_name,
                                              description=description)
 
