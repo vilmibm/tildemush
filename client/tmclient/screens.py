@@ -112,23 +112,28 @@ class GameMain(urwid.Frame):
     def __init__(self, client_state, loop):
         self.client_state = client_state
         self.loop = loop
-        # TODO: get room and user info passed in on init?
-        self.room = {}
-        self.user = {}
+        self.state = {"user":{
+                    "description": "a shadow",
+                    "display_name": "nothing"},
+                    "room": {
+                        "name": "limbo",
+                        "description": "a liminal space. type /look to open your eyes.",
+                        "contains":[]}
+                    }
 
         # game view stuff
         self.game_walker = urwid.SimpleListWalker([
             urwid.Text('you have reconstituted into tildemush')
             ])
         self.game_text = urwid.ListBox(self.game_walker)
-        self.here_text = urwid.Pile([urwid.Text(self.here_info())])
-        self.user_text = urwid.Pile([urwid.Text(self.user_info())])
-        self.minimap_text = urwid.Pile([urwid.Text("MAP")])
+        self.here_text = urwid.Pile(self.here_info())
+        self.user_text = urwid.Pile(self.user_info())
+        self.minimap_text = urwid.Text("MAP", align='center')
         self.main_body = urwid.Columns([
             self.game_text,
             urwid.Pile([
                 ui.DashedBox(urwid.Filler(self.here_text, valign='top')),
-                ui.DashedBox(urwid.Filler(self.minimap_text, valign='top')),
+                ui.DashedBox(urwid.Filler(self.minimap_text, valign='middle')),
                 ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
         ])
@@ -186,13 +191,8 @@ class GameMain(urwid.Frame):
     async def on_server_message(self, server_msg):
         if server_msg == 'COMMAND OK':
             pass
-        elif server_msg.startswith('here'):
-            # TODO: this is kind of filler for now for updating the here
-            # panel; will need to be updated when DATA payload is implemented
-            text = ' '.join(server_msg.split(' ')[1:])
-            self.here_text.contents.clear()
-            self.here_text.contents.append(urwid.Text(text),
-                    self.here_text.options())
+        elif server_msg.startswith('STATE'):
+            self.update_state(server_msg[6:])
         else:
             new_line = urwid.Text(server_msg)
             self.game_walker.append(new_line)
@@ -253,16 +253,58 @@ class GameMain(urwid.Frame):
         self.tab_headers = urwid.Columns(headers)
         self.header = self.tab_headers
 
-    def here_info(self):
-        room_name = self.room.get("name")
-        info = "[{}]".format(room_name)
+    def update_state(self, raw_state):
+        self.state = json.loads(raw_state)
+        self.here_text.contents.clear()
+        self.user_text.contents.clear()
 
-        return info
-    
-    def user_info(self):
-        info = '<a {desc} named {name}>'.format(
-                desc=self.user.get("description"),
-                name=self.user.get("name")
+        #TODO: this is kind of hardcoded for the current three-widget
+        #here_info() and two-widget user_info()
+
+        self.here_text.contents.extend(list(
+            zip(self.here_info(),
+                [self.here_text.options(),
+                    self.here_text.options(),
+                    self.here_text.options()]
                 )
+            ))
 
-        return info
+        self.user_text.contents.extend(list(
+            zip(self.user_info(),
+                [self.here_text.options(),
+                    self.here_text.options()]
+                )
+            ))
+
+    def here_info(self):
+        room = self.state.get("room", {})
+        info = "[{}]".format(room.get("name"))
+        contents = []
+        if len(room.get("contains", [])) < 2:
+            contents.append("no one but yourself")
+        else:
+            for o in room.get("contains"):
+                contents.append(o.name)
+
+        lines = [
+                urwid.Text("[{}]".format(room.get("name")), align='center'),
+                urwid.Text("{}\n".format(room.get("description"))),
+                urwid.Text("You see here ({pop}): {contents}".format(
+                    pop=len(contents), contents=', '.join(contents)))
+                ]
+
+        return lines
+
+    def user_info(self):
+        user = self.state.get("user", {})
+        inventory = user.get("inventory", [])
+        lines = [
+                urwid.Text("<{desc} named {name}>\n".format(
+                desc=user.get("description"),
+                name=user.get("display_name")), align='center'),
+                urwid.Text("Inventory ({count}): {inv}".format(
+                    count=len(inventory),
+                    inv=", ".join(inventory)))
+                ]
+
+        return lines
