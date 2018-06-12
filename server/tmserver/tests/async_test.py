@@ -410,3 +410,30 @@ async def test_create_item(event_loop, mock_logger, client):
     assert 'An untouched black and mild with a wood tip' == dupe.get_data('description')
 
     await client.close()
+
+@pytest.mark.asyncio
+async def test_create_room(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+
+    sanctum = GameObject.get(
+        GameObject.author==vil,
+        GameObject.is_sanctum==True
+    )
+    GameWorld.put_into(sanctum, vil.player_obj)
+    msg = await client.recv()
+    assert msg.startswith('You breathed light into a whole new room')
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    # TODO eventually when we have transitive commands, touch the actual right
+    # thing. For now, only one thing should be touchable.
+    await client.send('COMMAND touch')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg.startswith('You materialize')
