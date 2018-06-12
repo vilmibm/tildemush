@@ -4,7 +4,7 @@ from slugify import slugify
 
 from .config import get_db
 from .errors import ClientException
-from .models import Contains, GameObject, Contains, Script, ScriptRevision
+from .models import Contains, GameObject, Contains, Script
 from .scripting import get_template
 DIRECTIONS = {'north', 'south', 'west', 'east', 'above', 'below'}
 CREATE_TYPES = {'room', 'exit', 'item'}
@@ -204,31 +204,12 @@ class GameWorld:
             shortname += '-' + str(obj_count)
         return shortname
 
-    # TODO I think the splitting out of script vs. scriptrevision vs.
-    # gameobject ought to be cleaned up...for now to reduce the number of
-    # things in flight i'm going with it, but it was originally inteded to
-    # have scripts exist outside of GameObject rows.
-
     @classmethod
     def create_item(cls, owner_obj, pretty_name, additional_args):
         shortname = cls.derive_shortname(owner_obj, pretty_name)
-        script = Script.create(
-            author=owner_obj.user_account,
-            name=shortname)
-        # TODO the redundancy of pretty_name and description is due to those
-        # things not yet being moved to a gameobject's key value data yet.
-        # clean that up.
-        script_code = get_template('item', pretty_name, additional_args)
-        scriptrev = ScriptRevision.create(
-            script=script,
-            code=script_code)
-        item = GameObject.create(
-            author=owner_obj.user_account,
-            name=pretty_name,
-            description=additional_args,
-            shortname=shortname,
-            script_revision=scriptrev)
-
+        item = GameObject.create_scripted_object(owner_obj, 'item', shortname, {
+            'pretty_name': pretty_name,
+            'description': additional_args})
         cls.put_into(owner_obj, item)
 
         return item
@@ -236,27 +217,14 @@ class GameWorld:
     @classmethod
     def create_room(cls, owner_obj, pretty_name, additional_args):
         shortname = cls.derive_shortname(owner_obj, pretty_name)
-        script = Script.create(
-            author=owner_obj.user_account,
-            name=shortname)
-        # TODO the redundancy of pretty_name and description is due to those
-        # things not yet being moved to a gameobject's key value data yet.
-        # clean that up.
-        script_code = get_template('room', pretty_name, additional_args)
-        scriptrev = ScriptRevision.create(
-            script=script,
-            code=script_code)
-        room = GameObject.create(
-            author=owner_obj.user_account,
-            name=pretty_name,
-            description=additional_args,
-            shortname=shortname,
-            script_revision=scriptrev)
+        room = GameObject.create_scripted_object(owner_obj, 'room', shortname, {
+            'pretty_name': pretty_name,
+            'description': additional_args})
 
-        # TODO hub creation
         sanctum = GameObject.get(
             GameObject.author==owner_obj.user_account,
             GameObject.is_sanctum==True)
+
         portkey = cls.create_portkey(owner_obj, room)
         cls.put_into(sanctum, portkey)
 
@@ -282,21 +250,10 @@ class GameWorld:
 
         # make the here_exit
         shortname = cls.derive_shortname(owner_obj, pretty_name)
-        script = Script.create(
-            author=owner_obj.user_account,
-            name=shortname)
-        script_code = get_template('exit', pretty_name, description).format(
-            target_room_name=target_room.shortname)
-        scriptrev = ScriptRevision.create(
-            script=script,
-            code=script_code)
-        here_exit = GameObject.create(
-            author=owner_obj.user_account,
-            # TODO deprecating name/desc
-            name=pretty_name,
-            description=description,
-            shortname=shortname,
-            script_revision=scriptrev)
+        here_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
+            'pretty_name': pretty_name,
+            'description': description,
+            target_room_name: target_room.shortname})
 
         with get_db().atomic():
             exits = current_room.get_data('exits', {})
@@ -308,21 +265,10 @@ class GameWorld:
         if owner_obj.user_account.is_god or target_room.author == owner_obj.user_account:
             # make the there_exit
             shortname = cls.derive_shortname(owner_obj, pretty_name, 'reverse')
-            script = Script.create(
-                author=owner_obj.user_account,
-                name=shortname)
-            script_code = get_template('exit', pretty_name, description).format(
-                target_room_name=current_room.shortname)
-            scriptrev = ScriptRevision.create(
-                script=script,
-                code=script_code)
-            there_exit = GameObject.create(
-                author=owner_obj.user_account,
-                # TODO deprecating name/desc
-                name=pretty_name,
-                description=description,
-                shortname=shortname,
-                script_revision=scriptrev)
+            there_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
+                'pretty_name': pretty_name,
+                'description': description,
+                target_room_name: current_room.shortname})
             rev_dir = REVERSE_DIRS[direction]
             with get_db().atomic():
                 exits = target_room.get_data('exits', {})
@@ -336,26 +282,12 @@ class GameWorld:
     def create_portkey(cls, owner_obj, target, pretty_name=None):
         if pretty_name is None:
             pretty_name = 'Teleport Stone to {}'.format(target.name)
+        description = 'Touching this stone will transport you to'.format(target.name)
         shortname = cls.derive_shortname(owner_obj, pretty_name)
-        script = Script.create(
-            author=owner_obj.user_account,
-            name=shortname)
-        # TODO this additional format is Gross and also is going to make
-        # create_* generalization harder later.
-        # TODO get_template should just take an arbitrary payload dict to give
-        # to format.
-        script_code = get_template('portkey', pretty_name, additional_args).format(
-            target_room_name=target.shortname)
-        scriptrev = ScriptRevision.create(
-            script=script,
-            code=script_code)
-        return GameObject.create(
-            author=owner_obj.user_account,
-            # TODO deprecating name/desc
-            name=pretty_name,
-            description='Touching this stone will transport you to'.format(target.name),
-            shortname=shortname,
-            script_revision=scriptrev)
+        return GameObject.create_scripted_object(owner_obj, 'portkey', shortname, {
+            'pretty_name': pretty_name,
+            'description': description,
+            'target_room_name': target.shortname})
 
     @classmethod
     def handle_announce(cls, sender_obj, action_args):

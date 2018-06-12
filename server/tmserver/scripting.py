@@ -109,6 +109,10 @@ class ScriptedObjectMixin:
     vice-versa.
     """
 
+    @classmethod
+    def get_template(cls, obj_type):
+        return SCRIPT_TEMPLATES[obj_type]
+
     @property
     def engine(self):
         if not hasattr(self, '_engine'):
