@@ -63,3 +63,35 @@ to modify persistent aspects of a game object like name and description. right
 now scripts are generic and not attached to an specific object by default.
 tomorrow, sketch out how script forking will work, since i want scripts to be
 one-to-one with objects but also re-usable.
+
+
+## Thoughts on create_room
+
+This is going to end up nearly a clone of create_item, but where the
+resulting GameObject is inserted is different: this doesn't go into
+someone's inventory.
+open questions:
+
+* where *should* a new room go? Until someone with the authority
+  links your initial node, your room is in the void. Options:
+ * Have a shared hub room where all new rooms are automatically
+   connected via a portkey.
+ * Have each player get a private hub they can only access with a
+   command, like /home. This hub acts like the hub above, but only
+   for the player to which it belongs. When a structure is ready,
+   an existing player can link to it. In case the room author doesn't
+   clean up the automatic connection to their private hub, we can
+   disallow anyone but them from entering the hub.
+
+I like the private hub idea a lot. This also gives players an
+automatic homebase like the one they get in Habitat.
+
+* In case a user gets stranded on a node, how do they get back?
+ * I propse a /foyer command that teleports someone back to the
+   shared foyer.
+* Should /create exit be supported first?
+ * I'm going to start with /create room...I don't think it matters a
+   ton. I recognize I'm procrastinating on move semantics until the
+   last possible moment; that's not entirely unintentional. I'm
+   hoping to shake out requirements by doing everything I possibly
+   can around those semantics first.
