@@ -259,9 +259,6 @@ class GameMain(urwid.Frame):
         self.header = self.tab_headers
 
     def update_state(self, raw_state):
-        #self.game_walker.append(urwid.Text(raw_state))
-        #self.game_walker.set_focus(len(self.game_walker)-1)
-
         self.state = json.loads(raw_state)
         self.here_text.contents.clear()
         self.user_text.contents.clear()
@@ -313,7 +310,7 @@ class GameMain(urwid.Frame):
                 urwid.Text("[{}]".format(room.get("name")), align='center'),
                 urwid.Text("{}\n".format(room.get("description"))),
                 urwid.Text("You see here ({pop}): {contents}".format(
-            pop=len(contents), contents=', '.join(contents)))
+                    pop=len(contents), contents=', '.join(contents)))
                 ]
 
         return lines
