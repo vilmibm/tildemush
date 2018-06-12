@@ -1,6 +1,8 @@
 (defmacro set-data [key value] `(.set-data receiver ~key ~value))
 (defmacro get-data [key] `(.get-data receiver ~key))
 (defmacro says [message] `(.say receiver ~message))
+#_("TODO support additional args, here. right now, they have to be one big string.")
+(defmacro tell-sender [action args] `(.tell-sender receiver sender ~action ~args))
 
 #_("TODO what to do with script_name and author_name?")
 #_("TODO eventually decide on cmd-args handling")

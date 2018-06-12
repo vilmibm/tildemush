@@ -125,6 +125,9 @@ class ScriptedObjectMixin:
     def get_data(self, key):
         return self.get_by_id(self.id).data.get(key)
 
+    def tell_sender(self, sender_obj, action, args):
+        self.game_world.dispatch_action(sender_obj, action, args)
+
     def _execute_script(self, witch_code):
         """Given a pile of script revision code, this function prepends the
         (witch) macro definition and then reads and evals the combined code."""
