@@ -429,7 +429,7 @@ class GameWorld:
             GameObject.shortname==action_args,
             GameObject.is_sanctum==False)
         cls.put_into(room, sender_obj)
-        cls.user_hears(sender_obj, sender_obj, 'You materalize in a new place!')
+        cls.user_hears(sender_obj, sender_obj, 'You materialize in a new place!')
 
     @classmethod
     def handle_go(cls, sender_obj, action_args):
