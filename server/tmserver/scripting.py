@@ -130,8 +130,28 @@ class ScriptedObjectMixin:
         # of a transaction:
         return self.engine.handler(game_world, action)(self, sender_obj, action_args)
 
-    # say, set_data, and get_data are part of the WITCH scripting API. that
-    # should probably be explicit somehow?
+    def find_exit(self, direction):
+        exits = self.get_data('exits')
+        if exits is None:
+            return
+
+        exit_name = exits.get(direction)
+
+        if exit_name is None:
+            return
+
+        exit_obj = GameObject.get_or_none(
+            GameObject.shortname==exit_name
+        )
+
+        if exit_obj is None:
+            # TODO uhhhhhh
+            pass
+
+        return exit_obj
+
+    # say, set_data, get_data, and tell_sender are part of the WITCH scripting
+    # API. that should probably be explicit somehow?
 
     def say(self, message):
         self.game_world.dispatch_action(self, 'say', message)
