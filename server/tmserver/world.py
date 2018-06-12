@@ -238,6 +238,9 @@ class GameWorld:
         #     clean up the automatic connection to their private hub, we can
         #     disallow anyone but them from entering the hub.
         #
+        # I like the private hub idea a lot. This also gives players an
+        # automatic homebase like the one they get in Habitat.
+        #
         # * In case a user gets stranded on a node, how do they get back?
         #   * I propse a /foyer command that teleports someone back to the
         #     shared foyer.
@@ -247,12 +250,62 @@ class GameWorld:
         #     last possible moment; that's not entirely unintentional. I'm
         #     hoping to shake out requirements by doing everything I possibly
         #     can around those semantics first.
+        shortname = cls.derive_shortname(sender_obj, pretty_name)
+        script = Script.create(
+            author=sender_obj.user_account,
+            name=shortname)
+        # TODO the redundancy of pretty_name and description is due to those
+        # things not yet being moved to a gameobject's key value data yet.
+        # clean that up.
+        script_code = get_template('room', pretty_name, additional_args)
+        scriptrev = ScriptRevision.create(
+            script=script,
+            code=script_code)
+        room = GameObject.create(
+            author=sender_obj.user_account,
+            name=pretty_name,
+            description=additional_args,
+            shortname=shortname,
+            script_revision=scriptrev)
+
+        # TODO hub creation
+        sanctum = GameObject.get(
+            GameObject.author==sender_obj.user_account,
+            GameObject.is_sanctum==True)
+        portkey = cls.create_portkey(sender_obj, room)
+        cls.put_into(sanctum, portkey)
+
+        return room
+
+    @classmethod
+    def create_exit(cls, owner, pretty_name, additional_args):
+        # TODO
         pass
 
     @classmethod
-    def create_exit(cls, sender_obj, pretty_name, additional_args):
-        # TODO
-        pass
+    def create_portkey(cls, owner_obj, target, pretty_name=None):
+        if pretty_name is None:
+            pretty_name = 'Teleport Stone to {}'.format(target.name)
+        shortname = cls.derive_shortname(owner_obj, pretty_name)
+        script = Script.create(
+            author=owner_obj.user_account,
+            name=shortname)
+        # TODO this additional format is Gross and also is going to make
+        # create_* generalization harder later.
+        # TODO get_template should just take an arbitrary payload dict to give
+        # to format.
+        script_code = get_template('portkey', pretty_name, additional_args).format(
+            target_room_name=target.shortname)
+        scriptrev = ScriptRevision.create(
+            script=script,
+            code=script_code)
+        return GameObject.create(
+            author=owner_obj.user_account,
+            # TODO deprecating name/desc
+            name=pretty_name,
+            description='Touching this stone will transport you to'.format(target.name),
+            shortname=shortname,
+            script_revision=scriptrev)
 
     @classmethod
     def handle_announce(cls, sender_obj, action_args):
