@@ -31,6 +31,14 @@ class UserAccount(BaseModel):
     updated_at = pw.DateTimeField(null=True)
     god = pw.BooleanField(default=False)
 
+    @classmethod
+    def create_scripted_object(self, todo):
+        """This function should do the necessary shenanigans to create a
+        script/scriptrev/obj. it should accept a script template name and a
+        dict of formatting data for the script template."""
+        # TODO
+        pass
+
     def _hash_password(self):
         self.password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt())
 
