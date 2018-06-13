@@ -467,6 +467,55 @@ async def test_create_oneway_exit(event_loop, mock_logger, client):
     foyer = GameObject.get(GameObject.shortname=='foyer')
     assert vil.player_obj in foyer.contains
 
-#@pytest.mark.asyncio
-#async def test_create_twoway_exit(event_loop, mock_logger, client):
-#    pass
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_create_twoway_exit(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    sanctum = GameObject.get(
+        GameObject.author==vil,
+        GameObject.is_sanctum==True
+    )
+    GameWorld.put_into(sanctum, vil.player_obj)
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+
+    await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('You breathed light into a whole new room')
+
+    cube = GameObject.get(GameObject.shortname.startswith('crystal-cube'))
+
+    await client.send(
+        'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname))
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('You breathed light into a whole new exit')
+
+    await client.send('COMMAND go east')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg.startswith('You materialize')
+
+    assert vil.player_obj in cube.contains
+    assert vil.player_obj not in sanctum.contains
+
+    await client.send('COMMAND go west')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg.startswith('You materialize')
+
+    assert vil.player_obj not in cube.contains
+    assert vil.player_obj in sanctum.contains
+
+    await client.close()
