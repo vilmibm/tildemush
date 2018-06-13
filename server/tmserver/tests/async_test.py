@@ -418,8 +418,8 @@ async def test_create_room(event_loop, mock_logger, client):
     await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
-    assert msg.startswith('You breathed light into a whole new room')
     msg = await client.recv()
+    assert msg.startswith('You breathed light into a whole new room')
 
     sanctum = GameObject.get(
         GameObject.author==vil,
@@ -438,6 +438,8 @@ async def test_create_room(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg.startswith('You materialize')
 
+    await client.close()
+
 @pytest.mark.asyncio
 async def test_create_oneway_exit(event_loop, mock_logger, client):
     await setup_user(client, 'vilmibm')
@@ -455,7 +457,6 @@ async def test_create_oneway_exit(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg.startswith('You breathed light into a whole new exit')
     await client.send('COMMAND go east')
-    # TODO hanging here
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
