@@ -172,30 +172,6 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             return self.author
         return None
 
-    def find_exit(self, direction):
-        # TODO this is all broken. find_exit should return the actual exit obj
-        # but it's returning the place the exit goes. look at this with fresh
-        # eyes and fix that code path, i think a fair bit is broken with how
-        # exits are being stored.
-        exits = self.get_data('exits')
-        if exits is None:
-            return
-
-        exit_name = exits.get(direction)
-
-        if exit_name is None:
-            return
-
-        exit_obj = GameObject.get_or_none(
-            GameObject.shortname==exit_name
-        )
-
-        if exit_obj is None:
-            # TODO uhhhhhh
-            pass
-
-        return exit_obj
-
     def __str__(self):
         return 'GameObject<{}> authored by {}'.format(self.name, self.author)
 

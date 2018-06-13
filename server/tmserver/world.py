@@ -259,7 +259,7 @@ class GameWorld:
             exits = current_room.get_data('exits')
             if exits is None:
                 exits = {}
-            exits[direction] = target_room.shortname
+            exits[direction] = here_exit.shortname
             current_room.set_data('exits', exits)
             cls.put_into(current_room, here_exit)
 
@@ -276,7 +276,7 @@ class GameWorld:
                 exits = target_room.get_data('exits')
                 if exits is None:
                     exits = {}
-                exits[rev_dir] = current_room.shortname
+                exits[rev_dir] = there_exit.shortname
                 target_room.set_data('exits', exits)
                 cls.put_into(target_room, there_exit)
 
@@ -361,9 +361,7 @@ class GameWorld:
         # action_args string. Right now actions_args has to exactly match the
         # shortname of a room in the database. In the future we might need
         # fuzzy matching but for now I think moves are largely programmatic?
-        room = GameObject.get_or_none(
-            GameObject.shortname==action_args,
-            GameObject.is_sanctum==False)
+        room = GameObject.get_or_none(GameObject.shortname==action_args)
         cls.put_into(room, sender_obj)
         cls.user_hears(sender_obj, sender_obj, 'You materialize in a new place!')
 
@@ -375,18 +373,36 @@ class GameWorld:
         # north-something. The resolution of the door would become undefined.
         # Thus, while it pains me and I'm hoping for an alternative, I'm going
         # to add some structure to rooms. Namely, their kv data is going to
-        # store a mapping of direction -> room shortname. This data can only be
+        # store a mapping of direction -> exit shortname. This data can only be
         # changed (TODO: actually ensure this is true) by the author of the
         # room.
-        import ipdb; ipdb.set_trace()
-        # TODO this is all broken. find_exit should return the actual exit obj
-        # but it's returning the place the exit goes. look at this with fresh
-        # eyes and fix that code path, i think a fair bit is broken with how
-        # exits are being stored.
+
+        # TODO in the future, consider allowing "non authoritative" directional
+        # exits. An exit obj exists in a room and has a direction and target
+        # stored on it. this is valid until the owner of the room overrides it
+        # with a blessed exit named in the room's exits hash.
+        #
+        # this is either redundant or additive if we also implement a "world
+        # writable" mode for stuff.
+
+        direction = action_args
         current_room = sender_obj.contained_by
-        exit_obj = current_room.find_exit(action_args)
+        exits = current_room.get_data('exits')
+        if direction not in exits:
+            cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
+            return
+
+        exit_obj_shortname = exits[direction]
+        exit_obj = None
+        for obj in current_room.contains:
+            if obj.shortname == exit_obj_shortname:
+                exit_obj = obj
+                break
+
         if exit_obj is None:
             cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
+            return
+
         exit_obj.handle_action(cls, sender_obj, 'touch', '')
 
     @classmethod
