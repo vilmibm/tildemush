@@ -153,17 +153,9 @@ class GameWorld:
         For now, all pretty names must be in double quotes. In other words, a call to create should look like:
 
         /create room "Dank Hallway" The musty carpet here seems to ooze as you walk across it.
-
-        # TODO having description be an argument is stupid, maybe?; you can't
-        # make anything long form. I think the first change this needs is just
-        # dropping description. Want to test what I've just written first,
-        # though. I guess for simple things it's handy to not have to drop into WITCH...
         """
         obj_type, pretty_name, additional_args = cls.parse_create(action_args)
 
-        # TODO these can all be collapsed into
-        # create_scripted_object(owner_obj, obj_type, pretty_name, addtl_args).
-        # The branches here can decide where to put an object.
         create_fn = None
         if obj_type == 'item':
             create_fn = cls.create_item
@@ -172,7 +164,6 @@ class GameWorld:
         elif obj_type == 'exit':
             create_fn = cls.create_exit
 
-        # TODO see if repeatedly calling get_db is bad
         with get_db().atomic():
             game_obj = create_fn(sender_obj, pretty_name, additional_args)
 
