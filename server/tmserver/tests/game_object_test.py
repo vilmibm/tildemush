@@ -18,8 +18,7 @@ class GameObjectDataTest(TildemushTestCase):
             password='foobarbazquux')
         self.snoozy = GameObject.create(
             author=self.vil,
-            shortname='snoozy',
-            name='snoozy')
+            shortname='snoozy')
 
     def test_data_default(self):
         assert {} == GameObject.get_by_id(self.snoozy.id).data
@@ -73,8 +72,7 @@ def GameObjectComparisonTest(self):
             password='foobarbazquux')
         self.snoozy = GameObject.create(
             author=self.vil,
-            shortname='snoozy',
-            name='snoozy')
+            shortname='snoozy')
 
         self.horse_script = Script.create(author=self.vil)
         self.revision = ScriptRevision.create(code='<witch code>', script=self.horse_script)
@@ -86,7 +84,7 @@ def GameObjectComparisonTest(self):
         snoozy = GameObject.get_by_id(self.snoozy.id)
         assert True == (snoozy == self.snoozy)
 
-        snoozy.name = 'false snoozy'
+        snoozy.shortname = 'false-snoozy'
         assert False == (snoozy == self.snoozy)
 
     def test_eq_operations(self):
@@ -129,7 +127,9 @@ class GameObjectScriptEngineTest(TildemushTestCase):
             script=self.script,
             code='''
             (witch "horse" by "vilmibm"
-              (has {"num-pets" 0})
+              (has {"num-pets" 0
+                    "name" "snoozy"
+                    "description" "a horse"})
               (hears "pet"
                 (set-data "num-pets" (+ 1 (get-data "num-pets")))
                   (if (= 0 (% (get-data "num-pets") 5))
@@ -137,7 +137,6 @@ class GameObjectScriptEngineTest(TildemushTestCase):
 
         self.snoozy = GameObject.create(
             author=vil_ua,
-            name='snoozy',
             shortname='snoozy',
             script_revision=self.script_rev)
 
