@@ -227,7 +227,10 @@ class GameMain(urwid.Frame):
         server_msg = 'COMMAND {}'.format(text)
 
         asyncio.ensure_future(self.client_state.send(server_msg), loop=self.loop)
-        self.prompt.edit_text = ''
+        if text.startswith('quit'):
+            quit_client('')
+        else:
+            self.prompt.edit_text = ''
 
     def handle_keypress(self, size, key):
         # debugging output
