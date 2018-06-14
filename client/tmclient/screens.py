@@ -8,7 +8,11 @@ from .config import Config
 from . import ui
 from .ui import Screen, Form, FormField, menu, menu_button, sub_menu
 
-def quit_client(_):
+def quit_client(screen):
+    # TODO: quit command isn't getting caught by the server for some
+    # reason?
+    asyncio.ensure_future(screen.client_state.send('COMMAND QUIT'), loop=screen.loop)
+
     raise urwid.ExitMainLoop()
 
 class Splash(Screen):
@@ -120,9 +124,10 @@ class GameMain(urwid.Frame):
                         "description": "a liminal space. type /look to open your eyes.",
                         "contains":[]}
                     }
+        self.hotkeys = self.load_hotkeys()
 
         # game view stuff
-        self.game_walker = urwid.SimpleListWalker([
+        self.game_walker = urwid.SimpleFocusListWalker([
             urwid.Text('you have reconstituted into tildemush')
             ])
         self.game_text = urwid.ListBox(self.game_walker)
@@ -214,8 +219,7 @@ class GameMain(urwid.Frame):
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
         else:
-            new_line = urwid.Text(server_msg)
-            self.game_walker.append(new_line)
+            self.game_walker.append(urwid.Text(server_msg))
             self.game_walker.set_focus(len(self.game_walker)-1)
 
         self.focus_prompt()
@@ -232,14 +236,16 @@ class GameMain(urwid.Frame):
                 self.prompt.edit_text = ''
         else:
             self.prompt.keypress((size[0],), key)
-            self.handle_keypress(key)
+            self.handle_keypress(size, key)
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
         if not self.client_state.listening:
             asyncio.ensure_future(self.client_state.start_listen_loop(), loop=self.loop)
 
-        if text.startswith('/'):
+        if text.startswith('/quit'):
+            quit_client(self)
+        elif text.startswith('/'):
             text = text[1:]
         else:
             text = 'say {}'.format(text)
@@ -249,15 +255,12 @@ class GameMain(urwid.Frame):
         asyncio.ensure_future(self.client_state.send(server_msg), loop=self.loop)
         self.prompt.edit_text = ''
 
-    def handle_keypress(self, key):
+    def handle_keypress(self, size, key):
         # debugging output
         #self.footer = urwid.Text(key)
 
-        if key == 'f9':
-            # TODO: quit command isn't getting caught by the server for some
-            # reason?
-            asyncio.ensure_future(self.client_state.send('COMMAND QUIT'), loop=self.loop)
-            quit_client('')
+        if key in self.hotkeys.get("quit"):
+            quit_client(self)
         elif key in self.tabs.keys():
             # tab switcher
             self.body.unfocus()
@@ -265,6 +268,9 @@ class GameMain(urwid.Frame):
             self.body.focus()
             self.focus_prompt()
             self.refresh_tabs()
+        elif key in self.hotkeys.get("scrolling"):
+            if self.body == self.main_tab:
+                self.game_text.keypress(size, key)
 
     def refresh_tabs(self):
         headers = []
@@ -274,15 +280,12 @@ class GameMain(urwid.Frame):
         self.header = self.tab_headers
 
     def update_state(self, raw_state):
-        #self.game_walker.append(urwid.Text(raw_state))
-        #self.game_walker.set_focus(len(self.game_walker)-1)
-
         self.state = json.loads(raw_state)
         self.here_text.contents.clear()
         self.user_text.contents.clear()
 
-        #TODO: this is kind of hardcoded for the current three-widget
-        #here_info() and two-widget user_info()
+        # TODO: this is kind of hardcoded for the current three-widget
+        # here_info() and two-widget user_info()
 
         self.here_text.contents.extend(list(
             zip(self.here_info(),
@@ -313,14 +316,18 @@ class GameMain(urwid.Frame):
                 urwid.Text("[{}]".format(room.get("name")), align='center'),
                 urwid.Text("{}\n".format(room.get("description"))),
                 urwid.Text("You see here ({pop}): {contents}".format(
-            pop=len(contents), contents=', '.join(contents)))
+                    pop=len(contents), contents=', '.join(contents)))
                 ]
 
         return lines
 
     def user_info(self):
         user = self.state.get("user", {})
-        inventory = user.get("inventory", [])
+        inventory = []
+
+        for item in self.state.get("inventory", []):
+            inventory.append(item.get("name"))
+
         lines = [
                 urwid.Text("<{desc} named {name}>\n".format(
                 desc=user.get("description"),
@@ -331,3 +338,20 @@ class GameMain(urwid.Frame):
                 ]
 
         return lines
+
+    def load_hotkeys(self):
+        # TODO: defaults are listed here, but this should also eventually
+        # load user's custom keybindings/overrides
+        hotkeys = {
+                "scrolling": {
+                    "page up": "up",
+                    "page down": "down",
+                    "up": "up",
+                    "down": "down"
+                    },
+                "quit": [
+                    "f9"
+                    ]
+                }
+
+        return hotkeys

@@ -11,12 +11,15 @@ class ContainTest(TildemushTestCase):
             password='foobarbazquux')
         self.room = GameObject.create(
             author=self.vil,
+            shortname='foul-foyer',
             name='foul foyer')
         self.phone = GameObject.create(
             author=self.vil,
+            shortname='pixel-2',
             name='pixel 2')
         self.app = GameObject.create(
             author=self.vil,
+            shortname='signal',
             name='signal')
 
     def test_player_obj(self):
@@ -30,13 +33,16 @@ class ContainTest(TildemushTestCase):
         cigar = GameObject.create(
             author=self.vil,
             name='black and mild',
+            shortname='black-and-mild',
             description='with the wood tip, naturally')
         rug = GameObject.create(
             author=self.vil,
             name='rug',
+            shortname='rug',
             description='a beautiful persian rug')
         ship = GameObject.create(
             author=self.vil,
+            shortname='voyager',
             name='Voyager')
 
         Contains.create(
@@ -93,13 +99,16 @@ class ContainTest(TildemushTestCase):
         cigar = GameObject.create(
             author=self.vil,
             name='black and mild',
+            shortname='black-and-mild',
             description='with the wood tip, naturally')
         rug = GameObject.create(
             author=self.vil,
             name='rug',
+            shortname='rug',
             description='a beautiful persian rug')
         ship = GameObject.create(
             author=self.vil,
+            shortname='voyager',
             name='Voyager')
 
         GameWorld.put_into(self.room, player_obj)

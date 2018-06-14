@@ -43,6 +43,7 @@ def init_db():
         foyer = GameObject.create(
             author=god_ua,
             name='Foyer',
+            shortname='foyer',
             description="A waiting room. Magazines in every language from every decade litter dusty end tables sitting between overstuffed armchairs.")
 
 def reset_db():
