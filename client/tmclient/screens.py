@@ -135,30 +135,12 @@ class GameMain(urwid.Frame):
         self.user_text = urwid.Pile(self.user_info())
         self.minimap_text = urwid.Text("MAP", align='center')
 
-        self.minimap_grid = urwid.Pile([
-                self.minimap_text,
-                urwid.Columns([
-                    urwid.LineBox(urwid.Text("A", align='center')),
-                    urwid.LineBox(urwid.Text("B", align='center')),
-                    urwid.LineBox(urwid.Text("C", align='center'))
-                    ]),
-                urwid.Columns([
-                    urwid.LineBox(urwid.Text("D", align='center')),
-                    urwid.LineBox(urwid.Text("E", align='center')),
-                    urwid.LineBox(urwid.Text("F", align='center'))
-                    ]),
-                urwid.Columns([
-                    urwid.LineBox(urwid.Text("G", align='center')),
-                    urwid.LineBox(urwid.Text("H", align='center')),
-                    urwid.LineBox(urwid.Text("I", align='center'))
-                    ])
-            ])
+        self.minimap_grid = self.generate_minimap()
         self.main_body = urwid.Columns([
             self.game_text,
             urwid.Pile([
                 ui.DashedBox(urwid.Filler(self.here_text, valign='top')),
                 ui.DashedBox(urwid.Filler(self.minimap_grid, valign='middle')),
-                #ui.DashedBox(urwid.Filler(self.minimap_text, valign='middle')),
                 ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
         ])
@@ -355,3 +337,46 @@ class GameMain(urwid.Frame):
                 }
 
         return hotkeys
+
+    def generate_minimap(self):
+        """Generates a minimap for the cardinal exits of the current room."""
+
+        # TODO: check this against actual exit data from STATE when that's
+        # implemented.
+
+        exits = self.state.get("room", {"exits": {}}).get("exits", {})
+        blank = urwid.Text(" ")
+        map_nodes = {
+                "north": blank,
+                "east": blank,
+                "south": blank,
+                "west": blank,
+                "above": blank,
+                "below": blank,
+                }
+
+        for exit in exits:
+            target = exits.get(exit)
+            if target:
+                node = urwid.LineBox(urwid.Text(target.get("name", "(somewhere)"), align='center'))
+                map_nodes.update({exit: node})
+
+        map_grid = urwid.Pile([
+                urwid.Columns([
+                    urwid.Text(" "),
+                    map_nodes.get("north"),
+                    map_nodes.get("above")
+                    ]),
+                urwid.Columns([
+                    map_nodes.get("west"),
+                    urwid.LineBox(urwid.Text("@", align='center')),
+                    map_nodes.get("east")
+                    ]),
+                urwid.Columns([
+                    map_nodes.get("below"),
+                    map_nodes.get("south"),
+                    urwid.Text(" ")
+                    ])
+            ])
+
+        return map_grid
