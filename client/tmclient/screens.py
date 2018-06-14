@@ -8,7 +8,11 @@ from .config import Config
 from . import ui
 from .ui import Screen, Form, FormField, menu, menu_button, sub_menu
 
-def quit_client(_):
+def quit_client(screen):
+    # TODO: quit command isn't getting caught by the server for some
+    # reason?
+    asyncio.ensure_future(screen.client_state.send('COMMAND QUIT'), loop=screen.loop)
+
     raise urwid.ExitMainLoop()
 
 class Splash(Screen):
@@ -219,7 +223,9 @@ class GameMain(urwid.Frame):
         if not self.client_state.listening:
             asyncio.ensure_future(self.client_state.start_listen_loop(), loop=self.loop)
 
-        if text.startswith('/'):
+        if text.startswith('/quit'):
+            quit_client(self)
+        elif text.startswith('/'):
             text = text[1:]
         else:
             text = 'say {}'.format(text)
@@ -227,20 +233,14 @@ class GameMain(urwid.Frame):
         server_msg = 'COMMAND {}'.format(text)
 
         asyncio.ensure_future(self.client_state.send(server_msg), loop=self.loop)
-        if text.startswith('quit'):
-            quit_client('')
-        else:
-            self.prompt.edit_text = ''
+        self.prompt.edit_text = ''
 
     def handle_keypress(self, size, key):
         # debugging output
         #self.footer = urwid.Text(key)
 
         if key == 'f9':
-            # TODO: quit command isn't getting caught by the server for some
-            # reason?
-            asyncio.ensure_future(self.client_state.send('COMMAND QUIT'), loop=self.loop)
-            quit_client('')
+            quit_client(self)
         elif key in self.tabs.keys():
             # tab switcher
             self.body.unfocus()
