@@ -200,6 +200,7 @@ class GameMain(urwid.Frame):
             pass
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
+            self.game_walker.append(urwid.Text(server_msg))
         else:
             self.game_walker.append(urwid.Text(server_msg))
             self.game_walker.set_focus(len(self.game_walker)-1)
