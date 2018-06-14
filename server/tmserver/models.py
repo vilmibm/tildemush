@@ -172,7 +172,10 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         return None
 
     def __str__(self):
-        return 'GameObject<{}> authored by {}'.format(self.name, self.author)
+        return self.name
+
+    def __repr__(self):
+        return 'GameObject<{}>'.format(self.shortname)
 
     def __eq__(self, other):
         script_revision = -1
