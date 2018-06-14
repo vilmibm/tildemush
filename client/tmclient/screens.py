@@ -279,21 +279,6 @@ class GameMain(urwid.Frame):
                 )
             ))
 
-    def scroll(self, size, direction):
-        # this function doesn't really work and isn't being used.
-        height = size[1]
-        top = max(0, self.game_walker.get_focus()[1]-height)
-        if direction == 'up':
-            new_pos = max(top - 5, 0)
-            shift = 5
-        else:
-            shift = -5
-            new_pos = min(top + 5, len(self.game_walker)-1)
-
-        self.game_walker.set_focus(new_pos)
-        self.footer = urwid.Text("scrolling {} to {} from {} ({})".format(direction,
-            new_pos, top, size))
-
     def here_info(self):
         room = self.state.get("room", {})
         info = "[{}]".format(room.get("name"))
