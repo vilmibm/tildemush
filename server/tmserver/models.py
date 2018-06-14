@@ -123,35 +123,35 @@ class GameObject(BaseModel, ScriptedObjectMixin):
     data = JSONField(default=dict)
 
     @classmethod
-    def create_scripted_object(cls, owner_obj, obj_type, shortname, format_dict=None):
-        """This function should do the necessary shenanigans to create a
-        script/scriptrev/obj. it should accept a script template name and a
-        dict of formatting data for the script template."""
-        # TODO I think the splitting out of script vs. scriptrevision vs.
-        # gameobject ought to be cleaned up...for now to reduce the number of
-        # things in flight i'm going with it, but it was originally inteded to
-        # have scripts exist outside of GameObject rows.
+    def create_scripted_object(cls, obj_type, author, shortname, format_dict=None):
+        """This function does the necessary shenanigans to create a
+        script/scriptrev/obj. It creates them all in the DB and returns the
+        GameObject."""
 
         if format_dict is None:
             format_dict = {}
         script_code = cls.get_template(obj_type).format(**format_dict)
         with config.get_db().atomic():
             script = Script.create(
-                author=owner_obj.user_account,
+                author=author,
                 name=shortname)
             scriptrev = ScriptRevision.create(
                 script=script,
                 code=script_code)
             game_obj = GameObject.create(
-                author=owner_obj.user_account,
-                # TODO deprecating name/desc
-                name=format_dict.get('pretty_name', 'TODO deprecate'),
-                description=format_dict.get('description', 'TODO deprecate'),
+                author=author,
                 shortname=shortname,
                 script_revision=scriptrev)
 
         return game_obj
 
+    @property
+    def name(self):
+        return self.get_data('name', self.shortname)
+
+    @property
+    def description(self):
+        return self.get_data('description', '')
 
     @property
     def contains(self):
