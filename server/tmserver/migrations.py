@@ -38,13 +38,12 @@ def init_db():
         god_ua = UserAccount.create(
             username='god',
             password='TODO',  # TODO set from config
-            god=True)
-    if 0 == GameObject.select().where(GameObject.name=='Foyer').count():
-        foyer = GameObject.create(
-            author=god_ua,
-            name='Foyer',
-            shortname='foyer',
-            description="A waiting room. Magazines in every language from every decade litter dusty end tables sitting between overstuffed armchairs.")
+            is_god=True)
+    if 0 == GameObject.select().where(GameObject.shortname=='foyer').count():
+        GameObject.create_scripted_object(
+            'room', god_ua, 'foyer',
+            {'name': 'Foyer',
+             'description': "A waiting room. Magazines in every language from every decade litter dusty end tables sitting between overstuffed armchairs." })
 
 def reset_db():
     get_db().drop_tables(MODELS)

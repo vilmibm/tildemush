@@ -115,9 +115,6 @@ def pre_scriptrev_save(cls, instance, created):
 
 class GameObject(BaseModel, ScriptedObjectMixin):
     author = pw.ForeignKeyField(UserAccount)
-    # TODO remove these in favor of data k/v
-    name = pw.CharField()
-    description = pw.TextField(default='')
     shortname = pw.CharField(null=False, unique=True)
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
@@ -186,7 +183,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             other_revision = other.script_revision.id
 
         return self.author.username == other.author.username\
-            and self.name == other.name\
+            and self.shortname == other.shortname\
             and script_revision == other_revision
 
     def __ne__(self, other):
@@ -197,7 +194,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         if self.script_revision:
             script_revision = self.script_revision.id
 
-        return hash((self.author.username, self.name, script_revision))
+        return hash((self.author.username, self.shortname, script_revision))
 
 
 class Contains(BaseModel):

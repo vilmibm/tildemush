@@ -32,12 +32,10 @@ class DeriveShortnameTest(TildemushTestCase):
     def test_dupes(self):
         GameObject.create(
             author=self.vil,
-            name='whatever',
             shortname='foot-vilmibm')
         for x in range(0,10):
             GameObject.create(
                 author=self.vil,
-                name='whatever',
                 shortname='foot-vilmibm-{}'.format(x))
         result = GameWorld.derive_shortname(self.vil.player_obj, 'foot')
         assert result == 'foot-vilmibm-13'
