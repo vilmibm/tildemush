@@ -29,7 +29,7 @@ class UserAccount(BaseModel):
     username = pw.CharField(unique=True)
     password = pw.CharField()
     updated_at = pw.DateTimeField(null=True)
-    god = pw.BooleanField(default=False)
+    is_god = pw.BooleanField(default=False)
 
     def _hash_password(self):
         self.password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt())

@@ -235,7 +235,7 @@ class GameWorld:
             GameObject.shortname == target_room_name)
         if target_room is None:
             raise ClientException('Could not find a room with the ID {}'.format(target_room_name))
-        if not owner_obj.user_account.god:
+        if not owner_obj.user_account.is_god:
             if current_room.author != owner_obj.user_account:
                 raise ClientException('In order to create an exit, run this command from a room you own.')
 
@@ -255,7 +255,7 @@ class GameWorld:
             cls.put_into(current_room, here_exit)
 
 
-        if owner_obj.user_account.god or target_room.author == owner_obj.user_account:
+        if owner_obj.user_account.is_god or target_room.author == owner_obj.user_account:
             # make the there_exit
             shortname = cls.derive_shortname(owner_obj, pretty_name, 'reverse')
             there_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
@@ -286,7 +286,7 @@ class GameWorld:
 
     @classmethod
     def handle_announce(cls, sender_obj, action_args):
-        if not sender_obj.user_account.god:
+        if not sender_obj.user_account.is_god:
             raise ClientException('you are not powerful enough to do that.')
 
         aoe = cls.all_active_objects()
