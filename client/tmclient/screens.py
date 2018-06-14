@@ -239,7 +239,7 @@ class GameMain(urwid.Frame):
         # debugging output
         #self.footer = urwid.Text(key)
 
-        if key == 'f9':
+        if key in self.hotkeys.get("quit"):
             quit_client(self)
         elif key in self.tabs.keys():
             # tab switcher
@@ -328,7 +328,10 @@ class GameMain(urwid.Frame):
                     "page down": "down",
                     "up": "up",
                     "down": "down"
-                    }
+                    },
+                "quit": [
+                    "f9"
+                    ]
                 }
 
         return hotkeys
