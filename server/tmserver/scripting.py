@@ -12,35 +12,40 @@ WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 # need it in the templates.
 SCRIPT_TEMPLATES = {
     'item': '''
-    (witch "{pretty_name}" by "TODO fix macro to not need author"
-      (has {{"name" "{pretty_name}"
+    (witch "{name}" by "TODO fix macro to not need author"
+      (has {{"name" "{name}"
+            "description" "{description}"}}))
+    ''',
+    'player': '''
+    (witch "{name}" by "TODO fix macro to not need author"
+      (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'room': '''
-    (witch "{pretty_name}" by "TODO fix macro to not need author"
-      (has {{"name" "{pretty_name}"
+    (witch "{name}" by "TODO fix macro to not need author"
+      (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'exit': '''
-    (witch "{pretty_name}" by "TODO fix macro to not need author"
-      (has {{"name" "{pretty_name}"
+    (witch "{name}" by "TODO fix macro to not need author"
+      (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
       (hears "touch"
         (tell-sender "move" (get-data "target"))))
     ''',
     'portkey': '''
-    (witch "{pretty_name}" by "TODO fix macro to not need author"
-      (has {{"name" "{pretty_name}"
+    (witch "{name}" by "TODO fix macro to not need author"
+      (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
       (hears "touch"
         (tell-sender "move" (get-data "target"))))
     '''}
 
-def get_template(obj_type, pretty_name, description="A trinket"):
+def get_template(obj_type, name, description="A trinket"):
     # TODO accept an arbitrary dict for formatting
-    return SCRIPT_TEMPLATES[obj_type].format(pretty_name=pretty_name,
+    return SCRIPT_TEMPLATES[obj_type].format(name=name,
                                              description=description)
 
 class ScriptEngine:
