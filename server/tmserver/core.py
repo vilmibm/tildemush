@@ -2,6 +2,7 @@ import asyncio
 import logging
 import json
 import re
+
 import websockets as ws
 
 from .errors import ClientException, UserValidationError

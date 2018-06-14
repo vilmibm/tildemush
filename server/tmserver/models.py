@@ -71,7 +71,7 @@ class UserAccount(BaseModel):
 
 
 @pre_save(sender=UserAccount)
-def pre_save_handler(cls, instance, created):
+def pre_user_save(cls, instance, created):
     if not created:
         instance.updated_at = datetime.utcnow()
 
@@ -80,13 +80,21 @@ def pre_save_handler(cls, instance, created):
 
 
 @post_save(sender=UserAccount)
-def post_save_handler(cls, instance, created):
+def post_user_save(cls, instance, created):
     if created:
+        # TODO set the name/desc in kv data for these objects
         GameObject.create(
             author=instance,
             name=instance.username,
+            shortname=instance.username,
             description='a gaseous cloud',
             is_player_obj=True)
+        GameObject.create(
+            author=instance,
+            name="{}'s Sanctum".format(instance.username),
+            description="This is your private space. Only you (and gods) can enter here. Any new rooms you create will be attached to this hub. You are free to store items here for safekeeping that you don't want to carry around.",
+            shortname='{}-sanctum'.format(instance.username),
+            is_sanctum=True)
 
 
 class Script(BaseModel):
@@ -98,14 +106,52 @@ class ScriptRevision(BaseModel):
     code = pw.TextField()
     script = pw.ForeignKeyField(Script)
 
+@pre_save(sender=ScriptRevision)
+def pre_scriptrev_save(cls, instance, created):
+    instance.code = instance.code.lstrip().rstrip()
+
 
 class GameObject(BaseModel, ScriptedObjectMixin):
     author = pw.ForeignKeyField(UserAccount)
+    # TODO remove these in favor of data k/v
     name = pw.CharField()
     description = pw.TextField(default='')
+    shortname = pw.CharField(null=False, unique=True)
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
+    is_sanctum = pw.BooleanField(default=False)
     data = JSONField(default=dict)
+
+    @classmethod
+    def create_scripted_object(cls, owner_obj, obj_type, shortname, format_dict=None):
+        """This function should do the necessary shenanigans to create a
+        script/scriptrev/obj. it should accept a script template name and a
+        dict of formatting data for the script template."""
+        # TODO I think the splitting out of script vs. scriptrevision vs.
+        # gameobject ought to be cleaned up...for now to reduce the number of
+        # things in flight i'm going with it, but it was originally inteded to
+        # have scripts exist outside of GameObject rows.
+
+        if format_dict is None:
+            format_dict = {}
+        script_code = cls.get_template(obj_type).format(**format_dict)
+        with config.get_db().atomic():
+            script = Script.create(
+                author=owner_obj.user_account,
+                name=shortname)
+            scriptrev = ScriptRevision.create(
+                script=script,
+                code=script_code)
+            game_obj = GameObject.create(
+                author=owner_obj.user_account,
+                # TODO deprecating name/desc
+                name=format_dict.get('pretty_name', 'TODO deprecate'),
+                description=format_dict.get('description', 'TODO deprecate'),
+                shortname=shortname,
+                script_revision=scriptrev)
+
+        return game_obj
+
 
     @property
     def contains(self):

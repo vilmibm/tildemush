@@ -1,9 +1,12 @@
 (defmacro set-data [key value] `(.set-data receiver ~key ~value))
 (defmacro get-data [key] `(.get-data receiver ~key))
 (defmacro says [message] `(.say receiver ~message))
+#_("TODO support additional args, here. right now, they have to be one big string.")
+(defmacro tell-sender [action args] `(.tell-sender receiver sender ~action ~args))
 
 #_("TODO what to do with script_name and author_name?")
 #_("TODO eventually decide on cmd-args handling")
+
 (defmacro witch
   [script_name _ author_name data &rest actions]
   (setv se (gensym))
@@ -15,9 +18,9 @@
                      ~se
                      ~(get hp 1)
                      (fn [receiver sender action-args]
-                       (._ensure-data receiver ~(get data 1))
                        ~@(cut hp 2))) )
          actions)
+     (ensure-obj-data ~(get data 1))
      ~se))
 
 
