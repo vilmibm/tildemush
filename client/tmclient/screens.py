@@ -195,8 +195,7 @@ class GameMain(urwid.Frame):
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
         else:
-            new_line = urwid.Text(server_msg)
-            self.game_walker.append(new_line)
+            self.game_walker.append(urwid.Text(server_msg))
             self.game_walker.set_focus(len(self.game_walker)-1)
 
         self.focus_prompt()
@@ -232,7 +231,7 @@ class GameMain(urwid.Frame):
 
     def handle_keypress(self, size, key):
         # debugging output
-        self.footer = urwid.Text(key)
+        #self.footer = urwid.Text(key)
 
         if key == 'f9':
             # TODO: quit command isn't getting caught by the server for some
@@ -249,7 +248,6 @@ class GameMain(urwid.Frame):
         elif key in self.hotkeys.get("scrolling"):
             if self.body == self.main_tab:
                 self.game_text.keypress(size, key)
-                #self.scroll(size, self.hotkeys.get("scrolling").get(key))
 
     def refresh_tabs(self):
         headers = []
@@ -263,8 +261,8 @@ class GameMain(urwid.Frame):
         self.here_text.contents.clear()
         self.user_text.contents.clear()
 
-        #TODO: this is kind of hardcoded for the current three-widget
-        #here_info() and two-widget user_info()
+        # TODO: this is kind of hardcoded for the current three-widget
+        # here_info() and two-widget user_info()
 
         self.here_text.contents.extend(list(
             zip(self.here_info(),
@@ -317,7 +315,11 @@ class GameMain(urwid.Frame):
 
     def user_info(self):
         user = self.state.get("user", {})
-        inventory = user.get("inventory", [])
+        inventory = []
+
+        for item in self.state.get("inventory", []):
+            inventory.append(item.get("name"))
+
         lines = [
                 urwid.Text("<{desc} named {name}>\n".format(
                 desc=user.get("description"),
