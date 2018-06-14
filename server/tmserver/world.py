@@ -196,20 +196,22 @@ class GameWorld:
         return shortname
 
     @classmethod
-    def create_item(cls, owner_obj, pretty_name, additional_args):
-        shortname = cls.derive_shortname(owner_obj, pretty_name)
-        item = GameObject.create_scripted_object(owner_obj, 'item', shortname, {
-            'pretty_name': pretty_name,
+    def create_item(cls, owner_obj, name, additional_args):
+        shortname = cls.derive_shortname(owner_obj, name)
+        item = GameObject.create_scripted_object(
+            'item', owner_obj.user_account, shortname, {
+            'name': name,
             'description': additional_args})
         cls.put_into(owner_obj, item)
 
         return item
 
     @classmethod
-    def create_room(cls, owner_obj, pretty_name, additional_args):
-        shortname = cls.derive_shortname(owner_obj, pretty_name)
-        room = GameObject.create_scripted_object(owner_obj, 'room', shortname, {
-            'pretty_name': pretty_name,
+    def create_room(cls, owner_obj, name, additional_args):
+        shortname = cls.derive_shortname(owner_obj, name)
+        room = GameObject.create_scripted_object(
+            'room', owner_obj.user_account,  shortname, {
+            'name': name,
             'description': additional_args})
 
         sanctum = GameObject.get(
@@ -306,7 +308,7 @@ class GameWorld:
         if 0 == len(message):
             raise ClientException('try /whisper another_username some cool message')
         room = sender_obj.contained_by
-        target_obj = [o for o in room.contains if o.name == target_name]
+        target_obj = [o for o in room.contains if o.shortname == target_name]
         if 0 == len(target_obj):
             raise ClientException('there is nothing named {} near you'.format(target_name))
         target_obj[0].handle_action(cls, sender_obj, 'whisper', message)

@@ -105,7 +105,7 @@ async def setup_user(client, username, god=False):
 
     if god:
         ua = UserAccount.get(UserAccount.username==username)
-        ua.god = True
+        ua.is_god = True
         ua.save()
 
     await client.send('LOGIN {}:foobarbazquux'.format(username))
@@ -355,7 +355,7 @@ async def test_client_state(event_loop, mock_logger, client):
                        'description': 'a recording of a klingon opera',
                        'contains': []}]}]}
         ],
-        'scripts': []
+        'scripts': ['vilmibm-sanctum', 'vilmibm']
     }
     await client.close()
 

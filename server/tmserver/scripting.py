@@ -153,8 +153,8 @@ class ScriptedObjectMixin:
         self.data[key] = value
         self.save()
 
-    def get_data(self, key):
-        return self.get_by_id(self.id).data.get(key)
+    def get_data(self, key, default=None):
+        return self.get_by_id(self.id).data.get(key, default)
 
     def tell_sender(self, sender_obj, action, args):
         self.game_world.dispatch_action(sender_obj, action, args)
