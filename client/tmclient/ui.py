@@ -7,6 +7,37 @@ import re
 import urwid
 import websockets
 
+COLOR_PARTS_RE = re.compile('(\{[^\}]+\})|([^\{]*)')
+
+palettes = [
+    ('reversed', 'standout', ''),
+    ('basic', 'white', 'black'),
+    ('background', 'dark magenta', 'black'),
+    ('error', 'light red', 'black'),
+
+    # standard colors - only using foreground colors, eventually
+    # we could probably do permutations of fg/bg combinations
+    # the names come from http://urwid.org/manual/displayattributes.html
+    ('dark red', 'dark red', ''),
+    ('dark green', 'dark green', ''),
+    ('brown', 'brown', ''),
+    ('dark blue', 'dark blue', ''),
+    ('dark magenta', 'dark magenta', ''),
+    ('dark cyan', 'dark cyan', ''),
+    ('light gray', 'light gray', ''),
+    ('dark gray', 'dark gray', ''),
+    ('light red', 'light red', ''),
+    ('light green', 'light green', ''),
+    ('yellow', 'yellow', ''),
+    ('light blue', 'light blue', ''),
+    ('light magenta', 'light magenta', ''),
+    ('light cyan', 'light cyan', ''),
+    ('white', 'white', ''),
+    ('black', 'black', 'white'),
+    ('/', 'white', ''),
+    ('reset', 'white', '')]
+
+    
 class Form(urwid.Pile):
     def __init__(self, fields, submit):
         super().__init__(fields+[submit])
@@ -182,11 +213,11 @@ class GameTab(urwid.WidgetPlaceholder):
 class ColorText(urwid.Text):
     """
     Turns a string into a text widget with colorized sections.
-    Strings use a format of "foo {color name}bar{/}"
+    Strings use a format of "{light red}foo {light blue}bar{/}"
     """
 
     def __init__(self, s, align='left', wrap='space', layout=None):
-        parts = re.findall('(\{[^\}]+\})|([^\{]*)', s)
+        parts = COLOR_PARTS_RE.findall(s)
         res = []
         text = ""
         theme = ""
@@ -200,40 +231,6 @@ class ColorText(urwid.Text):
         res.append((theme, text))
         super().__init__(res, align, wrap, layout)
 
-
-
-
-
- 
-
-
-palettes = [
-    ('reversed', 'standout', ''),
-    ('basic', 'white', 'black'),
-    ('background', 'dark magenta', 'black'),
-    ('error', 'light red', 'black'),
-
-    # standard colors - only using foreground colors, eventually
-    # we could probably do permutations of fg/bg combinations
-    # the names come from http://urwid.org/manual/displayattributes.html
-    ('dark red', 'dark red', ''),
-    ('dark green', 'dark green', ''),
-    ('brown', 'brown', ''),
-    ('dark blue', 'dark blue', ''),
-    ('dark magenta', 'dark magenta', ''),
-    ('dark cyan', 'dark cyan', ''),
-    ('light gray', 'light gray', ''),
-    ('dark gray', 'dark gray', ''),
-    ('light red', 'light red', ''),
-    ('light green', 'light green', ''),
-    ('yellow', 'yellow', ''),
-    ('light blue', 'light blue', ''),
-    ('light magenta', 'light magenta', ''),
-    ('light cyan', 'light cyan', ''),
-    ('white', 'white', ''),
-    ('black', 'black', 'white'),
-    ('/', 'white', ''),
-    ('reset', 'white', '')]
 
 class UI:
     def __init__(self, loop):
