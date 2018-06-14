@@ -25,6 +25,7 @@ setup(
         'websockets==4.0.1',
         'bcrypt==3.1.4',
         'hy==0.14.0',
+        'python-slugify==1.2.5',
     ],
     extras_require={
         'testing': [

@@ -1,5 +1,23 @@
+import re
+
+from slugify import slugify
+
+from .config import get_db
 from .errors import ClientException
 from .models import Contains, GameObject, Contains, Script
+from .scripting import get_template
+DIRECTIONS = {'north', 'south', 'west', 'east', 'above', 'below'}
+CREATE_TYPES = {'room', 'exit', 'item'}
+CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
+CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*)$')
+REVERSE_DIRS = {
+    'north': 'south',
+    'south': 'north',
+    'east': 'west',
+    'west': 'east',
+    'above': 'below',
+    'below': 'above'}
+
 
 class GameWorld:
     # TODO logging
@@ -88,6 +106,14 @@ class GameWorld:
             cls.handle_whisper(sender_obj, action_args)
         if action == 'look':
             cls.handle_look(sender_obj, action_args)
+        if action == 'create':
+            cls.handle_create(sender_obj, action_args)
+        if action == 'move':
+            cls.handle_move(sender_obj, action_args)
+            return
+        if action == 'go':
+            cls.handle_go(sender_obj, action_args)
+            return
 
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
@@ -108,6 +134,155 @@ class GameWorld:
                                               .distinct(GameObject.id))
         return all_containing_objects.union(all_contained_objects)
 
+
+
+    @classmethod
+    def handle_create(cls, sender_obj, action_args):
+        """When a player runs /create, our goal is to create a default version
+        of whatever thing they want. If they want to customize a thing further,
+        they can run /edit on any object for which they are the author.
+
+        For now, the types of things that can be created: room, exit, item.
+
+        All three of these are just GameObjects. What is different are the
+        initial behaviors attached to the objects. It's at this point
+        theoretically possible to /create an item and then script it into an
+        exit and I don't think that's a problem. It would just be super tedious
+        to do that every time one just wants to make a room.
+
+        For now, all pretty names must be in double quotes. In other words, a call to create should look like:
+
+        /create room "Dank Hallway" The musty carpet here seems to ooze as you walk across it.
+        """
+        obj_type, pretty_name, additional_args = cls.parse_create(action_args)
+
+        create_fn = None
+        if obj_type == 'item':
+            create_fn = cls.create_item
+        elif obj_type == 'room':
+            create_fn = cls.create_room
+        elif obj_type == 'exit':
+            create_fn = cls.create_exit
+
+        with get_db().atomic():
+            game_obj = create_fn(sender_obj, pretty_name, additional_args)
+
+        cls.user_hears(sender_obj, sender_obj,
+                       'You breathed light into a whole new {}. Its true name is {}'.format(
+                           obj_type,
+                           game_obj.shortname))
+
+    @classmethod
+    def parse_create(cls, action_args):
+        match = CREATE_RE.fullmatch(action_args)
+        if match is None:
+            raise ClientException(
+                'malformed call to /create. the syntax is /create object-type "pretty name" [additional arguments]')
+
+        obj_type, pretty_name, additional_args = match.groups()
+        if obj_type not in CREATE_TYPES:
+            raise ClientException(
+                'Unknown type for /create. Try one of {}'.format(CREATE_TYPES))
+
+        return obj_type, pretty_name, additional_args
+
+    @classmethod
+    def derive_shortname(cls, owner_obj, *strings):
+        slugged = [slugify(s) for s in strings] + [owner_obj.user_account.username]
+        shortname = '-'.join(slugged)
+        if GameObject.get_or_none(GameObject.shortname==shortname):
+            obj_count = GameObject.select().where(GameObject.author==owner_obj.user_account).count()
+            shortname += '-' + str(obj_count)
+        return shortname
+
+    @classmethod
+    def create_item(cls, owner_obj, pretty_name, additional_args):
+        shortname = cls.derive_shortname(owner_obj, pretty_name)
+        item = GameObject.create_scripted_object(owner_obj, 'item', shortname, {
+            'pretty_name': pretty_name,
+            'description': additional_args})
+        cls.put_into(owner_obj, item)
+
+        return item
+
+    @classmethod
+    def create_room(cls, owner_obj, pretty_name, additional_args):
+        shortname = cls.derive_shortname(owner_obj, pretty_name)
+        room = GameObject.create_scripted_object(owner_obj, 'room', shortname, {
+            'pretty_name': pretty_name,
+            'description': additional_args})
+
+        sanctum = GameObject.get(
+            GameObject.author==owner_obj.user_account,
+            GameObject.is_sanctum==True)
+
+        portkey = cls.create_portkey(owner_obj, room)
+        cls.put_into(sanctum, portkey)
+
+        return room
+
+    @classmethod
+    def create_exit(cls, owner_obj, pretty_name, additional_args):
+        match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
+        if not match:
+            raise ClientException('To make an exit, try /create exit A Door north foyer A rusted, metal door')
+        direction, target_room_name, description = match.groups()
+        if direction not in DIRECTIONS:
+            raise ClientException('Try one of these directions: {}'.format(DIRECTIONS))
+
+        current_room = owner_obj.contained_by
+        target_room = GameObject.get_or_none(
+            GameObject.shortname == target_room_name)
+        if target_room is None:
+            raise ClientException('Could not find a room with the ID {}'.format(target_room_name))
+        if not owner_obj.user_account.god:
+            if current_room.author != owner_obj.user_account:
+                raise ClientException('In order to create an exit, run this command from a room you own.')
+
+        # make the here_exit
+        shortname = cls.derive_shortname(owner_obj, pretty_name)
+        here_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
+            'pretty_name': pretty_name,
+            'description': description,
+            'target_room_name': target_room.shortname})
+
+        with get_db().atomic():
+            exits = current_room.get_data('exits')
+            if exits is None:
+                exits = {}
+            exits[direction] = here_exit.shortname
+            current_room.set_data('exits', exits)
+            cls.put_into(current_room, here_exit)
+
+
+        if owner_obj.user_account.god or target_room.author == owner_obj.user_account:
+            # make the there_exit
+            shortname = cls.derive_shortname(owner_obj, pretty_name, 'reverse')
+            there_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
+                'pretty_name': pretty_name,
+                'description': description,
+                'target_room_name': current_room.shortname})
+            rev_dir = REVERSE_DIRS[direction]
+            with get_db().atomic():
+                exits = target_room.get_data('exits')
+                if exits is None:
+                    exits = {}
+                exits[rev_dir] = there_exit.shortname
+                target_room.set_data('exits', exits)
+                cls.put_into(target_room, there_exit)
+
+        return here_exit
+
+    @classmethod
+    def create_portkey(cls, owner_obj, target, pretty_name=None):
+        if pretty_name is None:
+            pretty_name = 'Teleport Stone to {}'.format(target.name)
+        description = 'Touching this stone will transport you to'.format(target.name)
+        shortname = cls.derive_shortname(owner_obj, pretty_name)
+        return GameObject.create_scripted_object(owner_obj, 'portkey', shortname, {
+            'pretty_name': pretty_name,
+            'description': description,
+            'target_room_name': target.shortname})
 
     @classmethod
     def handle_announce(cls, sender_obj, action_args):
@@ -170,6 +345,56 @@ class GameWorld:
 
         for o in cls.area_of_effect(sender_obj):
             o.handle_action(cls, sender_obj, 'look', action_args)
+
+    @classmethod
+    def handle_move(cls, sender_obj, action_args):
+        # We need to move sender_obj to whatever room is specified by the
+        # action_args string. Right now actions_args has to exactly match the
+        # shortname of a room in the database. In the future we might need
+        # fuzzy matching but for now I think moves are largely programmatic?
+        room = GameObject.get_or_none(GameObject.shortname==action_args)
+        cls.put_into(room, sender_obj)
+        cls.user_hears(sender_obj, sender_obj, 'You materialize in a new place!')
+
+    @classmethod
+    def handle_go(cls, sender_obj, action_args):
+        # Originally we discussed having exit items be found via their
+        # shortname; ie, north-a-door-vilmibm. I realized this is terrifying
+        # since any other user could create a drop a trap door named
+        # north-something. The resolution of the door would become undefined.
+        # Thus, while it pains me and I'm hoping for an alternative, I'm going
+        # to add some structure to rooms. Namely, their kv data is going to
+        # store a mapping of direction -> exit shortname. This data can only be
+        # changed (TODO: actually ensure this is true) by the author of the
+        # room.
+
+        # TODO in the future, consider allowing "non authoritative" directional
+        # exits. An exit obj exists in a room and has a direction and target
+        # stored on it. this is valid until the owner of the room overrides it
+        # with a blessed exit named in the room's exits hash.
+        #
+        # this is either redundant or additive if we also implement a "world
+        # writable" mode for stuff.
+
+        direction = action_args
+        current_room = sender_obj.contained_by
+        exits = current_room.get_data('exits')
+        if direction not in exits:
+            cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
+            return
+
+        exit_obj_shortname = exits[direction]
+        exit_obj = None
+        for obj in current_room.contains:
+            if obj.shortname == exit_obj_shortname:
+                exit_obj = obj
+                break
+
+        if exit_obj is None:
+            cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
+            return
+
+        exit_obj.handle_action(cls, sender_obj, 'touch', '')
 
     @classmethod
     def area_of_effect(cls, sender_obj):

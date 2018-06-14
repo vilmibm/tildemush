@@ -18,6 +18,7 @@ class GameObjectDataTest(TildemushTestCase):
             password='foobarbazquux')
         self.snoozy = GameObject.create(
             author=self.vil,
+            shortname='snoozy',
             name='snoozy')
 
     def test_data_default(self):
@@ -72,6 +73,7 @@ def GameObjectComparisonTest(self):
             password='foobarbazquux')
         self.snoozy = GameObject.create(
             author=self.vil,
+            shortname='snoozy',
             name='snoozy')
 
         self.horse_script = Script.create(author=self.vil)
@@ -136,6 +138,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         self.snoozy = GameObject.create(
             author=vil_ua,
             name='snoozy',
+            shortname='snoozy',
             script_revision=self.script_rev)
 
     def test_no_script_revision(self):

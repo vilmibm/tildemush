@@ -7,6 +7,42 @@ from .errors import ClientException, WitchException
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 
+# Note an awful thing here; since we call .format on the script templates, we
+# have to escape the WITCH macro's {}. {{}} is not the Hy that we want, but we
+# need it in the templates.
+SCRIPT_TEMPLATES = {
+    'item': '''
+    (witch "{pretty_name}" by "TODO fix macro to not need author"
+      (has {{"name" "{pretty_name}"
+            "description" "{description}"}}))
+    ''',
+    'room': '''
+    (witch "{pretty_name}" by "TODO fix macro to not need author"
+      (has {{"name" "{pretty_name}"
+            "description" "{description}"}}))
+    ''',
+    'exit': '''
+    (witch "{pretty_name}" by "TODO fix macro to not need author"
+      (has {{"name" "{pretty_name}"
+            "description" "{description}"
+            "target" "{target_room_name}"}})
+      (hears "touch"
+        (tell-sender "move" (get-data "target"))))
+    ''',
+    'portkey': '''
+    (witch "{pretty_name}" by "TODO fix macro to not need author"
+      (has {{"name" "{pretty_name}"
+            "description" "{description}"
+            "target" "{target_room_name}"}})
+      (hears "touch"
+        (tell-sender "move" (get-data "target"))))
+    '''}
+
+def get_template(obj_type, pretty_name, description="A trinket"):
+    # TODO accept an arbitrary dict for formatting
+    return SCRIPT_TEMPLATES[obj_type].format(pretty_name=pretty_name,
+                                             description=description)
+
 class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
     def __init__(self):
@@ -73,6 +109,10 @@ class ScriptedObjectMixin:
     vice-versa.
     """
 
+    @classmethod
+    def get_template(cls, obj_type):
+        return SCRIPT_TEMPLATES[obj_type]
+
     @property
     def engine(self):
         if not hasattr(self, '_engine'):
@@ -94,8 +134,8 @@ class ScriptedObjectMixin:
         # of a transaction:
         return self.engine.handler(game_world, action)(self, sender_obj, action_args)
 
-    # say, set_data, and get_data are part of the WITCH scripting API. that
-    # should probably be explicit somehow?
+    # say, set_data, get_data, and tell_sender are part of the WITCH scripting
+    # API. that should probably be explicit somehow?
 
     def say(self, message):
         self.game_world.dispatch_action(self, 'say', message)
@@ -111,6 +151,9 @@ class ScriptedObjectMixin:
     def get_data(self, key):
         return self.get_by_id(self.id).data.get(key)
 
+    def tell_sender(self, sender_obj, action, args):
+        self.game_world.dispatch_action(sender_obj, action, args)
+
     def _execute_script(self, witch_code):
         """Given a pile of script revision code, this function prepends the
         (witch) macro definition and then reads and evals the combined code."""
@@ -123,7 +166,8 @@ class ScriptedObjectMixin:
             try:
                 tree = hy.read(buff)
                 result = hy.eval(tree,
-                                 namespace={'ScriptEngine': ScriptEngine})
+                                 namespace={'ScriptEngine': ScriptEngine,
+                                            'ensure_obj_data': lambda data: self._ensure_data(data)})
             except EOFError:
                 stop = True
         return result
