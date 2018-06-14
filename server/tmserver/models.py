@@ -80,21 +80,23 @@ def pre_user_save(cls, instance, created):
 
 
 @post_save(sender=UserAccount)
-def post_user_save(cls, instance, created):
-    if created:
-        # TODO set the name/desc in kv data for these objects
-        GameObject.create(
-            author=instance,
-            name=instance.username,
-            shortname=instance.username,
-            description='a gaseous cloud',
-            is_player_obj=True)
-        GameObject.create(
-            author=instance,
-            name="{}'s Sanctum".format(instance.username),
-            description="This is your private space. Only you (and gods) can enter here. Any new rooms you create will be attached to this hub. You are free to store items here for safekeeping that you don't want to carry around.",
-            shortname='{}-sanctum'.format(instance.username),
-            is_sanctum=True)
+def on_user_account_create(cls, instance, created):
+    if not created: return
+
+    with config.get_db().atomic():
+        player = GameObject.create_scripted_object(
+            'player', instance, instance.username,
+            {'name': instance.username,
+            'description': 'a gaseous cloud'})
+        player.is_player_obj = True
+        player.save()
+        sanctum = GameObject.create_scripted_object(
+            'room', instance,
+            '{}-sanctum'.format(instance.username),
+            {'name': "{}'s Sanctum".format(instance.username),
+             'description': "This is your private space. Only you (and gods) can enter here. Any new rooms you create will be attached to this hub. You are free to store items here for safekeeping that you don't want to carry around."})
+        sanctum.is_sanctum=True,
+        sanctum.save()
 
 
 class Script(BaseModel):
