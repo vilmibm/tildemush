@@ -154,7 +154,7 @@ class GameWorld:
 
         /create room "Dank Hallway" The musty carpet here seems to ooze as you walk across it.
         """
-        obj_type, pretty_name, additional_args = cls.parse_create(action_args)
+        obj_type, name, additional_args = cls.parse_create(action_args)
 
         create_fn = None
         if obj_type == 'item':
@@ -165,7 +165,7 @@ class GameWorld:
             create_fn = cls.create_exit
 
         with get_db().atomic():
-            game_obj = create_fn(sender_obj, pretty_name, additional_args)
+            game_obj = create_fn(sender_obj, name, additional_args)
 
         cls.user_hears(sender_obj, sender_obj,
                        'You breathed light into a whole new {}. Its true name is {}'.format(
@@ -179,12 +179,12 @@ class GameWorld:
             raise ClientException(
                 'malformed call to /create. the syntax is /create object-type "pretty name" [additional arguments]')
 
-        obj_type, pretty_name, additional_args = match.groups()
+        obj_type, name, additional_args = match.groups()
         if obj_type not in CREATE_TYPES:
             raise ClientException(
                 'Unknown type for /create. Try one of {}'.format(CREATE_TYPES))
 
-        return obj_type, pretty_name, additional_args
+        return obj_type, name, additional_args
 
     @classmethod
     def derive_shortname(cls, owner_obj, *strings):
@@ -222,7 +222,7 @@ class GameWorld:
         return room
 
     @classmethod
-    def create_exit(cls, owner_obj, pretty_name, additional_args):
+    def create_exit(cls, owner_obj, name, additional_args):
         match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
         if not match:
             raise ClientException('To make an exit, try /create exit A Door north foyer A rusted, metal door')
@@ -240,9 +240,10 @@ class GameWorld:
                 raise ClientException('In order to create an exit, run this command from a room you own.')
 
         # make the here_exit
-        shortname = cls.derive_shortname(owner_obj, pretty_name)
-        here_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
-            'pretty_name': pretty_name,
+        shortname = cls.derive_shortname(owner_obj, name)
+        here_exit = GameObject.create_scripted_object(
+            'exit', owner_obj.user_account, shortname, {
+            'name': name,
             'description': description,
             'target_room_name': target_room.shortname})
 
@@ -257,9 +258,10 @@ class GameWorld:
 
         if owner_obj.user_account.is_god or target_room.author == owner_obj.user_account:
             # make the there_exit
-            shortname = cls.derive_shortname(owner_obj, pretty_name, 'reverse')
-            there_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
-                'pretty_name': pretty_name,
+            shortname = cls.derive_shortname(owner_obj, name, 'reverse')
+            there_exit = GameObject.create_scripted_object(
+                'exit', owner_obj.user_account, shortname, {
+                'name': name,
                 'description': description,
                 'target_room_name': current_room.shortname})
             rev_dir = REVERSE_DIRS[direction]
@@ -274,13 +276,14 @@ class GameWorld:
         return here_exit
 
     @classmethod
-    def create_portkey(cls, owner_obj, target, pretty_name=None):
-        if pretty_name is None:
-            pretty_name = 'Teleport Stone to {}'.format(target.name)
+    def create_portkey(cls, owner_obj, target, name=None):
+        if name is None:
+            name = 'Teleport Stone to {}'.format(target.name)
         description = 'Touching this stone will transport you to'.format(target.name)
-        shortname = cls.derive_shortname(owner_obj, pretty_name)
-        return GameObject.create_scripted_object(owner_obj, 'portkey', shortname, {
-            'pretty_name': pretty_name,
+        shortname = cls.derive_shortname(owner_obj, name)
+        return GameObject.create_scripted_object(
+            'portkey', owner_obj.user_account, shortname, {
+            'name': name,
             'description': description,
             'target_room_name': target.shortname})
 
