@@ -10,24 +10,25 @@ WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 # Note an awful thing here; since we call .format on the script templates, we
 # have to escape the WITCH macro's {}. {{}} is not the Hy that we want, but we
 # need it in the templates.
+# TODO consider using shortname instead of name for the string passed to (witch)
 SCRIPT_TEMPLATES = {
     'item': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'player': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'room': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'exit': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
@@ -35,18 +36,13 @@ SCRIPT_TEMPLATES = {
         (tell-sender "move" (get-data "target"))))
     ''',
     'portkey': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
       (hears "touch"
         (tell-sender "move" (get-data "target"))))
     '''}
-
-def get_template(obj_type, name, description="A trinket"):
-    # TODO accept an arbitrary dict for formatting
-    return SCRIPT_TEMPLATES[obj_type].format(name=name,
-                                             description=description)
 
 class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}

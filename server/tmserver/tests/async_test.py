@@ -146,7 +146,7 @@ async def test_witch_script(event_loop, mock_logger, client):
     script_rev = ScriptRevision.create(
         script=horse_script,
         code='''
-            (witch "horse" by "vilmibm"
+            (witch "horse"
               (has {"num-pets" 0
                     "name" "snoozy"
                     "description" "a horse"})
