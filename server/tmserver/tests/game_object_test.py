@@ -126,7 +126,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         self.script_rev = ScriptRevision.create(
             script=self.script,
             code='''
-            (witch "horse" by "vilmibm"
+            (witch "horse"
               (has {"num-pets" 0
                     "name" "snoozy"
                     "description" "a horse"})

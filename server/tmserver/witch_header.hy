@@ -4,11 +4,10 @@
 #_("TODO support additional args, here. right now, they have to be one big string.")
 (defmacro tell-sender [action args] `(.tell-sender receiver sender ~action ~args))
 
-#_("TODO what to do with script_name and author_name?")
 #_("TODO eventually decide on cmd-args handling")
 
 (defmacro witch
-  [script_name _ author_name data &rest actions]
+  [script_name data &rest actions]
   (setv se (gensym))
   (setv hp (gensym))
   `(do
@@ -25,7 +24,7 @@
 
 
 
-#_(setv hmm (witch "horse" by "vilmibm"
+#_(setv hmm (witch "horse"
                 (has {"num-pets" 0})
                 (hears "pet"
                        (set-data "num-pets"
