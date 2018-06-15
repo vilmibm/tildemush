@@ -2,9 +2,41 @@ import asyncio
 import copy
 import json
 import os
+import re
 
 import urwid
 import websockets
+
+COLOR_PARTS_RE = re.compile('(\\\{|[^\{])|(\{[^\}]+\})')
+
+palettes = [
+    ('reversed', 'standout', ''),
+    ('basic', 'white', 'black'),
+    ('background', 'dark magenta', 'black'),
+    ('error', 'light red', 'black'),
+
+    # standard colors - only using foreground colors, eventually
+    # we could probably do permutations of fg/bg combinations
+    # the names come from http://urwid.org/manual/displayattributes.html
+    ('dark red', 'dark red', ''),
+    ('dark green', 'dark green', ''),
+    ('brown', 'brown', ''),
+    ('dark blue', 'dark blue', ''),
+    ('dark magenta', 'dark magenta', ''),
+    ('dark cyan', 'dark cyan', ''),
+    ('light gray', 'light gray', ''),
+    ('dark gray', 'dark gray', ''),
+    ('light red', 'light red', ''),
+    ('light green', 'light green', ''),
+    ('yellow', 'yellow', ''),
+    ('light blue', 'light blue', ''),
+    ('light magenta', 'light magenta', ''),
+    ('light cyan', 'light cyan', ''),
+    ('white', 'white', ''),
+    ('black', 'black', 'white'),
+    ('/', 'white', ''),
+    ('reset', 'white', '')]
+
 
 class Form(urwid.Pile):
     def __init__(self, fields, submit):
@@ -178,11 +210,29 @@ class GameTab(urwid.WidgetPlaceholder):
         self.tab_header = TabHeader(self.tab_header.label, self.tab_header.position, False)
 
 
-palettes = [
-    ('reversed', 'standout', ''),
-    ('basic', 'white', 'black'),
-    ('background', 'dark magenta', 'black'),
-    ('error', 'light red', 'black')]
+class ColorText(urwid.Text):
+    """
+    Turns a string into a text widget with colorized sections.
+    Strings use a format of "{light red}foo {light blue}bar{/}"
+    """
+
+    def __init__(self, s, align='left', wrap='space', layout=None):
+        parts = COLOR_PARTS_RE.findall(s)
+        res = []
+        text = ""
+        theme = ""
+        for token in parts:
+            if token[1] != '':
+                res.append((theme, text))
+                theme = token[1][1:-1]
+                text = ''
+            elif token[0] == "\{":
+                text += "{"
+            else:
+                text += token[0]
+        res.append((theme, text))
+        super().__init__(res, align, wrap, layout)
+
 
 class UI:
     def __init__(self, loop):
