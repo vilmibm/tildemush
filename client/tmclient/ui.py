@@ -7,7 +7,7 @@ import re
 import urwid
 import websockets
 
-COLOR_PARTS_RE = re.compile('(\{[^\}]+\})|([^\{]*)')
+COLOR_PARTS_RE = re.compile('(\\\{|[^\{])|(\{[^\}]+\})')
 
 palettes = [
     ('reversed', 'standout', ''),
@@ -37,7 +37,7 @@ palettes = [
     ('/', 'white', ''),
     ('reset', 'white', '')]
 
-    
+
 class Form(urwid.Pile):
     def __init__(self, fields, submit):
         super().__init__(fields+[submit])
@@ -222,12 +222,14 @@ class ColorText(urwid.Text):
         text = ""
         theme = ""
         for token in parts:
-            if token[0] != '':
+            if token[1] != '':
                 res.append((theme, text))
-                theme = token[0][1:-1]
+                theme = token[1][1:-1]
                 text = ''
+            elif token[0] == "\{":
+                text += "{"
             else:
-                text += token[1]
+                text += token[0]
         res.append((theme, text))
         super().__init__(res, align, wrap, layout)
 
