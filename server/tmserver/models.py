@@ -113,6 +113,31 @@ def pre_scriptrev_save(cls, instance, created):
     instance.code = instance.code.lstrip().rstrip()
 
 
+class Permission(BaseModel):
+    """There are four types of permissions for a game object: read, write,
+    carry, and execute.
+
+    Each one has two states: owner or world.
+
+    Read and write control who can view and update an object's WITCH code.
+
+    Carry controls who can pick up an object.
+
+    Execute controls who can send actions to an object.
+
+    The default set of permissions is:
+
+    W+R O+W W+C W+C
+    """
+    OWNER = 1
+    WORLD = 2
+
+    read = pw.IntegerField(default=WORLD)
+    write = pw.IntegerField(default=OWNER)
+    carry = pw.IntegerField(default=WORLD)
+    execute = pw.IntegerField(default=WORLD)
+
+
 class GameObject(BaseModel, ScriptedObjectMixin):
     author = pw.ForeignKeyField(UserAccount)
     shortname = pw.CharField(null=False, unique=True)
@@ -120,6 +145,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
     is_player_obj = pw.BooleanField(default=False)
     is_sanctum = pw.BooleanField(default=False)
     data = JSONField(default=dict)
+    perms = pw.ForeignKeyField(Permission, backref='obj', null=True)
 
     @classmethod
     def create_scripted_object(cls, obj_type, author, shortname, format_dict=None):
@@ -138,6 +164,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
                 script=script,
                 code=script_code)
             game_obj = GameObject.create(
+                perms=Permission(),
                 author=author,
                 shortname=shortname,
                 script_revision=scriptrev)
@@ -171,6 +198,22 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             return self.author
         return None
 
+    def can_carry(self, target_obj):
+        return self._can_perm('carry', target_obj)
+
+    def can_read(self, target_obj):
+        return self._can_perm('read', target_obj)
+
+    def can_write(self, target_obj):
+        return self._can_perm('write', target_obj)
+
+    def can_execute(self, target_obj):
+        return self._can_perm('execute', target_obj)
+
+    def _can_perm(self, perm, target_obj):
+        return self.author == target_obj.author\
+               or getattr(target_obj.perms, perm) == Permission.WORLD
+
     def __str__(self):
         return self.name
 
@@ -200,6 +243,13 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         return hash((self.author.username, self.shortname, script_revision))
 
 
+@post_save(sender=GameObject)
+def on_game_object_create(cls, instance, created):
+    if not created: return
+    instance.perms = Permission.create()
+    instance.save()
+
+
 class Contains(BaseModel):
     outer_obj = pw.ForeignKeyField(GameObject)
     inner_obj = pw.ForeignKeyField(GameObject)
@@ -211,4 +261,4 @@ class Log(BaseModel):
     raw = pw.CharField()
 
 
-MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision]
+MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission]
