@@ -5,7 +5,7 @@ from slugify import slugify
 from .config import get_db
 from .errors import ClientException
 from .models import Contains, GameObject, Contains, Script
-from .scripting import get_template
+
 DIRECTIONS = {'north', 'south', 'west', 'east', 'above', 'below'}
 CREATE_TYPES = {'room', 'exit', 'item'}
 CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
