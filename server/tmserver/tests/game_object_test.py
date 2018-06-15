@@ -166,7 +166,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         assert result == '{} <- {} with []'.format(self.snoozy, self.vil)
 
     def test_bad_witch(self):
-        self.script_rev.code = '''(witch oops lol haha)'''
+        self.script_rev.code = '''(witch)'''
         self.script_rev.save()
         with self.assertRaises(WitchException):
             self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
