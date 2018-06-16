@@ -267,7 +267,7 @@ class GameWorld:
             raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
 
         if not sender_obj.can_carry(target_obj):
-            raise ClientException(OBJECT_DENIED.format(target_obj_str))
+            raise ClientException(OBJECT_DENIED.format(target_obj.name))
 
         container_obj = None
         for obj in sender_obj.contains:
@@ -289,7 +289,7 @@ class GameWorld:
         if not sender_obj.can_execute(container_obj):
             raise ClientException(
                 'You try as hard as you can, but you are unable to pry open {}'.format(
-                    container_obj))
+                    container_obj.name))
 
         cls.put_into(container_obj, target_obj)
 

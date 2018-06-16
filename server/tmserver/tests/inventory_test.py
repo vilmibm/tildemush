@@ -24,8 +24,6 @@ class InventoryTestCase(TildemushTestCase):
                 name='A Garbage Bag',
                 description="It's just a garbage bag. The black, glossy kind. You wonder how much stuff you could fit in there."))
 
-        # TODO initial perms? by default, things are pretty open. i'll restrict as
-        # needed unless that sucks...
         GameWorld.put_into(foyer, can)
         GameWorld.put_into(foyer, bag)
         GameWorld.put_into(foyer, vil_ua.player_obj)
@@ -73,66 +71,132 @@ class GetTest(InventoryTestCase):
         assert shiny_can not in self.vil.contains
         assert mock_hears.called
 
-
+@mock.patch('tmserver.world.GameWorld.user_hears')
 class DropTest(InventoryTestCase):
-    def test_success(self):
-        pass
+    def test_success(self, mock_hears):
+        GameWorld.handle_get(self.vil, 'can')
+        assert self.can in self.vil.contains
+        GameWorld.handle_drop(self.vil, 'can')
+        assert self.can not in self.vil.contains
+        assert self.can in self.foyer.contains
+        assert mock_hears.called
 
-    def test_ambiguity(self):
-        pass
+    def test_ambiguity(self, mock_hears):
+        shiny_can = GameObject.create_scripted_object(
+            'item', self.god, 'can-shiny-god', dict(
+                name='A New, Shiny Tin Can',
+                description="A new can. Not even adhesive on this. You can see yourself in its reflection but you're all ripply."))
+        GameWorld.put_into(self.foyer, shiny_can)
+        GameWorld.handle_get(self.vil, 'can')
+        GameWorld.handle_get(self.vil, 'can')
+        assert self.can in self.vil.contains
+        assert shiny_can in self.vil.contains
+        GameWorld.handle_drop(self.vil, 'can')
+        assert self.can not in self.vil.contains
+        assert shiny_can in self.vil.contains
+        assert mock_hears.called
 
-class PutTest(TildemushTestCase):
-    def test_malformed(self):
-        pass
+@mock.patch('tmserver.world.GameWorld.user_hears')
+class PutTest(InventoryTestCase):
+    def test_malformed(self, _):
+        malformed = [
+            'can zorp bag',
+            'can',
+            'can bag',
+            'can i n bag']
+        for bad in malformed:
+            with self.assertRaisesRegex(
+                    ClientException,
+                    'Try /put some'):
+                GameWorld.handle_put(self.vil, bad)
 
-    def test_target_not_found(self):
-        pass
+    def test_with_spaces(self, mock_hears):
+        GameWorld.handle_put(self.vil, 'tin can in bag')
+        assert self.can in self.bag.contains
+        assert self.can not in self.foyer.contains
+        assert self.can not in self.vil.contains
+        assert mock_hears.called
 
-    def test_target_in_inv(self):
-        pass
+    def test_target_not_found(self, _):
+        with self.assertRaisesRegex(
+                ClientException,
+                'You look in vain for shoe.'):
+            GameWorld.handle_put(self.vil, 'shoe in bag')
 
-    def test_target_in_room(self):
-        pass
+    def test_target_in_inv(self, mock_hears):
+        GameWorld.handle_get(self.vil, 'can')
+        GameWorld.handle_put(self.vil, 'can in bag')
+        assert self.can in self.bag.contains
+        assert self.can not in self.vil.contains
+        assert mock_hears.called
 
-    def test_container_in_inv(self):
-        pass
+    def test_target_in_room(self, mock_hears):
+        GameWorld.handle_put(self.vil, 'can in bag')
+        assert self.can in self.bag.contains
+        assert self.can not in self.foyer.contains
+        assert self.can not in self.vil.contains
+        assert mock_hears.called
 
-    def test_container_in_room(self):
-        pass
+    def test_container_in_inv(self, mock_hears):
+        GameWorld.handle_get(self.vil, 'bag')
+        GameWorld.handle_put(self.vil, 'can in bag')
+        assert self.can in self.bag.contains
+        assert self.can not in self.vil.contains
+        assert mock_hears.called
 
-    def test_container_not_found(self):
-        pass
+    def test_both_in_inv(self, mock_hears):
+        GameWorld.handle_get(self.vil, 'bag')
+        GameWorld.handle_get(self.vil, 'can')
+        GameWorld.handle_put(self.vil, 'can in bag')
+        assert self.can in self.bag.contains
+        assert self.can not in self.vil.contains
+        assert mock_hears.called
 
-    def test_target_denied(self):
-        pass
+    def test_container_not_found(self, _):
+        with self.assertRaisesRegex(
+                ClientException,
+                'You look in vain for pail.'):
+            GameWorld.handle_put(self.vil, 'can in pail')
 
-    def test_container_denied(self):
-        pass
+    def test_target_denied(self, _):
+        self.can.perms.carry = Permission.OWNER
+        self.can.perms.save()
+        with self.assertRaisesRegex(
+                ClientException, 'You grab a hold of A Rusted Tin Can but'):
+            GameWorld.handle_put(self.vil, 'can in bag')
 
-class RemoveTest(TildemushTestCase):
-    def test_malformed(self):
-        pass
+    def test_container_denied(self, _):
+        self.bag.perms.execute = Permission.OWNER
+        self.bag.perms.save()
+        with self.assertRaisesRegex(
+                ClientException,
+                'You try as hard as you can, but you are unable to pry open A Garbage Bag'):
+            GameWorld.handle_put(self.vil, 'can in bag')
 
-    def test_target_not_found(self):
-        pass
-
-    def test_target_in_inv(self):
-        pass
-
-    def test_target_in_room(self):
-        pass
-
-    def test_container_in_inv(self):
-        pass
-
-    def test_container_in_room(self):
-        pass
-
-    def test_container_not_found(self):
-        pass
-
-    def test_target_denied(self):
-        pass
-
-    def test_container_denied(self):
-        pass
+#class RemoveTest(TildemushTestCase):
+    #def test_malformed(self):
+        #pass
+#
+    #def test_target_not_found(self):
+        #pass
+#
+    #def test_target_in_inv(self):
+        #pass
+#
+    #def test_target_in_room(self):
+        #pass
+#
+    #def test_container_in_inv(self):
+        #pass
+#
+    #def test_container_in_room(self):
+        #pass
+#
+    #def test_container_not_found(self):
+        #pass
+#
+    #def test_target_denied(self):
+        #pass
+#
+    #def test_container_denied(self):
+        #pass
