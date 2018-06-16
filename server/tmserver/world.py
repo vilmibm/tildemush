@@ -155,7 +155,6 @@ class GameWorld:
         for o in aoe:
             o.handle_action(cls, sender_obj, action, action_args)
 
-
     @classmethod
     def all_active_objects(cls):
         """This method assumes that if an object is contained by something
@@ -186,17 +185,18 @@ class GameWorld:
            /get a banana
            /get Banana
         """
-        obj_string = action_args
+        # TODO eventually, generalize object resolution for various scopes. Consider player objects.
+        match_string = action_args
         found = None
         for obj in sender_obj.contained_by.contains:
             if obj.is_player_obj:
                 continue
-            if obj.fuzzy_match(obj_string):
+            if obj.fuzzy_match(match_string):
                 found = obj
                 break
 
         if found is None:
-            raise ClientException('You look in vain for something called {}.'.format(obj_string))
+            raise ClientException('You look in vain for something called {}.'.format(match_string))
 
         if not sender_obj.can_carry(found):
             raise ClientException(
@@ -207,8 +207,20 @@ class GameWorld:
         cls.user_hears(sender_obj, sender_obj, 'You grab {}.'.format(found.name))
 
     @classmethod
-    def handle_drop(cls, sender_obj, action_arsg):
-        pass
+    def handle_drop(cls, sender_obj, action_args):
+        # TODO eventually, generalize object resolution for various scopes. Consider player objects.
+        match_string = action_args
+        found = None
+        for obj in sender_obj.contains:
+            if obj.fuzzy_match(match_string):
+                found = obj
+                break
+
+        if found is None:
+            raise ClientException('You look in vain for something called {}.'.format(obj_string))
+
+        cls.put_into(sender_obj.contained_by, found)
+        cls.user_hears(sender_obj, sender_obj, 'You drop {}.'.format(found.name))
 
     @classmethod
     def handle_put(cls, sender_obj, action_arsg):

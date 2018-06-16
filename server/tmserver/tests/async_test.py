@@ -583,3 +583,36 @@ async def test_handle_get_denied(event_loop, mock_logger, client):
     assert msg == 'ERROR: You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'
 
     await client.close()
+
+@pytest.mark.asyncio
+async def test_handle_drop(event_loop, mock_logger, client):
+    god = UserAccount.get(UserAccount.username=='god')
+    foyer = GameObject.get(GameObject.shortname=='foyer')
+    phaser = GameObject.create_scripted_object(
+        'item', god, 'phaser-god', dict(
+            name='a phaser',
+            description='watch where u point it'))
+
+    GameWorld.put_into(foyer, phaser)
+
+    await setup_user(client, 'vilmibm')
+
+    await client.send('COMMAND get phaser')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+
+    msg = await client.recv()
+    assert msg == 'You grab a phaser.'
+
+    await client.send('COMMAND drop phaser')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg == 'You drop a phaser.'
+
+    vil_obj = GameObject.get(GameObject.shortname=='vilmibm')
+    assert 'a phaser' not in [o.name for o in vil_obj.contains]
+
+    await client.close()
