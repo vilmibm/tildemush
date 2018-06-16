@@ -8,6 +8,22 @@ from ..world import GameWorld
 
 from .tm_test_case import TildemushTestCase
 
+class CreateScriptedObjectTest(TildemushTestCase):
+    def setUp(self):
+        super().setUp()
+        self.vil = UserAccount.create(
+            username='vilmibm',
+            password='foobarbazquux')
+
+    def test_data_initialized(self):
+        banana = GameObject.create_scripted_object(
+            'item', self.vil, 'banana-vilmibm', dict(
+                name='A Banana',
+                description='Still green.'))
+        assert banana.data == dict(
+            name='A Banana',
+            description='Still green.')
+
 class GameObjectDataTest(TildemushTestCase):
     """This test merely ensures the ensure, get, and set data stuff works okay.
     Scripts aren't involved."""

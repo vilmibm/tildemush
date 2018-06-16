@@ -168,6 +168,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
                 author=author,
                 shortname=shortname,
                 script_revision=scriptrev)
+            game_obj.init_scripting()
 
         return game_obj
 

@@ -117,16 +117,18 @@ class ScriptedObjectMixin:
     @property
     def engine(self):
         if not hasattr(self, '_engine'):
-            if self.script_revision is None:
-                self._engine = ScriptEngine()
-            else:
-                try:
-                    self._engine = self._execute_script(self.script_revision.code)
-                except Exception as e:
-                    raise WitchException(
-                        ';_; There is a problem with your witch script: {}'.format(e))
-
+            self.init_scripting()
         return self._engine
+
+    def init_scripting(self):
+        if self.script_revision is None:
+            self._engine = ScriptEngine()
+        else:
+            try:
+                self._engine = self._execute_script(self.script_revision.code)
+            except Exception as e:
+                raise WitchException(
+                    ';_; There is a problem with your witch script: {}'.format(e))
 
     def handle_action(self, game_world, sender_obj, action, action_args):
         self._ensure_world(game_world)

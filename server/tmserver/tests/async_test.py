@@ -302,6 +302,26 @@ async def test_client_state(event_loop, mock_logger, client):
     GameWorld.put_into(tricorder, music_app)
     GameWorld.put_into(music_app, klingon_opera)
 
+    GameObject.create_scripted_object(
+        'room', god, 'jeffries-tube-god', dict(
+            name='Jeffries Tube',
+            description='A cramped little space used for maintenance.'))
+    GameObject.create_scripted_object(
+        'room', god, 'replicator-room-god', dict(
+            name='Replicator Room',
+            description="Little more than a closet, you can use this room to interact with the replicator in case you don't want to make an order a the bar."))
+
+    GameWorld.put_into(room, god.player_obj)
+    GameWorld.create_exit(
+        god.player_obj,
+        'Sliding Door',
+        'east replicator-room-god An automatic, shiny sliding door')
+    GameWorld.create_exit(
+        god.player_obj,
+        'Hatch',
+        'below jeffries-tube-god A small hatch, just big enough for a medium sized humanoid.')
+    GameWorld.remove_from(room, god.player_obj)
+
     await client.send('LOGIN vilmibm:foobarbazquux')
     await client.recv()
     await client.recv()
@@ -326,15 +346,18 @@ async def test_client_state(event_loop, mock_logger, client):
                  'description': 'a chess game with four decks'},
                 {'name': 'weird drink',
                  'description': 'an in-house invention of Guinan. It is purple and fizzes ominously.'},
+                {'name': 'Sliding Door',
+                 'description': 'An automatic, shiny sliding door'},
+                {'name': 'Hatch',
+                 'description': 'A small hatch, just big enough for a medium sized humanoid.'}
             ],
             'exits': {
-                'north': None,
-                'south': None,
-                'east': None,
-                'west': None,
-                'above': None,
-                'below': None,
-            }
+                'east': {
+                    'exit_name': 'Sliding Door',
+                    'room_name': 'Replicator Room'},
+                'below': {
+                    'exit_name': 'Hatch',
+                    'room_name': 'Jeffries Tube'}}
         },
         'inventory': [
             {'name':'tricorder',

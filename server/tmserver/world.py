@@ -46,6 +46,29 @@ class GameWorld:
         to the game client."""
         player_obj = user_account.player_obj
         room = player_obj.contained_by
+        exits = room.get_data('exits', {})
+        exit_payload = {}
+
+        for direction in DIRECTIONS:
+            if direction not in exits:
+                continue
+
+            exit_obj = GameObject.get_or_none(GameObject.shortname==exits[direction])
+            if exit_obj is None:
+                continue
+
+            target_room_name = exit_obj.get_data('target')
+            if target_room_name is None:
+                continue
+
+            target_room = GameObject.get_or_none(GameObject.shortname==target_room_name)
+            if target_room is None:
+                continue
+
+            exit_payload[direction] = dict(
+                exit_name=exit_obj.name,
+                room_name=target_room.name)
+
         return {
             'motd': 'welcome to tildemush',  # TODO
             'user': {
@@ -59,15 +82,7 @@ class GameWorld:
                 'contains': [dict(name=o.name, description=o.description)
                              for o in room.contains
                              if o.name != player_obj.name],
-                'exits': {
-                    # TODO
-                    'north': None,
-                    'south': None,
-                    'east': None,
-                    'west': None,
-                    'above': None,
-                    'below': None,
-                }
+                'exits': exit_payload,
             },
             'inventory': cls.contains_tree(player_obj),
             'scripts': [s.name for s
@@ -210,7 +225,7 @@ class GameWorld:
     def create_room(cls, owner_obj, name, additional_args):
         shortname = cls.derive_shortname(owner_obj, name)
         room = GameObject.create_scripted_object(
-            'room', owner_obj.user_account,  shortname, {
+            'room', owner_obj.user_account, shortname, {
             'name': name,
             'description': additional_args})
 
@@ -225,9 +240,10 @@ class GameWorld:
 
     @classmethod
     def create_exit(cls, owner_obj, name, additional_args):
+        # TODO consider having parse_create_exit that is called outside of this
         match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
         if not match:
-            raise ClientException('To make an exit, try /create exit A Door north foyer A rusted, metal door')
+            raise ClientException('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
         direction, target_room_name, description = match.groups()
         if direction not in DIRECTIONS:
             raise ClientException('Try one of these directions: {}'.format(DIRECTIONS))
