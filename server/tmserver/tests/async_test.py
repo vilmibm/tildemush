@@ -552,6 +552,8 @@ async def test_handle_get(event_loop, mock_logger, client):
     assert msg == 'COMMAND OK'
     msg = await client.recv()
     assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg.startswith('STATE')
 
     msg = await client.recv()
     assert msg == 'You grab A fresh cigar.'
@@ -602,6 +604,8 @@ async def test_handle_drop(event_loop, mock_logger, client):
     assert msg == 'COMMAND OK'
     msg = await client.recv()
     assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg.startswith('STATE')
 
     msg = await client.recv()
     assert msg == 'You grab a phaser.'
@@ -646,10 +650,8 @@ async def test_handle_put(event_loop, mock_logger, client):
     await client.send('COMMAND put phaser in chest')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
-    # TODO a change to objects in an object's contained_by isn't sending a
-    # STATE update. It affects the "room" pane, so it probably should
-    #msg = await client.recv()
-    #assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg.startswith('STATE')
     msg = await client.recv()
     assert msg == 'You put a phaser in Fancy Space Chest'
 

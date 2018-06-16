@@ -657,21 +657,29 @@ class GameWorld:
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
         if inner_obj.contained_by:
+            old_outer_obj = inner_obj.contained_by
             Contains.delete().where(Contains.inner_obj==inner_obj).execute()
+            for o in old_outer_obj.contains:
+                if o.is_player_obj:
+                    cls.send_client_update(o.user_account)
+
         Contains.create(outer_obj=outer_obj, inner_obj=inner_obj)
 
         outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
         inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
-
-    # TODO check aoe to see if players need to hear about visible container changes ^v
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
         Contains.delete().where(
             Contains.outer_obj==outer_obj,
             Contains.inner_obj==inner_obj).execute()
+
         outer_obj.handle_action(cls, inner_obj, 'contain', 'lost')
         inner_obj.handle_action(cls, outer_obj, 'contain', 'freed')
+
+        for o in outer_obj.contains:
+            if o.is_player_obj and o != inner_obj:
+                cls.send_client_update(o.user_account)
 
     @classmethod
     def user_hears(cls, receiver_obj, sender_obj, msg):
