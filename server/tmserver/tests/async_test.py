@@ -635,7 +635,7 @@ async def test_handle_put(event_loop, mock_logger, client):
 
     phaser.perms.carry = Permission.WORLD
     phaser.perms.save()
-    space_chest.perms.carry = Permission.WORLD
+    space_chest.perms.execute = Permission.WORLD
     space_chest.perms.save()
 
     GameWorld.put_into(foyer, phaser)
@@ -652,5 +652,38 @@ async def test_handle_put(event_loop, mock_logger, client):
     #assert msg.startswith('STATE')
     msg = await client.recv()
     assert msg == 'You put a phaser in Fancy Space Chest'
+
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_handle_remove(event_loop, mock_logger, client):
+    god = UserAccount.get(UserAccount.username=='god')
+    foyer = GameObject.get(GameObject.shortname=='foyer')
+    phaser = GameObject.create_scripted_object(
+        'item', god, 'phaser-god', dict(
+            name='a phaser',
+            description='watch where u point it'))
+    space_chest = GameObject.create_scripted_object(
+        'item', god, 'space-chest-god', dict(
+            name='Fancy Space Chest',
+            description="It's like a fantasy chest but palette swapped."))
+
+    phaser.perms.carry = Permission.WORLD
+    phaser.perms.save()
+    space_chest.perms.execute = Permission.WORLD
+    space_chest.perms.save()
+
+    GameWorld.put_into(foyer, space_chest)
+    GameWorld.put_into(space_chest, phaser)
+
+    await setup_user(client, 'vilmibm')
+
+    await client.send('COMMAND remove phaser from chest')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg == 'You remove a phaser from Fancy Space Chest and carry it with you.'
 
     await client.close()

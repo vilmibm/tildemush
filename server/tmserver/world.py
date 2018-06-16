@@ -13,6 +13,7 @@ CREATE_TYPES = {'room', 'exit', 'item'}
 CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
 CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*)$')
 PUT_ARGS_RE = re.compile(r'^(.+) in (.+)$')
+REMOVE_ARGS_RE = re.compile(r'^(.+) from (.+)$')
 REVERSE_DIRS = {
     'north': 'south',
     'south': 'north',
@@ -236,13 +237,19 @@ class GameWorld:
         both object names in case a name ends up with ' in ' in it.
 
         Moves the first object into second_obj.contains.
+
+        If the player doesn't have execute permission on the container, the
+        attempt fails. They also need carry permission for the first object if
+        they're grabbing it from the room they're in (instead of their
+        inventory).
         """
+        # TODO generalize this...in more ways than one...please...
         match = PUT_ARGS_RE.fullmatch(action_args)
         if match is None:
             raise ClientException('Try /put some object in container object')
         target_obj_str, container_obj_str = match.groups()
+
         target_obj = None
-        container_obj = None
         for obj in sender_obj.contains:
             if obj.fuzzy_match(target_obj_str):
                 target_obj = obj
@@ -255,10 +262,12 @@ class GameWorld:
                 if obj.fuzzy_match(target_obj_str):
                     target_obj = obj
                     break
-            if target_obj is None:
-                raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
-            if not sender_obj.can_carry(target_obj):
-                raise ClientException(OBJECT_DENIED.format(target_obj_str))
+
+        if target_obj is None:
+            raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
+
+        if not sender_obj.can_carry(target_obj):
+            raise ClientException(OBJECT_DENIED.format(target_obj_str))
 
         container_obj = None
         for obj in sender_obj.contains:
@@ -273,19 +282,79 @@ class GameWorld:
                 if obj.fuzzy_match(container_obj_str):
                     container_obj = obj
                     break
-            if container_obj is None:
-                raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
-            if not sender_obj.can_carry(container_obj):
-                raise ClientException(OBJECT_DENIED.format(container_obj_str))
+
+        if container_obj is None:
+            raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
+
+        if not sender_obj.can_carry(container_obj):
+            raise ClientException(
+                'You try as hard as you can, but you are unable to pry open {}'.format(
+                    container_obj))
 
         cls.put_into(container_obj, target_obj)
 
         cls.user_hears(sender_obj, sender_obj, 'You put {} in {}'.format(target_obj.name, container_obj.name))
 
-
     @classmethod
     def handle_remove(cls, sender_obj, action_args):
-        pass
+        """Called like:
+
+           /remove phaser from bag
+
+        we (somewhat disconcertingly) split on ' from '.
+        TODO support quoting both object names in case a name ends up with '
+        from ' in it.
+
+        Removes the first object into second_obj.contains and adds it to the
+        player's inventory.
+
+        If the player doesn't have execute permission on the container, the
+        attempt fails. They also need carry permission for the first object.
+        """
+        # TODO generalize this...in more ways than one...please...
+        match = REMOVE_ARGS_RE.fullmatch(action_args)
+        if match is None:
+            raise ClientException('Try /remove some object from container object')
+        target_obj_str, container_obj_str = match.groups()
+
+        container_obj = None
+        for obj in sender_obj.contains:
+            if obj.fuzzy_match(container_obj_str):
+                container_obj = obj
+                break
+
+        if container_obj is None:
+            for obj in sender_obj.contained_by.contains:
+                if obj.is_player_obj:
+                    continue
+                if obj.fuzzy_match(container_obj_str):
+                    container_obj = obj
+                    break
+
+        if container_obj is None:
+            raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
+
+        if not sender_obj.can_execute(container_obj):
+            raise ClientException(
+                'You try as hard as you can, but you are unable to pry open {}'.format(
+                    container_obj))
+
+        target_obj = None
+        for obj in container_obj.contains:
+            if obj.fuzzy_match(target_obj_str):
+                target_obj = obj
+                break
+
+        if target_obj is None:
+            raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
+
+        if not sender_obj.can_carry(target_obj):
+            raise ClientException(OBJECT_DENIED).format(target_obj.name)
+
+        cls.put_into(sender_obj, target_obj)
+        cls.user_hears(sender_obj, sender_obj, 'You remove {} from {} and carry it with you.'.format(
+            target_obj.name,
+            container_obj.name))
 
     @classmethod
     def handle_create(cls, sender_obj, action_args):
