@@ -9,6 +9,7 @@ from playhouse.postgres_ext import JSONField
 from . import config
 from .errors import UserValidationError, ClientException
 from .scripting import ScriptedObjectMixin
+from .util import strip_color_codes, collapse_whitespace
 
 
 BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
@@ -91,10 +92,12 @@ def on_user_account_create(cls, instance, created):
         player.is_player_obj = True
         player.save()
         sanctum = GameObject.create_scripted_object(
-            'room', instance,
-            '{}-sanctum'.format(instance.username),
-            {'name': "{}'s Sanctum".format(instance.username),
-             'description': "This is your private space. Only you (and gods) can enter here. Any new rooms you create will be attached to this hub. You are free to store items here for safekeeping that you don't want to carry around."})
+            'room', instance, '{}-sanctum'.format(instance.username),
+            dict(name="{}'s Sanctum".format(instance.username),
+                 description="""This is your private space. Only you (and gods)
+                 can enter here. Any new rooms you create will be attached to
+                 this hub. You are free to store items here for safekeeping
+                 that you don't want to carry around."""))
         sanctum.is_sanctum=True,
         sanctum.save()
 
@@ -155,6 +158,10 @@ class GameObject(BaseModel, ScriptedObjectMixin):
 
         if format_dict is None:
             format_dict = {}
+
+        if 'description' in format_dict:
+            format_dict['description'] = collapse_whitespace(format_dict['description'])
+
         script_code = cls.get_template(obj_type).format(**format_dict)
         with config.get_db().atomic():
             script = Script.create(
@@ -212,9 +219,8 @@ class GameObject(BaseModel, ScriptedObjectMixin):
 
         In all cases, case is ignored.
         """
-        # TODO strip color codes from name
         shortname = self.shortname.lower()
-        name = self.name.lower()
+        name = strip_color_codes(self.name.lower())
         match_string = match_string.lower()
         if match_string == shortname:
             return True

@@ -5,6 +5,7 @@ from slugify import slugify
 from .config import get_db
 from .errors import ClientException
 from .models import Contains, GameObject, Contains, Script
+from .util import strip_color_codes
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
 OBJECT_NOT_FOUND = 'You look in vain for {}.'
@@ -408,7 +409,7 @@ class GameWorld:
 
     @classmethod
     def derive_shortname(cls, owner_obj, *strings):
-        slugged = [slugify(s) for s in strings] + [owner_obj.user_account.username]
+        slugged = [slugify(strip_color_codes(s)) for s in strings] + [owner_obj.user_account.username]
         shortname = '-'.join(slugged)
         if GameObject.get_or_none(GameObject.shortname==shortname):
             obj_count = GameObject.select().where(GameObject.author==owner_obj.user_account).count()

@@ -11,14 +11,21 @@ from .tm_test_case import TildemushTestCase
 class FuzzyMatchTest(TildemushTestCase):
     def setUp(self):
         super().setUp()
-        vil = UserAccount.create(
+        self.vil = UserAccount.create(
             username='vilmibm',
             password='foobarbazquux')
 
         self.phaser = GameObject.create_scripted_object(
-            'item', vil, 'phaser-vilmibm-666', dict(
+            'item', self.vil, 'phaser-vilmibm-666', dict(
                 name='Federation Phaser',
                 description='Looks like a remote control, but is far deadlier. You should probably leave it set for stun.'))
+
+    def test_ignores_color_codes(self):
+        rainbow = GameObject.create_scripted_object(
+            'item', self.vil, 'contrived-example-vilmibm', dict(
+                name='a {red}r{orange}a{yellow}i{green}n{blue}b{indigo}o{violet}w{/}',
+                description="all the way across the sky."))
+        assert rainbow.fuzzy_match('rainbow')
 
     def test_exact_name_match(self):
         assert self.phaser.fuzzy_match('Federation Phaser')
