@@ -212,6 +212,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
 
         In all cases, case is ignored.
         """
+        # TODO strip color codes from name
         shortname = self.shortname.lower()
         name = self.name.lower()
         match_string = match_string.lower()

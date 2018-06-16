@@ -6,10 +6,13 @@ from .config import get_db
 from .errors import ClientException
 from .models import Contains, GameObject, Contains, Script
 
+OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
+OBJECT_NOT_FOUND = 'You look in vain for {}.'
 DIRECTIONS = {'north', 'south', 'west', 'east', 'above', 'below'}
 CREATE_TYPES = {'room', 'exit', 'item'}
 CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
 CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*)$')
+PUT_ARGS_RE = re.compile(r'^(.+) in (.+)$')
 REVERSE_DIRS = {
     'north': 'south',
     'south': 'north',
@@ -196,18 +199,19 @@ class GameWorld:
                 break
 
         if found is None:
-            raise ClientException('You look in vain for something called {}.'.format(match_string))
+            raise ClientException(OBJECT_NOT_FOUND.format(match_string))
 
         if not sender_obj.can_carry(found):
-            raise ClientException(
-                'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'.format(
-                    found.name))
+            raise ClientException(OBJECT_DENIED.format(found.name))
 
         cls.put_into(sender_obj, found)
         cls.user_hears(sender_obj, sender_obj, 'You grab {}.'.format(found.name))
 
     @classmethod
     def handle_drop(cls, sender_obj, action_args):
+        """Matches an object in sender_obj.contains and moves it to
+        sender_obj.contained_by"""
+
         # TODO eventually, generalize object resolution for various scopes. Consider player objects.
         match_string = action_args
         found = None
@@ -223,11 +227,64 @@ class GameWorld:
         cls.user_hears(sender_obj, sender_obj, 'You drop {}.'.format(found.name))
 
     @classmethod
-    def handle_put(cls, sender_obj, action_arsg):
-        pass
+    def handle_put(cls, sender_obj, action_args):
+        """Called like:
+
+           /put phaser in bag
+
+        we (somewhat disconcertingly) split on ' in '. TODO support quoting
+        both object names in case a name ends up with ' in ' in it.
+
+        Moves the first object into second_obj.contains.
+        """
+        match = PUT_ARGS_RE.fullmatch(action_args)
+        if match is None:
+            raise ClientException('Try /put some object in container object')
+        target_obj_str, container_obj_str = match.groups()
+        target_obj = None
+        container_obj = None
+        for obj in sender_obj.contains:
+            if obj.fuzzy_match(target_obj_str):
+                target_obj = obj
+                break
+
+        if target_obj is None:
+            for obj in sender_obj.contained_by.contains:
+                if obj.is_player_obj:
+                    continue
+                if obj.fuzzy_match(target_obj_str):
+                    target_obj = obj
+                    break
+            if target_obj is None:
+                raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
+            if not sender_obj.can_carry(target_obj):
+                raise ClientException(OBJECT_DENIED.format(target_obj_str))
+
+        container_obj = None
+        for obj in sender_obj.contains:
+            if obj.fuzzy_match(container_obj_str):
+                container_obj = obj
+                break
+
+        if container_obj is None:
+            for obj in sender_obj.contained_by.contains:
+                if obj.is_player_obj:
+                    continue
+                if obj.fuzzy_match(container_obj_str):
+                    container_obj = obj
+                    break
+            if container_obj is None:
+                raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
+            if not sender_obj.can_carry(container_obj):
+                raise ClientException(OBJECT_DENIED.format(container_obj_str))
+
+        cls.put_into(container_obj, target_obj)
+
+        cls.user_hears(sender_obj, sender_obj, 'You put {} in {}'.format(target_obj.name, container_obj.name))
+
 
     @classmethod
-    def handle_remove(cls, sender_obj, action_arsg):
+    def handle_remove(cls, sender_obj, action_args):
         pass
 
     @classmethod
