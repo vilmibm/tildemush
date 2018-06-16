@@ -302,7 +302,6 @@ async def test_client_state(event_loop, mock_logger, client):
     GameWorld.put_into(tricorder, music_app)
     GameWorld.put_into(music_app, klingon_opera)
 
-    import ipdb; ipdb.set_trace()
     GameObject.create_scripted_object(
         'room', god, 'jeffries-tube-god', dict(
             name='Jeffries Tube',
