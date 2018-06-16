@@ -43,7 +43,7 @@ class MainMenu(Screen):
                 menu_button('login', lambda _:self.show_login()),
                 menu_button('create a new user account', lambda _:self.show_register()),
                 sub_menu(self, 'settings', [
-                    menu_button('forget login details', lambda _:True),
+                    menu_button('forget login details', lambda _:self.forget_details()),
                     menu_button('set server domain', lambda _:True),
                     menu_button('set server port', lambda _:True),
                     menu_button('set server password', lambda _:True)]),
@@ -106,6 +106,10 @@ class MainMenu(Screen):
 
         await self.client.register(register_data['username'], register_data['password'])
 
+    def forget_details(self):
+        self.open_box(urwid.Filler(urwid.Pile([
+            urwid.Text("not implemented yet!")
+            ])))
 
 class GamePrompt(urwid.Edit):
     def __init__(self):
