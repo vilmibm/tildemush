@@ -11,20 +11,18 @@ class ContainTest(TildemushTestCase):
             password='foobarbazquux')
         self.room = GameObject.create(
             author=self.vil,
-            shortname='foul-foyer',
-            name='foul foyer')
+            shortname='foul-foyer',)
         self.phone = GameObject.create(
             author=self.vil,
-            shortname='pixel-2',
-            name='pixel 2')
+            shortname='pixel-2')
         self.app = GameObject.create(
             author=self.vil,
-            shortname='signal',
-            name='signal')
+            shortname='signal')
 
     def test_player_obj(self):
         player_obj = self.vil.player_obj
         assert player_obj.name == self.vil.username
+        assert player_obj.shortname == self.vil.username
         assert player_obj.user_account == self.vil
         assert player_obj.author == self.vil
 
@@ -32,18 +30,13 @@ class ContainTest(TildemushTestCase):
         player_obj = self.vil.player_obj
         cigar = GameObject.create(
             author=self.vil,
-            name='black and mild',
-            shortname='black-and-mild',
-            description='with the wood tip, naturally')
+            shortname='black-and-mild')
         rug = GameObject.create(
             author=self.vil,
-            name='rug',
-            shortname='rug',
-            description='a beautiful persian rug')
+            shortname='rug')
         ship = GameObject.create(
             author=self.vil,
-            shortname='voyager',
-            name='Voyager')
+            shortname='voyager')
 
         Contains.create(
             outer_obj=self.room,
@@ -98,18 +91,13 @@ class ContainTest(TildemushTestCase):
         player_obj = self.vil.player_obj
         cigar = GameObject.create(
             author=self.vil,
-            name='black and mild',
-            shortname='black-and-mild',
-            description='with the wood tip, naturally')
+            shortname='black-and-mild')
         rug = GameObject.create(
             author=self.vil,
-            name='rug',
-            shortname='rug',
-            description='a beautiful persian rug')
+            shortname='rug')
         ship = GameObject.create(
             author=self.vil,
-            shortname='voyager',
-            name='Voyager')
+            shortname='voyager')
 
         GameWorld.put_into(self.room, player_obj)
         GameWorld.put_into(self.phone, self.app)

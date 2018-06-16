@@ -6,7 +6,7 @@ import urwid
 
 from .config import Config
 from . import ui
-from .ui import Screen, Form, FormField, menu, menu_button, sub_menu
+from .ui import Screen, Form, FormField, menu, menu_button, sub_menu, ColorText
 
 def quit_client(screen):
     # TODO: quit command isn't getting caught by the server for some
@@ -20,7 +20,7 @@ class Splash(Screen):
         bt = urwid.BigText('WELCOME TO TILDEMUSH', urwid.font.HalfBlock5x4Font())
         bt = urwid.Padding(bt, 'center', None)
         bt = urwid.Filler(bt, 'middle', None, 7)
-        ftr = urwid.Text('~ press any key to jack in ~', align='center')
+        ftr = ColorText('~ press any key to jack in ~', align='center')
         self.base = urwid.Frame(body=bt, footer=ftr)
         super().__init__(self.base, exit=exit)
 
@@ -31,7 +31,7 @@ class Splash(Screen):
 class MainMenu(Screen):
     def __init__(self, loop, client=None, exit=lambda _: True):
         self.loop = loop
-        ftr = urwid.Text('press ESC to close windows', align='center')
+        ftr = ColorText('press ESC to close windows', align='center')
         body = ui.solidfill('░', 'background')
         self.base = urwid.Frame(body=body, footer=ftr)
         super().__init__(self.base, client, exit)
@@ -78,7 +78,7 @@ class MainMenu(Screen):
         await self.client.authenticate(login_data['username'], login_data['password'])
 
     def show_register(self):
-        info = urwid.Text('register a new account! password must be at least 12 characters long.\n')
+        info = ColorText('register a new account! password must be at least 12 characters long.\n')
         un_field = FormField(caption='username: ', name='username')
         pw_field = FormField(caption='password: ', name='password', mask='~')
         pw_confirm_field = FormField(caption='confirm password: ', name='confirm_password', mask='~')
@@ -128,12 +128,12 @@ class GameMain(urwid.Frame):
 
         # game view stuff
         self.game_walker = urwid.SimpleFocusListWalker([
-            urwid.Text('you have reconstituted into tildemush')
+            ColorText('{yellow}you have reconstituted into tildemush')
             ])
         self.game_text = urwid.ListBox(self.game_walker)
         self.here_text = urwid.Pile(self.here_info())
         self.user_text = urwid.Pile(self.user_info())
-        self.minimap_text = urwid.Text("MAP", align='center')
+        self.minimap_text = ColorText("MAP", align='center')
 
         self.minimap_grid = self.generate_minimap()
         self.main_body = urwid.Columns([
@@ -144,7 +144,7 @@ class GameMain(urwid.Frame):
                 ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
             ])
         ])
-        self.main_banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
+        self.main_banner = ColorText('====welcome 2 tildemush, u are jacked in====')
         self.main_prompt = GamePrompt()
         self.main_view = urwid.Frame(header=self.main_banner,
                 body=self.main_body, footer=self.main_prompt)
@@ -156,19 +156,19 @@ class GameMain(urwid.Frame):
 
         # witch view stuff
         self.witch_prompt = urwid.Edit()
-        self.witch_view= urwid.Filler(urwid.Text("witch editor in progress", align='center'), valign='middle')
+        self.witch_view= urwid.Filler(ColorText("witch editor in progress", align='center'), valign='middle')
         self.witch_tab = ui.GameTab(self.witch_view,
                 ui.TabHeader("F2 WITCH"), self.witch_prompt)
 
         # worldmap view stuff
         self.worldmap_prompt = urwid.Edit()
-        self.worldmap_view = urwid.Filler(urwid.Text("worldmap coming soon", align='center'), valign='middle')
+        self.worldmap_view = urwid.Filler(ColorText("worldmap coming soon", align='center'), valign='middle')
         self.worldmap_tab = ui.GameTab(self.worldmap_view,
                 ui.TabHeader("F3 WORLDMAP"), self.worldmap_prompt)
 
         # settings view stuff
         self.settings_prompt = urwid.Edit()
-        self.settings_view = urwid.Filler(urwid.Text("settings menu under construction", align='center'), valign='middle')
+        self.settings_view = urwid.Filler(ColorText("settings menu under construction", align='center'), valign='middle')
         self.settings_tab = ui.GameTab(self.settings_view,
                 ui.TabHeader("F4 SETTINGS"), self.settings_prompt)
 
@@ -190,7 +190,7 @@ class GameMain(urwid.Frame):
         self.header = self.tab_headers
         self.refresh_tabs()
         self.prompt = self.main_prompt
-        self.statusbar = urwid.Text("connection okay!", align='right')
+        self.statusbar = ColorText("{dark green}connection okay!", align='right')
         self.client_state.set_on_recv(self.on_server_message)
         super().__init__(header=self.header, body=self.main_tab, footer=self.statusbar)
         self.focus_prompt()
@@ -202,7 +202,7 @@ class GameMain(urwid.Frame):
             self.update_state(server_msg[6:])
             self.game_walker.append(urwid.Text(server_msg))
         else:
-            self.game_walker.append(urwid.Text(server_msg))
+            self.game_walker.append(ColorText(server_msg))
             self.game_walker.set_focus(len(self.game_walker)-1)
 
         self.focus_prompt()
@@ -296,9 +296,9 @@ class GameMain(urwid.Frame):
                 contents.append(o.name)
 
         lines = [
-                urwid.Text("[{}]".format(room.get("name")), align='center'),
-                urwid.Text("{}\n".format(room.get("description"))),
-                urwid.Text("You see here ({pop}): {contents}".format(
+                ColorText("[{}]".format(room.get("name")), align='center'),
+                ColorText("{}\n".format(room.get("description"))),
+                ColorText("You see here ({pop}): {contents}".format(
                     pop=len(contents), contents=', '.join(contents)))
                 ]
 
@@ -312,10 +312,10 @@ class GameMain(urwid.Frame):
             inventory.append(item.get("name"))
 
         lines = [
-                urwid.Text("<{desc} named {name}>\n".format(
+                ColorText("<{desc} named {name}>\n".format(
                 desc=user.get("description"),
                 name=user.get("display_name")), align='center'),
-                urwid.Text("Inventory ({count}): {inv}".format(
+                ColorText("Inventory ({count}): {inv}".format(
                     count=len(inventory),
                     inv=", ".join(inventory)))
                 ]

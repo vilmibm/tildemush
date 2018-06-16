@@ -8,6 +8,22 @@ from ..world import GameWorld
 
 from .tm_test_case import TildemushTestCase
 
+class CreateScriptedObjectTest(TildemushTestCase):
+    def setUp(self):
+        super().setUp()
+        self.vil = UserAccount.create(
+            username='vilmibm',
+            password='foobarbazquux')
+
+    def test_data_initialized(self):
+        banana = GameObject.create_scripted_object(
+            'item', self.vil, 'banana-vilmibm', dict(
+                name='A Banana',
+                description='Still green.'))
+        assert banana.data == dict(
+            name='A Banana',
+            description='Still green.')
+
 class GameObjectDataTest(TildemushTestCase):
     """This test merely ensures the ensure, get, and set data stuff works okay.
     Scripts aren't involved."""
@@ -18,8 +34,7 @@ class GameObjectDataTest(TildemushTestCase):
             password='foobarbazquux')
         self.snoozy = GameObject.create(
             author=self.vil,
-            shortname='snoozy',
-            name='snoozy')
+            shortname='snoozy')
 
     def test_data_default(self):
         assert {} == GameObject.get_by_id(self.snoozy.id).data
@@ -73,8 +88,7 @@ def GameObjectComparisonTest(self):
             password='foobarbazquux')
         self.snoozy = GameObject.create(
             author=self.vil,
-            shortname='snoozy',
-            name='snoozy')
+            shortname='snoozy')
 
         self.horse_script = Script.create(author=self.vil)
         self.revision = ScriptRevision.create(code='<witch code>', script=self.horse_script)
@@ -86,7 +100,7 @@ def GameObjectComparisonTest(self):
         snoozy = GameObject.get_by_id(self.snoozy.id)
         assert True == (snoozy == self.snoozy)
 
-        snoozy.name = 'false snoozy'
+        snoozy.shortname = 'false-snoozy'
         assert False == (snoozy == self.snoozy)
 
     def test_eq_operations(self):
@@ -128,8 +142,10 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         self.script_rev = ScriptRevision.create(
             script=self.script,
             code='''
-            (witch "horse" by "vilmibm"
-              (has {"num-pets" 0})
+            (witch "horse"
+              (has {"num-pets" 0
+                    "name" "snoozy"
+                    "description" "a horse"})
               (hears "pet"
                 (set-data "num-pets" (+ 1 (get-data "num-pets")))
                   (if (= 0 (% (get-data "num-pets") 5))
@@ -137,7 +153,6 @@ class GameObjectScriptEngineTest(TildemushTestCase):
 
         self.snoozy = GameObject.create(
             author=vil_ua,
-            name='snoozy',
             shortname='snoozy',
             script_revision=self.script_rev)
 
@@ -167,7 +182,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         assert result == '{} <- {} with []'.format(self.snoozy, self.vil)
 
     def test_bad_witch(self):
-        self.script_rev.code = '''(witch oops lol haha)'''
+        self.script_rev.code = '''(witch)'''
         self.script_rev.save()
         with self.assertRaises(WitchException):
             self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])

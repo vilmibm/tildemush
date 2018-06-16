@@ -10,38 +10,39 @@ WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 # Note an awful thing here; since we call .format on the script templates, we
 # have to escape the WITCH macro's {}. {{}} is not the Hy that we want, but we
 # need it in the templates.
+# TODO consider using shortname instead of name for the string passed to (witch)
 SCRIPT_TEMPLATES = {
     'item': '''
-    (witch "{pretty_name}" by "TODO fix macro to not need author"
-      (has {{"name" "{pretty_name}"
+    (witch "{name}"
+      (has {{"name" "{name}"
+            "description" "{description}"}}))
+    ''',
+    'player': '''
+    (witch "{name}"
+      (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'room': '''
-    (witch "{pretty_name}" by "TODO fix macro to not need author"
-      (has {{"name" "{pretty_name}"
+    (witch "{name}"
+      (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'exit': '''
-    (witch "{pretty_name}" by "TODO fix macro to not need author"
-      (has {{"name" "{pretty_name}"
+    (witch "{name}"
+      (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
       (hears "touch"
         (tell-sender "move" (get-data "target"))))
     ''',
     'portkey': '''
-    (witch "{pretty_name}" by "TODO fix macro to not need author"
-      (has {{"name" "{pretty_name}"
+    (witch "{name}"
+      (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
       (hears "touch"
         (tell-sender "move" (get-data "target"))))
     '''}
-
-def get_template(obj_type, pretty_name, description="A trinket"):
-    # TODO accept an arbitrary dict for formatting
-    return SCRIPT_TEMPLATES[obj_type].format(pretty_name=pretty_name,
-                                             description=description)
 
 class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
@@ -116,16 +117,18 @@ class ScriptedObjectMixin:
     @property
     def engine(self):
         if not hasattr(self, '_engine'):
-            if self.script_revision is None:
-                self._engine = ScriptEngine()
-            else:
-                try:
-                    self._engine = self._execute_script(self.script_revision.code)
-                except Exception as e:
-                    raise WitchException(
-                        ';_; There is a problem with your witch script: {}'.format(e))
-
+            self.init_scripting()
         return self._engine
+
+    def init_scripting(self):
+        if self.script_revision is None:
+            self._engine = ScriptEngine()
+        else:
+            try:
+                self._engine = self._execute_script(self.script_revision.code)
+            except Exception as e:
+                raise WitchException(
+                    ';_; There is a problem with your witch script: {}'.format(e))
 
     def handle_action(self, game_world, sender_obj, action, action_args):
         self._ensure_world(game_world)
@@ -148,8 +151,8 @@ class ScriptedObjectMixin:
         self.data[key] = value
         self.save()
 
-    def get_data(self, key):
-        return self.get_by_id(self.id).data.get(key)
+    def get_data(self, key, default=None):
+        return self.get_by_id(self.id).data.get(key, default)
 
     def tell_sender(self, sender_obj, action, args):
         self.game_world.dispatch_action(sender_obj, action, args)

@@ -5,7 +5,7 @@ from slugify import slugify
 from .config import get_db
 from .errors import ClientException
 from .models import Contains, GameObject, Contains, Script
-from .scripting import get_template
+
 DIRECTIONS = {'north', 'south', 'west', 'east', 'above', 'below'}
 CREATE_TYPES = {'room', 'exit', 'item'}
 CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
@@ -46,6 +46,29 @@ class GameWorld:
         to the game client."""
         player_obj = user_account.player_obj
         room = player_obj.contained_by
+        exits = room.get_data('exits', {})
+        exit_payload = {}
+
+        for direction in DIRECTIONS:
+            if direction not in exits:
+                continue
+
+            exit_obj = GameObject.get_or_none(GameObject.shortname==exits[direction])
+            if exit_obj is None:
+                continue
+
+            target_room_name = exit_obj.get_data('target')
+            if target_room_name is None:
+                continue
+
+            target_room = GameObject.get_or_none(GameObject.shortname==target_room_name)
+            if target_room is None:
+                continue
+
+            exit_payload[direction] = dict(
+                exit_name=exit_obj.name,
+                room_name=target_room.name)
+
         return {
             'motd': 'welcome to tildemush',  # TODO
             'user': {
@@ -59,15 +82,7 @@ class GameWorld:
                 'contains': [dict(name=o.name, description=o.description)
                              for o in room.contains
                              if o.name != player_obj.name],
-                'exits': {
-                    # TODO
-                    'north': None,
-                    'south': None,
-                    'east': None,
-                    'west': None,
-                    'above': None,
-                    'below': None,
-                }
+                'exits': exit_payload,
             },
             'inventory': cls.contains_tree(player_obj),
             'scripts': [s.name for s
@@ -154,7 +169,7 @@ class GameWorld:
 
         /create room "Dank Hallway" The musty carpet here seems to ooze as you walk across it.
         """
-        obj_type, pretty_name, additional_args = cls.parse_create(action_args)
+        obj_type, name, additional_args = cls.parse_create(action_args)
 
         create_fn = None
         if obj_type == 'item':
@@ -165,7 +180,7 @@ class GameWorld:
             create_fn = cls.create_exit
 
         with get_db().atomic():
-            game_obj = create_fn(sender_obj, pretty_name, additional_args)
+            game_obj = create_fn(sender_obj, name, additional_args)
 
         cls.user_hears(sender_obj, sender_obj,
                        'You breathed light into a whole new {}. Its true name is {}'.format(
@@ -179,12 +194,12 @@ class GameWorld:
             raise ClientException(
                 'malformed call to /create. the syntax is /create object-type "pretty name" [additional arguments]')
 
-        obj_type, pretty_name, additional_args = match.groups()
+        obj_type, name, additional_args = match.groups()
         if obj_type not in CREATE_TYPES:
             raise ClientException(
                 'Unknown type for /create. Try one of {}'.format(CREATE_TYPES))
 
-        return obj_type, pretty_name, additional_args
+        return obj_type, name, additional_args
 
     @classmethod
     def derive_shortname(cls, owner_obj, *strings):
@@ -196,20 +211,22 @@ class GameWorld:
         return shortname
 
     @classmethod
-    def create_item(cls, owner_obj, pretty_name, additional_args):
-        shortname = cls.derive_shortname(owner_obj, pretty_name)
-        item = GameObject.create_scripted_object(owner_obj, 'item', shortname, {
-            'pretty_name': pretty_name,
+    def create_item(cls, owner_obj, name, additional_args):
+        shortname = cls.derive_shortname(owner_obj, name)
+        item = GameObject.create_scripted_object(
+            'item', owner_obj.user_account, shortname, {
+            'name': name,
             'description': additional_args})
         cls.put_into(owner_obj, item)
 
         return item
 
     @classmethod
-    def create_room(cls, owner_obj, pretty_name, additional_args):
-        shortname = cls.derive_shortname(owner_obj, pretty_name)
-        room = GameObject.create_scripted_object(owner_obj, 'room', shortname, {
-            'pretty_name': pretty_name,
+    def create_room(cls, owner_obj, name, additional_args):
+        shortname = cls.derive_shortname(owner_obj, name)
+        room = GameObject.create_scripted_object(
+            'room', owner_obj.user_account, shortname, {
+            'name': name,
             'description': additional_args})
 
         sanctum = GameObject.get(
@@ -222,10 +239,11 @@ class GameWorld:
         return room
 
     @classmethod
-    def create_exit(cls, owner_obj, pretty_name, additional_args):
+    def create_exit(cls, owner_obj, name, additional_args):
+        # TODO consider having parse_create_exit that is called outside of this
         match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
         if not match:
-            raise ClientException('To make an exit, try /create exit A Door north foyer A rusted, metal door')
+            raise ClientException('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
         direction, target_room_name, description = match.groups()
         if direction not in DIRECTIONS:
             raise ClientException('Try one of these directions: {}'.format(DIRECTIONS))
@@ -235,14 +253,15 @@ class GameWorld:
             GameObject.shortname == target_room_name)
         if target_room is None:
             raise ClientException('Could not find a room with the ID {}'.format(target_room_name))
-        if not owner_obj.user_account.god:
+        if not owner_obj.user_account.is_god:
             if current_room.author != owner_obj.user_account:
                 raise ClientException('In order to create an exit, run this command from a room you own.')
 
         # make the here_exit
-        shortname = cls.derive_shortname(owner_obj, pretty_name)
-        here_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
-            'pretty_name': pretty_name,
+        shortname = cls.derive_shortname(owner_obj, name)
+        here_exit = GameObject.create_scripted_object(
+            'exit', owner_obj.user_account, shortname, {
+            'name': name,
             'description': description,
             'target_room_name': target_room.shortname})
 
@@ -255,11 +274,12 @@ class GameWorld:
             cls.put_into(current_room, here_exit)
 
 
-        if owner_obj.user_account.god or target_room.author == owner_obj.user_account:
+        if owner_obj.user_account.is_god or target_room.author == owner_obj.user_account:
             # make the there_exit
-            shortname = cls.derive_shortname(owner_obj, pretty_name, 'reverse')
-            there_exit = GameObject.create_scripted_object(owner_obj, 'exit', shortname, {
-                'pretty_name': pretty_name,
+            shortname = cls.derive_shortname(owner_obj, name, 'reverse')
+            there_exit = GameObject.create_scripted_object(
+                'exit', owner_obj.user_account, shortname, {
+                'name': name,
                 'description': description,
                 'target_room_name': current_room.shortname})
             rev_dir = REVERSE_DIRS[direction]
@@ -274,19 +294,20 @@ class GameWorld:
         return here_exit
 
     @classmethod
-    def create_portkey(cls, owner_obj, target, pretty_name=None):
-        if pretty_name is None:
-            pretty_name = 'Teleport Stone to {}'.format(target.name)
+    def create_portkey(cls, owner_obj, target, name=None):
+        if name is None:
+            name = 'Teleport Stone to {}'.format(target.name)
         description = 'Touching this stone will transport you to'.format(target.name)
-        shortname = cls.derive_shortname(owner_obj, pretty_name)
-        return GameObject.create_scripted_object(owner_obj, 'portkey', shortname, {
-            'pretty_name': pretty_name,
+        shortname = cls.derive_shortname(owner_obj, name)
+        return GameObject.create_scripted_object(
+            'portkey', owner_obj.user_account, shortname, {
+            'name': name,
             'description': description,
             'target_room_name': target.shortname})
 
     @classmethod
     def handle_announce(cls, sender_obj, action_args):
-        if not sender_obj.user_account.god:
+        if not sender_obj.user_account.is_god:
             raise ClientException('you are not powerful enough to do that.')
 
         aoe = cls.all_active_objects()
@@ -303,7 +324,7 @@ class GameWorld:
         if 0 == len(message):
             raise ClientException('try /whisper another_username some cool message')
         room = sender_obj.contained_by
-        target_obj = [o for o in room.contains if o.name == target_name]
+        target_obj = [o for o in room.contains if o.shortname == target_name]
         if 0 == len(target_obj):
             raise ClientException('there is nothing named {} near you'.format(target_name))
         target_obj[0].handle_action(cls, sender_obj, 'whisper', message)

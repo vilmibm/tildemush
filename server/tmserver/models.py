@@ -29,7 +29,7 @@ class UserAccount(BaseModel):
     username = pw.CharField(unique=True)
     password = pw.CharField()
     updated_at = pw.DateTimeField(null=True)
-    god = pw.BooleanField(default=False)
+    is_god = pw.BooleanField(default=False)
 
     def _hash_password(self):
         self.password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt())
@@ -80,21 +80,23 @@ def pre_user_save(cls, instance, created):
 
 
 @post_save(sender=UserAccount)
-def post_user_save(cls, instance, created):
-    if created:
-        # TODO set the name/desc in kv data for these objects
-        GameObject.create(
-            author=instance,
-            name=instance.username,
-            shortname=instance.username,
-            description='a gaseous cloud',
-            is_player_obj=True)
-        GameObject.create(
-            author=instance,
-            name="{}'s Sanctum".format(instance.username),
-            description="This is your private space. Only you (and gods) can enter here. Any new rooms you create will be attached to this hub. You are free to store items here for safekeeping that you don't want to carry around.",
-            shortname='{}-sanctum'.format(instance.username),
-            is_sanctum=True)
+def on_user_account_create(cls, instance, created):
+    if not created: return
+
+    with config.get_db().atomic():
+        player = GameObject.create_scripted_object(
+            'player', instance, instance.username,
+            {'name': instance.username,
+            'description': 'a gaseous cloud'})
+        player.is_player_obj = True
+        player.save()
+        sanctum = GameObject.create_scripted_object(
+            'room', instance,
+            '{}-sanctum'.format(instance.username),
+            {'name': "{}'s Sanctum".format(instance.username),
+             'description': "This is your private space. Only you (and gods) can enter here. Any new rooms you create will be attached to this hub. You are free to store items here for safekeeping that you don't want to carry around."})
+        sanctum.is_sanctum=True,
+        sanctum.save()
 
 
 class Script(BaseModel):
@@ -111,47 +113,72 @@ def pre_scriptrev_save(cls, instance, created):
     instance.code = instance.code.lstrip().rstrip()
 
 
+class Permission(BaseModel):
+    """There are four types of permissions for a game object: read, write,
+    carry, and execute.
+
+    Each one has two states: owner or world.
+
+    Read and write control who can view and update an object's WITCH code.
+
+    Carry controls who can pick up an object.
+
+    Execute controls who can send actions to an object.
+
+    The default set of permissions is:
+
+    W+R O+W W+C W+C
+    """
+    OWNER = 1
+    WORLD = 2
+
+    read = pw.IntegerField(default=WORLD)
+    write = pw.IntegerField(default=OWNER)
+    carry = pw.IntegerField(default=WORLD)
+    execute = pw.IntegerField(default=WORLD)
+
+
 class GameObject(BaseModel, ScriptedObjectMixin):
     author = pw.ForeignKeyField(UserAccount)
-    # TODO remove these in favor of data k/v
-    name = pw.CharField()
-    description = pw.TextField(default='')
     shortname = pw.CharField(null=False, unique=True)
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
     is_sanctum = pw.BooleanField(default=False)
     data = JSONField(default=dict)
+    perms = pw.ForeignKeyField(Permission, backref='obj', null=True)
 
     @classmethod
-    def create_scripted_object(cls, owner_obj, obj_type, shortname, format_dict=None):
-        """This function should do the necessary shenanigans to create a
-        script/scriptrev/obj. it should accept a script template name and a
-        dict of formatting data for the script template."""
-        # TODO I think the splitting out of script vs. scriptrevision vs.
-        # gameobject ought to be cleaned up...for now to reduce the number of
-        # things in flight i'm going with it, but it was originally inteded to
-        # have scripts exist outside of GameObject rows.
+    def create_scripted_object(cls, obj_type, author, shortname, format_dict=None):
+        """This function does the necessary shenanigans to create a
+        script/scriptrev/obj. It creates them all in the DB and returns the
+        GameObject."""
 
         if format_dict is None:
             format_dict = {}
         script_code = cls.get_template(obj_type).format(**format_dict)
         with config.get_db().atomic():
             script = Script.create(
-                author=owner_obj.user_account,
+                author=author,
                 name=shortname)
             scriptrev = ScriptRevision.create(
                 script=script,
                 code=script_code)
             game_obj = GameObject.create(
-                author=owner_obj.user_account,
-                # TODO deprecating name/desc
-                name=format_dict.get('pretty_name', 'TODO deprecate'),
-                description=format_dict.get('description', 'TODO deprecate'),
+                perms=Permission(),
+                author=author,
                 shortname=shortname,
                 script_revision=scriptrev)
+            game_obj.init_scripting()
 
         return game_obj
 
+    @property
+    def name(self):
+        return self.get_data('name', self.shortname)
+
+    @property
+    def description(self):
+        return self.get_data('description', '')
 
     @property
     def contains(self):
@@ -172,8 +199,27 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             return self.author
         return None
 
+    def can_carry(self, target_obj):
+        return self._can_perm('carry', target_obj)
+
+    def can_read(self, target_obj):
+        return self._can_perm('read', target_obj)
+
+    def can_write(self, target_obj):
+        return self._can_perm('write', target_obj)
+
+    def can_execute(self, target_obj):
+        return self._can_perm('execute', target_obj)
+
+    def _can_perm(self, perm, target_obj):
+        return self.author == target_obj.author\
+               or getattr(target_obj.perms, perm) == Permission.WORLD
+
     def __str__(self):
-        return 'GameObject<{}> authored by {}'.format(self.name, self.author)
+        return self.name
+
+    def __repr__(self):
+        return 'GameObject<{}>'.format(self.shortname)
 
     def __eq__(self, other):
         script_revision = -1
@@ -184,7 +230,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             other_revision = other.script_revision.id
 
         return self.author.username == other.author.username\
-            and self.name == other.name\
+            and self.shortname == other.shortname\
             and script_revision == other_revision
 
     def __ne__(self, other):
@@ -195,7 +241,14 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         if self.script_revision:
             script_revision = self.script_revision.id
 
-        return hash((self.author.username, self.name, script_revision))
+        return hash((self.author.username, self.shortname, script_revision))
+
+
+@post_save(sender=GameObject)
+def on_game_object_create(cls, instance, created):
+    if not created: return
+    instance.perms = Permission.create()
+    instance.save()
 
 
 class Contains(BaseModel):
@@ -209,4 +262,4 @@ class Log(BaseModel):
     raw = pw.CharField()
 
 
-MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision]
+MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission]

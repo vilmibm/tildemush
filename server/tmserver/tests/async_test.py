@@ -105,7 +105,7 @@ async def setup_user(client, username, god=False):
 
     if god:
         ua = UserAccount.get(UserAccount.username==username)
-        ua.god = True
+        ua.is_god = True
         ua.save()
 
     await client.send('LOGIN {}:foobarbazquux'.format(username))
@@ -146,15 +146,16 @@ async def test_witch_script(event_loop, mock_logger, client):
     script_rev = ScriptRevision.create(
         script=horse_script,
         code='''
-            (witch "horse" by "vilmibm"
-              (has {"num-pets" 0})
+            (witch "horse"
+              (has {"num-pets" 0
+                    "name" "snoozy"
+                    "description" "a horse"})
               (hears "pet"
                 (set-data "num-pets" (+ 1 (get-data "num-pets")))
                   (if (= 0 (% (get-data "num-pets") 5))
                     (says "neigh neigh neigh i am horse"))))''')
     snoozy = GameObject.create(
         author=vil,
-        name='snoozy',
         shortname='snoozy',
         script_revision=script_rev)
     foyer = GameObject.get(GameObject.shortname=='foyer')
@@ -216,21 +217,16 @@ async def test_look(event_loop, mock_logger, client):
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     await setup_user(snoozy_client, 'snoozy')
-    cigar = GameObject.create(
-        author=vil,
-        name='cigar',
-        shortname='cigar',
-        description='a fancy cigar ready for lighting')
-    phone = GameObject.create(
-        author=vil,
-        name='smartphone',
-        shortname='smartphone')
-    app = GameObject.create(
-        author=vil,
-        name='Kwam',
-        shortname='kwam',
-        description='A smartphone application for KWAM')
-    foyer = GameObject.get(GameObject.name=='Foyer')
+    cigar = GameObject.create_scripted_object(
+        'item', vil, 'cigar', {
+            'name': 'cigar',
+            'description': 'a fancy cigar ready for lighting'})
+    phone = GameObject.create(author=vil, shortname='smartphone')
+    app = GameObject.create_scripted_object(
+        'item', vil, 'kwam', {
+            'name': 'Kwam',
+            'description': 'A smartphone application for KWAM'})
+    foyer = GameObject.get(GameObject.shortname=='foyer')
     GameWorld.put_into(foyer, phone)
     GameWorld.put_into(foyer, cigar)
     GameWorld.put_into(phone, app)
@@ -256,56 +252,46 @@ async def test_client_state(event_loop, mock_logger, client):
     vilmibm = UserAccount.get(UserAccount.username=='vilmibm')
     god = UserAccount.get(UserAccount.username=='god')
 
-    room = GameObject.create(
-        name='ten forward',
-        shortname='ten-forward',
-        description='the bar lounge of the starship enterprise.',
-        author=god)
-    quadchess = GameObject.create(
-        shortname='quadchess',
-        name='quadchess',
-        description='a chess game with four decks',
-        author=god)
-    chess_piece = GameObject.create(
-        name='chess piece',
-        shortname='chess-piece',
-        description='a chess piece. Looks like a bishop.',
-        author=god)
-    drink = GameObject.create(
-        name='weird drink',
-        shortname='weird-drink',
-        description='an in-house invention of Guinan. It is purple and fizzes ominously.',
-        author=god)
-    tricorder = GameObject.create(
-        name='tricorder',
-        shortname='tricorder',
-        description='looks like someone left their tricorder here.',
-        author=god)
-    medical_app = GameObject.create(
-        name='medical program',
-        shortname='medical-program',
-        description='you can use this to scan or call up data about a patient.',
-        author=god)
-    patient_file = GameObject.create(
-        name='patient file',
-        shortname='patient-file',
-        description='a scan of Lt Barclay',
-        author=god)
-    phase_analyzer_app = GameObject.create(
-        name='phase analyzer program',
-        shortname='phase-analyzer-program',
-        description='you can use this to scan for phase shift anomalies',
-        author=god)
-    music_app = GameObject.create(
-        name='media app',
-        shortname='media-app',
-        description='this program turns your tricorder into a jukebox',
-        author=god)
-    klingon_opera = GameObject.create(
-        shortname='klingon-opera-music',
-        name='klingon opera music',
-        description='a recording of a klingon opera',
-        author=god)
+    room = GameObject.create_scripted_object(
+        'room', god, 'ten-forward', dict(
+            name='ten forward',
+            description='the bar lounge of the starship enterprise.'))
+    quadchess = GameObject.create_scripted_object(
+        'item', god, 'quadchess', dict(
+            name='quadchess',
+            description='a chess game with four decks'))
+    chess_piece = GameObject.create_scripted_object(
+        'item', god, 'chess-piece', dict(
+            name='chess piece',
+            description='a chess piece. Looks like a bishop.'))
+    drink = GameObject.create_scripted_object(
+        'item', god, 'weird-drink', dict(
+            name='weird drink',
+            description='an in-house invention of Guinan. It is purple and fizzes ominously.'))
+    tricorder = GameObject.create_scripted_object(
+        'item', god, 'tricorder', dict(
+            name='tricorder',
+            description='looks like someone left their tricorder here.'))
+    medical_app = GameObject.create_scripted_object(
+        'item', god, 'medical-program', dict(
+            name='medical program',
+            description='you can use this to scan or call up data about a patient.'))
+    patient_file = GameObject.create_scripted_object(
+        'item', god, 'patient-file', dict(
+            name='patient file',
+            description='a scan of Lt Barclay'))
+    phase_analyzer_app = GameObject.create_scripted_object(
+        'item', god, 'phase-analyzer-program', dict(
+            name='phase analyzer program',
+            description='you can use this to scan for phase shift anomalies'))
+    music_app = GameObject.create_scripted_object(
+        'item', god, 'media-app', dict(
+            name='media app',
+            description='this program turns your tricorder into a jukebox'))
+    klingon_opera = GameObject.create_scripted_object(
+        'item', god, 'klingon-opera-music', dict(
+            name='klingon opera music',
+            description='a recording of a klingon opera'))
     GameWorld.put_into(room, quadchess)
     GameWorld.put_into(quadchess, chess_piece)
     GameWorld.put_into(room, drink)
@@ -315,6 +301,26 @@ async def test_client_state(event_loop, mock_logger, client):
     GameWorld.put_into(tricorder, phase_analyzer_app)
     GameWorld.put_into(tricorder, music_app)
     GameWorld.put_into(music_app, klingon_opera)
+
+    GameObject.create_scripted_object(
+        'room', god, 'jeffries-tube-god', dict(
+            name='Jeffries Tube',
+            description='A cramped little space used for maintenance.'))
+    GameObject.create_scripted_object(
+        'room', god, 'replicator-room-god', dict(
+            name='Replicator Room',
+            description="Little more than a closet, you can use this room to interact with the replicator in case you don't want to make an order a the bar."))
+
+    GameWorld.put_into(room, god.player_obj)
+    GameWorld.create_exit(
+        god.player_obj,
+        'Sliding Door',
+        'east replicator-room-god An automatic, shiny sliding door')
+    GameWorld.create_exit(
+        god.player_obj,
+        'Hatch',
+        'below jeffries-tube-god A small hatch, just big enough for a medium sized humanoid.')
+    GameWorld.remove_from(room, god.player_obj)
 
     await client.send('LOGIN vilmibm:foobarbazquux')
     await client.recv()
@@ -340,15 +346,18 @@ async def test_client_state(event_loop, mock_logger, client):
                  'description': 'a chess game with four decks'},
                 {'name': 'weird drink',
                  'description': 'an in-house invention of Guinan. It is purple and fizzes ominously.'},
+                {'name': 'Sliding Door',
+                 'description': 'An automatic, shiny sliding door'},
+                {'name': 'Hatch',
+                 'description': 'A small hatch, just big enough for a medium sized humanoid.'}
             ],
             'exits': {
-                'north': None,
-                'south': None,
-                'east': None,
-                'west': None,
-                'above': None,
-                'below': None,
-            }
+                'east': {
+                    'exit_name': 'Sliding Door',
+                    'room_name': 'Replicator Room'},
+                'below': {
+                    'exit_name': 'Hatch',
+                    'room_name': 'Jeffries Tube'}}
         },
         'inventory': [
             {'name':'tricorder',
@@ -369,7 +378,7 @@ async def test_client_state(event_loop, mock_logger, client):
                        'description': 'a recording of a klingon opera',
                        'contains': []}]}]}
         ],
-        'scripts': []
+        'scripts': ['vilmibm-sanctum', 'vilmibm']
     }
     await client.close()
 
