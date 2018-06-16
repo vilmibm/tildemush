@@ -663,6 +663,8 @@ class GameWorld:
         outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
         inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
 
+    # TODO check aoe to see if players need to hear about visible container changes ^v
+
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
         Contains.delete().where(
