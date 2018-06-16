@@ -8,7 +8,7 @@ import websockets
 
 from ..core import GameServer
 from ..migrations import reset_db
-from ..models import UserAccount, Script, GameObject, ScriptRevision
+from ..models import UserAccount, Script, GameObject, ScriptRevision, Permission
 from ..world import GameWorld
 
 @pytest.fixture(autouse=True)
@@ -526,5 +526,60 @@ async def test_create_twoway_exit(event_loop, mock_logger, client):
 
     assert vil.player_obj not in cube.contains
     assert vil.player_obj in sanctum.contains
+
+    await client.close()
+
+# TODO the following inventory tests should really be in their own file. in general
+# this file has become a giant monster and needs serious help; either with
+# splitting up into smaller files or helpers that reduce some of the async recv
+# redundancy
+
+@pytest.mark.asyncio
+async def test_handle_get(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    foyer = GameObject.get(GameObject.shortname == 'foyer')
+
+    cigar = GameObject.create_scripted_object(
+        'item', vil, 'a-fresh-cigar-vilmibm', dict(
+            name='A fresh cigar',
+            description='smoke it if you want'))
+
+    GameWorld.put_into(foyer, cigar)
+
+    await client.send('COMMAND get cigar')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+
+    msg = await client.recv()
+    assert msg == 'You grab A fresh cigar.'
+
+    vil_obj = GameObject.get(GameObject.shortname=='vilmibm')
+    assert 'A fresh cigar' in [o.name for o in vil_obj.contains]
+
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_handle_get_denied(event_loop, mock_logger, client):
+    god = UserAccount.get(UserAccount.username=='god')
+    foyer = GameObject.get(GameObject.shortname=='foyer')
+    phaser = GameObject.create_scripted_object(
+        'item', god, 'phaser-god', dict(
+            name='a phaser',
+            description='watch where u point it'))
+
+    # TODO API for setting perms, yo
+    phaser.perms.carry = Permission.OWNER
+    phaser.perms.save()
+
+    GameWorld.put_into(foyer, phaser)
+
+    await setup_user(client, 'vilmibm')
+
+    await client.send('COMMAND get phaser')
+    msg = await client.recv()
+    assert msg == 'ERROR: You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'
 
     await client.close()

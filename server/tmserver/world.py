@@ -115,20 +115,41 @@ class GameWorld:
         # special meaning to the game (ie unlike something a game object merely
         # listens for like "pet"). I'm considering generalizing this as a list
         # of GAME_COMMANDS that map to a GameWorld handle_* method.
+
+        # admin
         if action == 'announce':
             cls.handle_announce(sender_obj, action_args)
+
+        # chatting
         if action == 'whisper':
             cls.handle_whisper(sender_obj, action_args)
+
         if action == 'look':
             cls.handle_look(sender_obj, action_args)
+
+        # scripting
         if action == 'create':
             cls.handle_create(sender_obj, action_args)
+
+        # TODO edit
+
+        # movement
         if action == 'move':
             cls.handle_move(sender_obj, action_args)
             return
         if action == 'go':
             cls.handle_go(sender_obj, action_args)
             return
+
+        # inventory commands
+        if action == 'get':
+            cls.handle_get(sender_obj, action_args)
+        if action == 'drop':
+            cls.handle_drop(sender_obj, action_args)
+        if action == 'put':
+            cls.handle_put(sender_obj, action_args)
+        if action == 'remove':
+            cls.handle_remove(sender_obj, action_args)
 
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
@@ -149,7 +170,53 @@ class GameWorld:
                                               .distinct(GameObject.id))
         return all_containing_objects.union(all_contained_objects)
 
+    @classmethod
+    def handle_get(cls, sender_obj, action_args):
+        """This action looks for an object:
+           - in sender_obj's current room
+           - that sender_obj has the carry permission for
+           - whose full name or shortname match the provided object name
 
+           Given an object with name "A Banana" and shortname "banana-user-id"
+           this command should be invoked like:
+
+           /get banana
+
+           and will also match:
+           /get a banana
+           /get Banana
+        """
+        obj_string = action_args
+        found = None
+        for obj in sender_obj.contained_by.contains:
+            if obj.is_player_obj:
+                continue
+            if obj.fuzzy_match(obj_string):
+                found = obj
+                break
+
+        if found is None:
+            raise ClientException('You look in vain for something called {}.'.format(obj_string))
+
+        if not sender_obj.can_carry(found):
+            raise ClientException(
+                'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'.format(
+                    found.name))
+
+        cls.put_into(sender_obj, found)
+        cls.user_hears(sender_obj, sender_obj, 'You grab {}.'.format(found.name))
+
+    @classmethod
+    def handle_drop(cls, sender_obj, action_arsg):
+        pass
+
+    @classmethod
+    def handle_put(cls, sender_obj, action_arsg):
+        pass
+
+    @classmethod
+    def handle_remove(cls, sender_obj, action_arsg):
+        pass
 
     @classmethod
     def handle_create(cls, sender_obj, action_args):
