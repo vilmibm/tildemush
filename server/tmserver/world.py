@@ -286,7 +286,7 @@ class GameWorld:
         if container_obj is None:
             raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
 
-        if not sender_obj.can_carry(container_obj):
+        if not sender_obj.can_execute(container_obj):
             raise ClientException(
                 'You try as hard as you can, but you are unable to pry open {}'.format(
                     container_obj))
