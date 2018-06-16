@@ -199,6 +199,42 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             return self.author
         return None
 
+    def fuzzy_match(self, match_string):
+        """Given a string, return whether or not it could be considered as
+        referencing this object. Roughly, this means:
+
+        - is it an exact match on shortname?
+        - is it an exact match on name?
+        - is it a prefix for name?
+        - is it a prefix for shortname?
+        - does it appear as a substring in name?
+        - does it appear as a substring in shortname?
+
+        In all cases, case is ignored.
+        """
+        shortname = self.shortname.lower()
+        name = self.name.lower()
+        match_string = match_string.lower()
+        if match_string == shortname:
+            return True
+
+        if match_string == name:
+            return True
+
+        if name.startswith(match_string):
+            return True
+
+        if shortname.startswith(match_string):
+            return True
+
+        if match_string in name:
+            return True
+
+        if match_string in shortname:
+            return True
+
+        return False
+
     def can_carry(self, target_obj):
         return self._can_perm('carry', target_obj)
 
