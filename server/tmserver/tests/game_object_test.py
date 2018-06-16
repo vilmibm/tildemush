@@ -8,6 +8,51 @@ from ..world import GameWorld
 
 from .tm_test_case import TildemushTestCase
 
+class FuzzyMatchTest(TildemushTestCase):
+    def setUp(self):
+        super().setUp()
+        self.vil = UserAccount.create(
+            username='vilmibm',
+            password='foobarbazquux')
+
+        self.phaser = GameObject.create_scripted_object(
+            'item', self.vil, 'phaser-vilmibm-666', dict(
+                name='Federation Phaser',
+                description='Looks like a remote control, but is far deadlier. You should probably leave it set for stun.'))
+
+    def test_ignores_color_codes(self):
+        rainbow = GameObject.create_scripted_object(
+            'item', self.vil, 'contrived-example-vilmibm', dict(
+                name='a {red}r{orange}a{yellow}i{green}n{blue}b{indigo}o{violet}w{/}',
+                description="all the way across the sky."))
+        assert rainbow.fuzzy_match('rainbow')
+
+    def test_exact_name_match(self):
+        assert self.phaser.fuzzy_match('Federation Phaser')
+        assert self.phaser.fuzzy_match('federation phaser')
+
+    def test_exact_shortname_match(self):
+        assert self.phaser.fuzzy_match('phaser-vilmibm-666')
+        assert self.phaser.fuzzy_match('pHaSeR-ViLmIbM-666')
+
+    def test_fuzzy_name_match(self):
+        assert self.phaser.fuzzy_match('federation')
+        assert self.phaser.fuzzy_match('Federation')
+
+    def test_fuzzy_shortname_match(self):
+        assert self.phaser.fuzzy_match('phaser-vil')
+        assert self.phaser.fuzzy_match('pHasEr-vIl')
+
+    def test_substr_name_match(self):
+        # yeah this is contrived sorry
+        assert self.phaser.fuzzy_match('ederation phase')
+        assert self.phaser.fuzzy_match('edErAtIoN pHase')
+
+    def test_substr_shortname_match(self):
+        assert self.phaser.fuzzy_match('ser-vil')
+        assert self.phaser.fuzzy_match('sEr-vIl')
+
+
 class CreateScriptedObjectTest(TildemushTestCase):
     def setUp(self):
         super().setUp()

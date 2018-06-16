@@ -5,11 +5,16 @@ from slugify import slugify
 from .config import get_db
 from .errors import ClientException
 from .models import Contains, GameObject, Contains, Script
+from .util import strip_color_codes
 
+OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
+OBJECT_NOT_FOUND = 'You look in vain for {}.'
 DIRECTIONS = {'north', 'south', 'west', 'east', 'above', 'below'}
 CREATE_TYPES = {'room', 'exit', 'item'}
 CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
 CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*)$')
+PUT_ARGS_RE = re.compile(r'^(.+) in (.+)$')
+REMOVE_ARGS_RE = re.compile(r'^(.+) from (.+)$')
 REVERSE_DIRS = {
     'north': 'south',
     'south': 'north',
@@ -115,14 +120,25 @@ class GameWorld:
         # special meaning to the game (ie unlike something a game object merely
         # listens for like "pet"). I'm considering generalizing this as a list
         # of GAME_COMMANDS that map to a GameWorld handle_* method.
+
+        # admin
         if action == 'announce':
             cls.handle_announce(sender_obj, action_args)
+
+        # chatting
         if action == 'whisper':
             cls.handle_whisper(sender_obj, action_args)
+
         if action == 'look':
             cls.handle_look(sender_obj, action_args)
+
+        # scripting
         if action == 'create':
             cls.handle_create(sender_obj, action_args)
+
+        # TODO edit
+
+        # movement
         if action == 'move':
             cls.handle_move(sender_obj, action_args)
             return
@@ -130,10 +146,19 @@ class GameWorld:
             cls.handle_go(sender_obj, action_args)
             return
 
+        # inventory commands
+        if action == 'get':
+            cls.handle_get(sender_obj, action_args)
+        if action == 'drop':
+            cls.handle_drop(sender_obj, action_args)
+        if action == 'put':
+            cls.handle_put(sender_obj, action_args)
+        if action == 'remove':
+            cls.handle_remove(sender_obj, action_args)
+
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
             o.handle_action(cls, sender_obj, action, action_args)
-
 
     @classmethod
     def all_active_objects(cls):
@@ -149,7 +174,188 @@ class GameWorld:
                                               .distinct(GameObject.id))
         return all_containing_objects.union(all_contained_objects)
 
+    @classmethod
+    def handle_get(cls, sender_obj, action_args):
+        """This action looks for an object:
+           - in sender_obj's current room
+           - that sender_obj has the carry permission for
+           - whose full name or shortname match the provided object name
 
+           Given an object with name "A Banana" and shortname "banana-user-id"
+           this command should be invoked like:
+
+           /get banana
+
+           and will also match:
+           /get a banana
+           /get Banana
+        """
+        # TODO eventually, generalize object resolution for various scopes. Consider player objects.
+        match_string = action_args
+        found = None
+        for obj in sender_obj.contained_by.contains:
+            if obj.is_player_obj:
+                continue
+            if obj.fuzzy_match(match_string):
+                found = obj
+                break
+
+        if found is None:
+            raise ClientException(OBJECT_NOT_FOUND.format(match_string))
+
+        if not sender_obj.can_carry(found):
+            raise ClientException(OBJECT_DENIED.format(found.name))
+
+        cls.put_into(sender_obj, found)
+        cls.user_hears(sender_obj, sender_obj, 'You grab {}.'.format(found.name))
+
+    @classmethod
+    def handle_drop(cls, sender_obj, action_args):
+        """Matches an object in sender_obj.contains and moves it to
+        sender_obj.contained_by"""
+
+        # TODO eventually, generalize object resolution for various scopes. Consider player objects.
+        match_string = action_args
+        found = None
+        for obj in sender_obj.contains:
+            if obj.fuzzy_match(match_string):
+                found = obj
+                break
+
+        if found is None:
+            raise ClientException('You look in vain for something called {}.'.format(obj_string))
+
+        cls.put_into(sender_obj.contained_by, found)
+        cls.user_hears(sender_obj, sender_obj, 'You drop {}.'.format(found.name))
+
+    @classmethod
+    def handle_put(cls, sender_obj, action_args):
+        """Called like:
+
+           /put phaser in bag
+
+        we (somewhat disconcertingly) split on ' in '. TODO support quoting
+        both object names in case a name ends up with ' in ' in it.
+
+        Moves the first object into second_obj.contains.
+
+        If the player doesn't have execute permission on the container, the
+        attempt fails. They also need carry permission for the first object if
+        they're grabbing it from the room they're in (instead of their
+        inventory).
+        """
+        # TODO generalize this...in more ways than one...please...
+        match = PUT_ARGS_RE.fullmatch(action_args)
+        if match is None:
+            raise ClientException('Try /put some object in container object')
+        target_obj_str, container_obj_str = match.groups()
+
+        target_obj = None
+        for obj in sender_obj.contains:
+            if obj.fuzzy_match(target_obj_str):
+                target_obj = obj
+                break
+
+        if target_obj is None:
+            for obj in sender_obj.contained_by.contains:
+                if obj.is_player_obj:
+                    continue
+                if obj.fuzzy_match(target_obj_str):
+                    target_obj = obj
+                    break
+
+        if target_obj is None:
+            raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
+
+        if not sender_obj.can_carry(target_obj):
+            raise ClientException(OBJECT_DENIED.format(target_obj.name))
+
+        container_obj = None
+        for obj in sender_obj.contains:
+            if obj.fuzzy_match(container_obj_str):
+                container_obj = obj
+                break
+
+        if container_obj is None:
+            for obj in sender_obj.contained_by.contains:
+                if obj.is_player_obj:
+                    continue
+                if obj.fuzzy_match(container_obj_str):
+                    container_obj = obj
+                    break
+
+        if container_obj is None:
+            raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
+
+        if not sender_obj.can_execute(container_obj):
+            raise ClientException(
+                'You try as hard as you can, but you are unable to pry open {}'.format(
+                    container_obj.name))
+
+        cls.put_into(container_obj, target_obj)
+
+        cls.user_hears(sender_obj, sender_obj, 'You put {} in {}'.format(target_obj.name, container_obj.name))
+
+    @classmethod
+    def handle_remove(cls, sender_obj, action_args):
+        """Called like:
+
+           /remove phaser from bag
+
+        we (somewhat disconcertingly) split on ' from '.
+        TODO support quoting both object names in case a name ends up with '
+        from ' in it.
+
+        Removes the first object into second_obj.contains and adds it to the
+        player's inventory.
+
+        If the player doesn't have execute permission on the container, the
+        attempt fails. They also need carry permission for the first object.
+        """
+        # TODO generalize this...in more ways than one...please...
+        match = REMOVE_ARGS_RE.fullmatch(action_args)
+        if match is None:
+            raise ClientException('Try /remove some object from container object')
+        target_obj_str, container_obj_str = match.groups()
+
+        container_obj = None
+        for obj in sender_obj.contains:
+            if obj.fuzzy_match(container_obj_str):
+                container_obj = obj
+                break
+
+        if container_obj is None:
+            for obj in sender_obj.contained_by.contains:
+                if obj.is_player_obj:
+                    continue
+                if obj.fuzzy_match(container_obj_str):
+                    container_obj = obj
+                    break
+
+        if container_obj is None:
+            raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
+
+        if not sender_obj.can_execute(container_obj):
+            raise ClientException(
+                'You try as hard as you can, but you are unable to pry open {}'.format(
+                    container_obj))
+
+        target_obj = None
+        for obj in container_obj.contains:
+            if obj.fuzzy_match(target_obj_str):
+                target_obj = obj
+                break
+
+        if target_obj is None:
+            raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
+
+        if not sender_obj.can_carry(target_obj):
+            raise ClientException(OBJECT_DENIED.format(target_obj.name))
+
+        cls.put_into(sender_obj, target_obj)
+        cls.user_hears(sender_obj, sender_obj, 'You remove {} from {} and carry it with you.'.format(
+            target_obj.name,
+            container_obj.name))
 
     @classmethod
     def handle_create(cls, sender_obj, action_args):
@@ -203,7 +409,7 @@ class GameWorld:
 
     @classmethod
     def derive_shortname(cls, owner_obj, *strings):
-        slugged = [slugify(s) for s in strings] + [owner_obj.user_account.username]
+        slugged = [slugify(strip_color_codes(s)) for s in strings] + [owner_obj.user_account.username]
         shortname = '-'.join(slugged)
         if GameObject.get_or_none(GameObject.shortname==shortname):
             obj_count = GameObject.select().where(GameObject.author==owner_obj.user_account).count()
@@ -456,6 +662,8 @@ class GameWorld:
 
         outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
         inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
+
+    # TODO check aoe to see if players need to hear about visible container changes ^v
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):

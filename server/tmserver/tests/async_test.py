@@ -8,7 +8,7 @@ import websockets
 
 from ..core import GameServer
 from ..migrations import reset_db
-from ..models import UserAccount, Script, GameObject, ScriptRevision
+from ..models import UserAccount, Script, GameObject, ScriptRevision, Permission
 from ..world import GameWorld
 
 @pytest.fixture(autouse=True)
@@ -526,5 +526,164 @@ async def test_create_twoway_exit(event_loop, mock_logger, client):
 
     assert vil.player_obj not in cube.contains
     assert vil.player_obj in sanctum.contains
+
+    await client.close()
+
+# TODO the following inventory tests should really be in their own file. in general
+# this file has become a giant monster and needs serious help; either with
+# splitting up into smaller files or helpers that reduce some of the async recv
+# redundancy
+
+@pytest.mark.asyncio
+async def test_handle_get(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    foyer = GameObject.get(GameObject.shortname == 'foyer')
+
+    cigar = GameObject.create_scripted_object(
+        'item', vil, 'a-fresh-cigar-vilmibm', dict(
+            name='A fresh cigar',
+            description='smoke it if you want'))
+
+    GameWorld.put_into(foyer, cigar)
+
+    await client.send('COMMAND get cigar')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+
+    msg = await client.recv()
+    assert msg == 'You grab A fresh cigar.'
+
+    vil_obj = GameObject.get(GameObject.shortname=='vilmibm')
+    assert 'A fresh cigar' in [o.name for o in vil_obj.contains]
+
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_handle_get_denied(event_loop, mock_logger, client):
+    god = UserAccount.get(UserAccount.username=='god')
+    foyer = GameObject.get(GameObject.shortname=='foyer')
+    phaser = GameObject.create_scripted_object(
+        'item', god, 'phaser-god', dict(
+            name='a phaser',
+            description='watch where u point it'))
+
+    # TODO API for setting perms, yo
+    phaser.perms.carry = Permission.OWNER
+    phaser.perms.save()
+
+    GameWorld.put_into(foyer, phaser)
+
+    await setup_user(client, 'vilmibm')
+
+    await client.send('COMMAND get phaser')
+    msg = await client.recv()
+    assert msg == 'ERROR: You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'
+
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_handle_drop(event_loop, mock_logger, client):
+    god = UserAccount.get(UserAccount.username=='god')
+    foyer = GameObject.get(GameObject.shortname=='foyer')
+    phaser = GameObject.create_scripted_object(
+        'item', god, 'phaser-god', dict(
+            name='a phaser',
+            description='watch where u point it'))
+
+    GameWorld.put_into(foyer, phaser)
+
+    await setup_user(client, 'vilmibm')
+
+    await client.send('COMMAND get phaser')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+
+    msg = await client.recv()
+    assert msg == 'You grab a phaser.'
+
+    await client.send('COMMAND drop phaser')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg == 'You drop a phaser.'
+
+    vil_obj = GameObject.get(GameObject.shortname=='vilmibm')
+    assert 'a phaser' not in [o.name for o in vil_obj.contains]
+
+    await client.close()
+
+# TODO unit test all of the inventory stuff until writing async tests is easier
+# (aside from a single smoke test per remaining command)
+
+@pytest.mark.asyncio
+async def test_handle_put(event_loop, mock_logger, client):
+    god = UserAccount.get(UserAccount.username=='god')
+    foyer = GameObject.get(GameObject.shortname=='foyer')
+    phaser = GameObject.create_scripted_object(
+        'item', god, 'phaser-god', dict(
+            name='a phaser',
+            description='watch where u point it'))
+    space_chest = GameObject.create_scripted_object(
+        'item', god, 'space-chest-god', dict(
+            name='Fancy Space Chest',
+            description="It's like a fantasy chest but palette swapped."))
+
+    phaser.perms.carry = Permission.WORLD
+    phaser.perms.save()
+    space_chest.perms.execute = Permission.WORLD
+    space_chest.perms.save()
+
+    GameWorld.put_into(foyer, phaser)
+    GameWorld.put_into(foyer, space_chest)
+
+    await setup_user(client, 'vilmibm')
+
+    await client.send('COMMAND put phaser in chest')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    # TODO a change to objects in an object's contained_by isn't sending a
+    # STATE update. It affects the "room" pane, so it probably should
+    #msg = await client.recv()
+    #assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg == 'You put a phaser in Fancy Space Chest'
+
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_handle_remove(event_loop, mock_logger, client):
+    god = UserAccount.get(UserAccount.username=='god')
+    foyer = GameObject.get(GameObject.shortname=='foyer')
+    phaser = GameObject.create_scripted_object(
+        'item', god, 'phaser-god', dict(
+            name='a phaser',
+            description='watch where u point it'))
+    space_chest = GameObject.create_scripted_object(
+        'item', god, 'space-chest-god', dict(
+            name='Fancy Space Chest',
+            description="It's like a fantasy chest but palette swapped."))
+
+    phaser.perms.carry = Permission.WORLD
+    phaser.perms.save()
+    space_chest.perms.execute = Permission.WORLD
+    space_chest.perms.save()
+
+    GameWorld.put_into(foyer, space_chest)
+    GameWorld.put_into(space_chest, phaser)
+
+    await setup_user(client, 'vilmibm')
+
+    await client.send('COMMAND remove phaser from chest')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg == 'You remove a phaser from Fancy Space Chest and carry it with you.'
 
     await client.close()
