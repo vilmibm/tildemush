@@ -349,7 +349,7 @@ class GameWorld:
             raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
 
         if not sender_obj.can_carry(target_obj):
-            raise ClientException(OBJECT_DENIED).format(target_obj.name)
+            raise ClientException(OBJECT_DENIED.format(target_obj.name))
 
         cls.put_into(sender_obj, target_obj)
         cls.user_hears(sender_obj, sender_obj, 'You remove {} from {} and carry it with you.'.format(

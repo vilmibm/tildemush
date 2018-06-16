@@ -102,6 +102,8 @@ class PutTest(InventoryTestCase):
         malformed = [
             'can zorp bag',
             'can',
+            'can from bag',
+            'caninbag',
             'can bag',
             'can i n bag']
         for bad in malformed:
@@ -173,30 +175,66 @@ class PutTest(InventoryTestCase):
                 'You try as hard as you can, but you are unable to pry open A Garbage Bag'):
             GameWorld.handle_put(self.vil, 'can in bag')
 
-#class RemoveTest(TildemushTestCase):
-    #def test_malformed(self):
-        #pass
-#
-    #def test_target_not_found(self):
-        #pass
-#
-    #def test_target_in_inv(self):
-        #pass
-#
-    #def test_target_in_room(self):
-        #pass
-#
-    #def test_container_in_inv(self):
-        #pass
-#
-    #def test_container_in_room(self):
-        #pass
-#
-    #def test_container_not_found(self):
-        #pass
-#
-    #def test_target_denied(self):
-        #pass
-#
-    #def test_container_denied(self):
-        #pass
+
+@mock.patch('tmserver.world.GameWorld.user_hears')
+class RemoveTest(InventoryTestCase):
+    def test_malformed(self, _):
+        malformed = [
+            'can zorp bag',
+            'can',
+            'can bag',
+            'can f r o m bag',
+            'can in bag',
+            'canfrombag']
+        for bad in malformed:
+            with self.assertRaisesRegex(
+                    ClientException,
+                    'Try /remove some'):
+                GameWorld.handle_remove(self.vil, bad)
+
+    def test_target_not_found(self, _):
+        with self.assertRaisesRegex(
+                ClientException,
+                'You look in vain for shoe.'):
+            GameWorld.handle_remove(self.vil, 'shoe from bag')
+
+    def test_container_in_inv(self, mock_hears):
+        GameWorld.handle_get(self.vil, 'bag')
+        GameWorld.handle_put(self.vil, 'can in bag')
+        assert self.can not in self.vil.contains
+        assert self.can in self.bag.contains
+        GameWorld.handle_remove(self.vil, 'can from bag')
+        assert self.can in self.vil.contains
+        assert self.can not in self.bag.contains
+        assert mock_hears.called
+
+    def test_container_in_room(self, mock_hears):
+        GameWorld.handle_put(self.vil, 'can in bag')
+        assert self.can not in self.vil.contains
+        assert self.can in self.bag.contains
+        GameWorld.handle_remove(self.vil, 'can from bag')
+        assert self.can in self.vil.contains
+        assert self.can not in self.bag.contains
+        assert mock_hears.called
+
+    def test_container_not_found(self, _):
+        with self.assertRaisesRegex(
+                ClientException,
+                'You look in vain for pail.'):
+            GameWorld.handle_remove(self.vil, 'shoe from pail')
+
+    def test_target_denied(self, _):
+        GameWorld.handle_put(self.vil, 'can in bag')
+        self.can.perms.carry = Permission.OWNER
+        self.can.perms.save()
+        with self.assertRaisesRegex(
+                ClientException, 'You grab a hold of A Rusted Tin Can but'):
+            GameWorld.handle_remove(self.vil, 'can from bag')
+
+    def test_container_denied(self, _):
+        self.bag.perms.execute = Permission.OWNER
+        self.bag.perms.save()
+        with self.assertRaisesRegex(
+                ClientException,
+                'You try as hard as you can, but you are unable to pry open A Garbage Bag'):
+            GameWorld.handle_put(self.vil, 'can in bag')
