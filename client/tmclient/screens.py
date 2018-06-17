@@ -133,9 +133,7 @@ class GameMain(urwid.Frame):
         self.game_text = urwid.ListBox(self.game_walker)
         self.here_text = urwid.Pile(self.here_info())
         self.user_text = urwid.Pile(self.user_info())
-        self.minimap_text = ColorText("MAP", align='center')
-
-        self.minimap_grid = self.generate_minimap()
+        self.minimap_grid = urwid.Pile(self.generate_minimap())
         self.main_body = urwid.Columns([
             self.game_text,
             urwid.Pile([
@@ -200,7 +198,6 @@ class GameMain(urwid.Frame):
             pass
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
-            self.game_walker.append(urwid.Text(server_msg))
         else:
             self.game_walker.append(ColorText(server_msg))
             self.game_walker.set_focus(len(self.game_walker)-1)
@@ -266,9 +263,10 @@ class GameMain(urwid.Frame):
         self.state = json.loads(raw_state)
         self.here_text.contents.clear()
         self.user_text.contents.clear()
+        self.minimap_grid.contents.clear()
 
         # TODO: this is kind of hardcoded for the current three-widget
-        # here_info() and two-widget user_info()
+        # here_info(), two-widget user_info(), three-widget generate_minimap()
 
         self.here_text.contents.extend(list(
             zip(self.here_info(),
@@ -280,10 +278,19 @@ class GameMain(urwid.Frame):
 
         self.user_text.contents.extend(list(
             zip(self.user_info(),
-                [self.here_text.options(),
-                    self.here_text.options()]
+                [self.user_text.options(),
+                    self.user_text.options()]
                 )
             ))
+
+        self.minimap_grid.contents.extend(list(
+            zip(self.generate_minimap(),
+                [self.minimap_grid.options(),
+                    self.minimap_grid.options(),
+                    self.minimap_grid.options()]
+                )
+            ))
+
 
     def here_info(self):
         room = self.state.get("room", {})
@@ -293,12 +300,12 @@ class GameMain(urwid.Frame):
             contents.append("no one but yourself")
         else:
             for o in room.get("contains"):
-                contents.append(o.name)
+                contents.append(o.get("name"))
 
         lines = [
                 ColorText("[{}]".format(room.get("name")), align='center'),
                 ColorText("{}\n".format(room.get("description"))),
-                ColorText("You see here ({pop}): {contents}".format(
+                ColorText("You see here ({pop}): {contents}\n".format(
                     pop=len(contents), contents=', '.join(contents)))
                 ]
 
@@ -341,11 +348,8 @@ class GameMain(urwid.Frame):
 
     def generate_minimap(self):
         """Generates a minimap for the cardinal exits of the current room."""
-
-        # TODO: check this against actual exit data from STATE when that's
-        # implemented.
-
-        exits = self.state.get("room", {"exits": {}}).get("exits", {})
+        room = self.state.get("room", {})
+        exits = room.get("exits", {})
         blank = urwid.Text(" ")
         map_nodes = {
                 "north": blank,
@@ -356,13 +360,12 @@ class GameMain(urwid.Frame):
                 "below": blank,
                 }
 
-        for exit in exits:
+        for exit in exits.keys():
             target = exits.get(exit)
-            if target:
-                node = urwid.LineBox(urwid.Text(target.get("name", "(somewhere)"), align='center'))
-                map_nodes.update({exit: node})
+            node = urwid.LineBox(urwid.Text(target.get("room_name", "(somewhere)"), align='center'))
+            map_nodes.update({exit: node})
 
-        map_grid = urwid.Pile([
+        map_grid = [
                 urwid.Columns([
                     urwid.Text(" "),
                     map_nodes.get("north"),
@@ -370,7 +373,7 @@ class GameMain(urwid.Frame):
                     ]),
                 urwid.Columns([
                     map_nodes.get("west"),
-                    urwid.LineBox(urwid.Text("@", align='center')),
+                    urwid.LineBox(urwid.Text(room.get("name", "somewhere"), align='center')),
                     map_nodes.get("east")
                     ]),
                 urwid.Columns([
@@ -378,6 +381,6 @@ class GameMain(urwid.Frame):
                     map_nodes.get("south"),
                     urwid.Text(" ")
                     ])
-            ])
+                ]
 
         return map_grid
