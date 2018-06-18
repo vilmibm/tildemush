@@ -34,12 +34,15 @@ def migrate(migrations=MIGRATIONS):
 def init_db():
     get_db().create_tables(MODELS, safe=True)
     logging.getLogger('tmserver').info("db tables: {}".format(get_db().get_tables()))
+
     if 0 == UserAccount.select().where(UserAccount.username=='god').count():
-        god_ua = UserAccount.create(
+         UserAccount.create(
             username='god',
             password='TODO',  # TODO set from config
             is_god=True)
+
     if 0 == GameObject.select().where(GameObject.shortname=='foyer').count():
+        god_ua = UserAccount.get(UserAccount.username=='god')
         GameObject.create_scripted_object(
             'room', god_ua, 'foyer',
             {'name': 'Foyer',
