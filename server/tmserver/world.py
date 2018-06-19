@@ -577,12 +577,13 @@ class GameWorld:
         # fuzzy matching but for now I think moves are largely programmatic?
         room = GameObject.get_or_none(GameObject.shortname==action_args)
         if room:
-            if cls.put_into(room, sender_obj):
+            if sender_obj == room:
+                cls.user_hears(sender_obj, sender_obj, "You can't move to yourself.")
+            else: 
+                cls.put_into(room, sender_obj)
                 cls.user_hears(sender_obj, sender_obj, 'You materialize in a new place!')
-            else:
-                cls.user_hears(sender_obj, sender_obj, "You weren't able to move there.")
         else:
-            cls.user_hears(sender_obj, sender_obj, "Can't figure out what you mean.")
+            cls.user_hears(sender_obj, sender_obj, "Can't figure out what you meant to move to.")
 
     @classmethod
     def handle_go(cls, sender_obj, action_args):
@@ -658,7 +659,7 @@ class GameWorld:
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
         if outer_obj == inner_obj:
-            return False
+            raise ClientException('Cannot put something into itself.')
         if inner_obj.contained_by:
             old_outer_obj = inner_obj.contained_by
             Contains.delete().where(Contains.inner_obj==inner_obj).execute()
@@ -670,7 +671,6 @@ class GameWorld:
 
         outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
         inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
-        return True
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
