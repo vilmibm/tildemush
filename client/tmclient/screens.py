@@ -360,10 +360,10 @@ class GameMain(urwid.Frame):
                 "below": blank,
                 }
 
-        for exit in exits.keys():
-            target = exits.get(exit)
+        for direction in exits.keys():
+            target = exits.get(direction)
             node = urwid.LineBox(urwid.Text(target.get("room_name", "(somewhere)"), align='center'))
-            map_nodes.update({exit: node})
+            map_nodes.update({direction: node})
 
         map_grid = [
                 urwid.Columns([
