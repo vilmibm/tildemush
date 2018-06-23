@@ -12,8 +12,8 @@ from .migrations import init_db
 @click.option('--debug/--no-debug', default=False, help='Log to the console.')
 @click.option('--bind', default='127.0.0.1', help='bind IP')
 @click.option('--port', default=10014, help='server port')
-def _main(debug, bind):
-    gs = GameServer(GameWorld, logger=get_logger(debug), bind=bind)
+def _main(debug, bind, port):
+    gs = GameServer(GameWorld, logger=get_logger(debug), bind=bind, port=port)
     init_db()
     gs.start()
 
