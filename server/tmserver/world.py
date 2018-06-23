@@ -409,8 +409,12 @@ class GameWorld:
 
     @classmethod
     def derive_shortname(cls, owner_obj, *strings):
-        slugged = [slugify(strip_color_codes(s)) for s in strings] + [owner_obj.user_account.username]
-        shortname = '-'.join(slugged)
+        if len(strings) == 0:
+            strings = ['object']
+        shortname_tmpl = '{username}/{slugged}'
+        shortname = shortname_tmpl.format(
+            username=owner_obj.user_account.username,
+            slugged='-'.join([slugify(strip_color_codes(s)) for s in strings]))
         if GameObject.get_or_none(GameObject.shortname==shortname):
             obj_count = GameObject.select().where(GameObject.author==owner_obj.user_account).count()
             shortname += '-' + str(obj_count)

@@ -13,32 +13,32 @@ class DeriveShortnameTest(TildemushTestCase):
             password='foobarbazquux')
 
     def test_no_args(self):
-        # This is a weird case that probably won't come up. since we are
-        # passing no strings, we end up with a shortname of just the author
-        # name. naturally the DB already has a game object with that name, so
-        # we end up with 1. Nothing's really wrong, but it's an accidental test
-        # of the dupe case.
         result = GameWorld.derive_shortname(self.vil.player_obj)
-        assert result == 'vilmibm-2'
+        assert result == 'vilmibm/object'
+        GameObject.create(
+            author=self.vil,
+            shortname='vilmibm/object')
+        result = GameWorld.derive_shortname(self.vil.player_obj)
+        assert result == 'vilmibm/object-3'
 
     def test_one_string(self):
         result = GameWorld.derive_shortname(self.vil.player_obj, 'foot')
-        assert result == 'foot-vilmibm'
+        assert result == 'vilmibm/foot'
 
     def test_many_strings(self):
         result = GameWorld.derive_shortname(self.vil.player_obj, 'foot', 'toe', 'whatever')
-        assert result == 'foot-toe-whatever-vilmibm'
+        assert result == 'vilmibm/foot-toe-whatever'
 
     def test_dupes(self):
         GameObject.create(
             author=self.vil,
-            shortname='foot-vilmibm')
+            shortname='vilmibm/foot')
         for x in range(0,10):
             GameObject.create(
                 author=self.vil,
-                shortname='foot-vilmibm-{}'.format(x))
+                shortname='vilmibm/foot-{}'.format(x))
         result = GameWorld.derive_shortname(self.vil.player_obj, 'foot')
-        assert result == 'foot-vilmibm-13'
+        assert result == 'vilmibm/foot-13'
 
 class ParseCreateCommandTest(TildemushTestCase):
     def setUp(self):

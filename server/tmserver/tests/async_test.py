@@ -394,7 +394,7 @@ async def test_create_item(event_loop, mock_logger, client):
     assert msg.startswith('STATE')
 
     msg = await client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is a-fresh-cigar-vilmibm'
+    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
 
     # create a dupe
     await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
@@ -405,10 +405,10 @@ async def test_create_item(event_loop, mock_logger, client):
     assert msg.startswith('STATE')
 
     msg = await client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is a-fresh-cigar-vilmibm-3'
+    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar-3'
 
-    cigar = GameObject.get_or_none(GameObject.shortname=='a-fresh-cigar-vilmibm')
-    dupe = GameObject.get_or_none(GameObject.shortname=='a-fresh-cigar-vilmibm-3')
+    cigar = GameObject.get_or_none(GameObject.shortname=='vilmibm/a-fresh-cigar')
+    dupe = GameObject.get_or_none(GameObject.shortname=='vilmibm/a-fresh-cigar-3')
 
     assert cigar is not None
     assert dupe is not None
@@ -496,7 +496,7 @@ async def test_create_twoway_exit(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg.startswith('You breathed light into a whole new room')
 
-    cube = GameObject.get(GameObject.shortname.startswith('crystal-cube'))
+    cube = GameObject.get(GameObject.shortname.startswith('vilmibm/crystal-cube'))
 
     await client.send(
         'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname))
