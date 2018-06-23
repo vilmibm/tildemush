@@ -541,7 +541,7 @@ async def test_handle_get(event_loop, mock_logger, client):
     foyer = GameObject.get(GameObject.shortname == 'foyer')
 
     cigar = GameObject.create_scripted_object(
-        'item', vil, 'a-fresh-cigar-vilmibm', dict(
+        'item', vil, 'vilmibm/a-fresh-cigar', dict(
             name='A fresh cigar',
             description='smoke it if you want'))
 
