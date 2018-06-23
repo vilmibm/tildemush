@@ -140,6 +140,16 @@ class GameWorld:
 
         # movement
         if action == 'move':
+            # TODO
+            # an unintentional side effect of the exits/rooms implementation
+            # was exposing a /move command. this lets any user teleport to any
+            # shortname, including (at the moment) sanctums.
+            #
+            # there are a few options:
+            # - keep this code here exactly the same, but block /move in core.py
+            # - change tell-sender to be move-sender and don't go through dispatch_action
+            # - keep this code here exactly the same, but block moving to
+            #   places you aren't allowed to be in in handle_move
             cls.handle_move(sender_obj, action_args)
             return
         if action == 'go':
@@ -584,6 +594,7 @@ class GameWorld:
         # shortname of a room in the database. In the future we might need
         # fuzzy matching but for now I think moves are largely programmatic?
         room = GameObject.get_or_none(GameObject.shortname==action_args)
+        # TODO check room for execute permission
         cls.put_into(room, sender_obj)
         cls.user_hears(sender_obj, sender_obj, 'You materialize in a new place!')
 
