@@ -137,6 +137,7 @@ class GameWorld:
             cls.handle_create(sender_obj, action_args)
 
         # TODO edit
+        # TODO teleport, either 'home' or 'foyer'
 
         # movement
         if action == 'move':

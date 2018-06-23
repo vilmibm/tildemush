@@ -206,6 +206,21 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             return self.author
         return None
 
+    def set_perm(self, perm, setting):
+        """Given a perm defined in Permission and either 'owner' or 'world',
+        sets and saves the permission on the game object."""
+        if not hasattr(self.perms, perm):
+            raise ValueError('Invalid permission {}'.format(perm))
+        if not hasattr(self.perms, setting.upper()):
+            raise ValueError('Invalid permission mode {}'.format(setting))
+
+        setattr(self.perms, perm, getattr(self.perms, setting.upper()))
+        self.perms.save()
+
+    def set_perms(self, **kwargs):
+        for k,v in kwargs.items():
+            self.set_perm(k, v)
+
     def fuzzy_match(self, match_string):
         """Given a string, return whether or not it could be considered as
         referencing this object. Roughly, this means:

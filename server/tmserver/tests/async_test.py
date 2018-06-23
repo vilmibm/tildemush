@@ -8,7 +8,7 @@ import websockets
 
 from ..core import GameServer
 from ..migrations import reset_db
-from ..models import UserAccount, Script, GameObject, ScriptRevision, Permission
+from ..models import UserAccount, Script, GameObject, ScriptRevision
 from ..world import GameWorld
 
 @pytest.fixture(autouse=True)
@@ -572,9 +572,7 @@ async def test_handle_get_denied(event_loop, mock_logger, client):
             name='a phaser',
             description='watch where u point it'))
 
-    # TODO API for setting perms, yo
-    phaser.perms.carry = Permission.OWNER
-    phaser.perms.save()
+    phaser.set_perm('carry', 'owner')
 
     GameWorld.put_into(foyer, phaser)
 
@@ -637,10 +635,8 @@ async def test_handle_put(event_loop, mock_logger, client):
             name='Fancy Space Chest',
             description="It's like a fantasy chest but palette swapped."))
 
-    phaser.perms.carry = Permission.WORLD
-    phaser.perms.save()
-    space_chest.perms.execute = Permission.WORLD
-    space_chest.perms.save()
+    phaser.set_perm('carry', 'world')
+    space_chest.set_perm('execute', 'world')
 
     GameWorld.put_into(foyer, phaser)
     GameWorld.put_into(foyer, space_chest)
@@ -670,10 +666,8 @@ async def test_handle_remove(event_loop, mock_logger, client):
             name='Fancy Space Chest',
             description="It's like a fantasy chest but palette swapped."))
 
-    phaser.perms.carry = Permission.WORLD
-    phaser.perms.save()
-    space_chest.perms.execute = Permission.WORLD
-    space_chest.perms.save()
+    phaser.set_perm('carry', 'world')
+    space_chest.set_perm('execute', 'world')
 
     GameWorld.put_into(foyer, space_chest)
     GameWorld.put_into(space_chest, phaser)

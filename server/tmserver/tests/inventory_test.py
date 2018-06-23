@@ -43,8 +43,7 @@ class GetTest(InventoryTestCase):
             GameWorld.handle_get(self.vil, 'shoe')
 
     def test_obj_denied(self, _):
-        self.can.perms.carry = Permission.OWNER
-        self.can.perms.save()
+        self.can.set_perm('carry', 'owner')
 
         with self.assertRaisesRegex(
                 ClientException,
@@ -161,15 +160,13 @@ class PutTest(InventoryTestCase):
             GameWorld.handle_put(self.vil, 'can in pail')
 
     def test_target_denied(self, _):
-        self.can.perms.carry = Permission.OWNER
-        self.can.perms.save()
+        self.can.set_perm('carry', 'owner')
         with self.assertRaisesRegex(
                 ClientException, 'You grab a hold of A Rusted Tin Can but'):
             GameWorld.handle_put(self.vil, 'can in bag')
 
     def test_container_denied(self, _):
-        self.bag.perms.execute = Permission.OWNER
-        self.bag.perms.save()
+        self.bag.set_perm('execute', 'owner')
         with self.assertRaisesRegex(
                 ClientException,
                 'You try as hard as you can, but you are unable to pry open A Garbage Bag'):
@@ -225,15 +222,13 @@ class RemoveTest(InventoryTestCase):
 
     def test_target_denied(self, _):
         GameWorld.handle_put(self.vil, 'can in bag')
-        self.can.perms.carry = Permission.OWNER
-        self.can.perms.save()
+        self.can.set_perm('carry', 'owner')
         with self.assertRaisesRegex(
                 ClientException, 'You grab a hold of A Rusted Tin Can but'):
             GameWorld.handle_remove(self.vil, 'can from bag')
 
     def test_container_denied(self, _):
-        self.bag.perms.execute = Permission.OWNER
-        self.bag.perms.save()
+        self.bag.set_perm('execute', 'owner')
         with self.assertRaisesRegex(
                 ClientException,
                 'You try as hard as you can, but you are unable to pry open A Garbage Bag'):
