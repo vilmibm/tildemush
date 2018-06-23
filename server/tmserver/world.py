@@ -4,7 +4,7 @@ from slugify import slugify
 
 from .config import get_db
 from .errors import ClientException
-from .models import Contains, GameObject, Contains, Script
+from .models import Contains, GameObject, Script
 from .util import strip_color_codes
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -487,9 +487,7 @@ class GameWorld:
             'target_room_name': target_room.shortname})
 
         with get_db().atomic():
-            exits = current_room.get_data('exits')
-            if exits is None:
-                exits = {}
+            exits = current_room.get_data('exits', {})
             exits[direction] = here_exit.shortname
             current_room.set_data('exits', exits)
             cls.put_into(current_room, here_exit)
@@ -505,9 +503,7 @@ class GameWorld:
                 'target_room_name': current_room.shortname})
             rev_dir = REVERSE_DIRS[direction]
             with get_db().atomic():
-                exits = target_room.get_data('exits')
-                if exits is None:
-                    exits = {}
+                exits = target_room.get_data('exits', {})
                 exits[rev_dir] = there_exit.shortname
                 target_room.set_data('exits', exits)
                 cls.put_into(target_room, there_exit)
@@ -595,9 +591,15 @@ class GameWorld:
         # shortname of a room in the database. In the future we might need
         # fuzzy matching but for now I think moves are largely programmatic?
         room = GameObject.get_or_none(GameObject.shortname==action_args)
-        # TODO check room for execute permission
-        cls.put_into(room, sender_obj)
-        cls.user_hears(sender_obj, sender_obj, 'You materialize in a new place!')
+        if room:
+            if sender_obj == room:
+                cls.user_hears(sender_obj, sender_obj, "You can't move to yourself.")
+            else:
+                # TODO check room for execute permission
+                cls.put_into(room, sender_obj)
+                cls.user_hears(sender_obj, sender_obj, 'You materialize in a new place!')
+        else:
+            cls.user_hears(sender_obj, sender_obj, "Can't figure out what you meant to move to.")
 
     @classmethod
     def handle_go(cls, sender_obj, action_args):
@@ -621,7 +623,7 @@ class GameWorld:
 
         direction = action_args
         current_room = sender_obj.contained_by
-        exits = current_room.get_data('exits')
+        exits = current_room.get_data('exits', {})
         if direction not in exits:
             cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
             return
@@ -672,6 +674,8 @@ class GameWorld:
 
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
+        if outer_obj == inner_obj:
+            raise ClientException('Cannot put something into itself.')
         if inner_obj.contained_by:
             old_outer_obj = inner_obj.contained_by
             Contains.delete().where(Contains.inner_obj==inner_obj).execute()
