@@ -10,8 +10,10 @@ from .migrations import init_db
 
 @click.command()
 @click.option('--debug/--no-debug', default=False, help='Log to the console.')
-def _main(debug):
-    gs = GameServer(GameWorld, logger=get_logger(debug))
+@click.option('--bind', default='127.0.0.1', help='bind IP')
+@click.option('--port', default=10014, help='server port')
+def _main(debug, bind):
+    gs = GameServer(GameWorld, logger=get_logger(debug), bind=bind)
     init_db()
     gs.start()
 
