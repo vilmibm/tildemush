@@ -113,6 +113,9 @@ class GameServer:
             elif message.startswith('COMMAND'):
                 self.handle_command(user_session, message)
                 await user_session.client_send('COMMAND OK')
+            elif message.startswith('REVISION'):
+                revision_result = self.handle_revision(user_session, message)
+                await user_session.client_send('REVISION {}'.format(json.dumps(revision_result)))
             elif message.startswith('PING'):
                 await user_session.client_send('PONG')
             else:
@@ -170,6 +173,10 @@ class GameServer:
         if match is None:
             raise ClientException('malformed registration message: {}'.format(message))
         return match.groups()
+
+    def handle_revision(self, user_session, message):
+        payload = self.parse_revision(message)
+        pass
 
     def start(self):
         self.logger.info('Starting up asyncio loop')
