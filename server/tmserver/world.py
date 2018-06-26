@@ -3,8 +3,8 @@ import re
 from slugify import slugify
 
 from .config import get_db
-from .errors import ClientException
-from .models import Contains, GameObject, Script
+from .errors import ClientException, RevisionException
+from .models import Contains, GameObject, Script, ScriptRevision
 from .util import strip_color_codes
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -84,6 +84,7 @@ class GameWorld:
             'room': {
                 'name': room.name,
                 'description': room.description,
+                # TODO include shortname and current script rev
                 'contains': [dict(name=o.name, description=o.description)
                              for o in room.contains
                              if o.name != player_obj.name],
@@ -107,6 +108,7 @@ class GameWorld:
 
         out = []
         for o in obj.contains:
+            # TODO include shortname and current script rev
             out.append({
                 'name': o.name,
                 'description': o.description,
@@ -704,3 +706,50 @@ class GameWorld:
     @classmethod
     def user_hears(cls, receiver_obj, sender_obj, msg):
         cls.get_session(receiver_obj.user_account.id).handle_hears(sender_obj, msg)
+
+    @classmethod
+    def handle_revision(cls, owner_obj, shortname, code, current_rev):
+        result = {
+            'shortname': obj.shortname,
+        }
+        # if an error prevents us from saving anything, we want to just return
+        # the current state to the user but also communicate what happened. for
+        # now i'm thinking that results in two things being sent to the client:
+        # the REVISION payload for the unchanged object and an REVERROR message
+        # with the relevant exception that can be handled specially by the
+        # client.
+        #
+        # if we are clear to save and do but then there's a WitchException, we
+        # want to include that error in the payload we send as REVISION so it
+        # can be shown in the EDIT pane.
+        with get_db().atomic():
+            obj = GameObject.get(GameObject.shortname==shortname)
+            error = None
+            if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
+                error = 'Tried to edit illegal object'
+            elif obj.script_revision.id != current_rev:
+                error = 'Revision mismatch'
+            elif obj.script_revision.code == code.ltrim().rtrim():
+                error = 'No change to code'
+
+            if error:
+                result['current_rev'] = obj.script_revision.id
+                result['code'] = obj.script_revision.code
+                raise RevisionException(error, payload=result)
+
+            rev = ScriptRevision.create(
+                code=code,
+                script=obj.script_revision.script)
+
+            obj.script_revision = rev
+            obj.save()
+
+            result['current_rev'] = rev.id
+            result['errors'] = []
+
+            try:
+                obj.init_scripting()
+            except WitchException as e:
+                result['errors'].append(e)
+
+        return result

@@ -619,9 +619,6 @@ async def test_handle_drop(event_loop, mock_logger, client):
 
     await client.close()
 
-# TODO unit test all of the inventory stuff until writing async tests is easier
-# (aside from a single smoke test per remaining command)
-
 @pytest.mark.asyncio
 async def test_handle_put(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')

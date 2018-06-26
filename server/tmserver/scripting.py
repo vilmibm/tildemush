@@ -3,6 +3,7 @@ import os
 
 import hy
 
+from .config import get_db
 from .errors import ClientException, WitchException
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
@@ -118,6 +119,22 @@ class ScriptedObjectMixin:
     def engine(self):
         if not hasattr(self, '_engine'):
             self.init_scripting()
+        else:
+            with get_db().atomic():
+                current_rev = self.script_revision
+                latest_rev = ScriptRevision.select()\
+                                           .where(script=current_rev.script)\
+                                           .order_by(ScriptRevision.created_by.desc())\
+                                           .limit(1)
+                if latest_rev.id != current_rev.id:
+                    try:
+                        self.script_revision = latest_rev
+                        self.init_scripting()
+                    except WitchException as e:
+                        self.script_revision = current_rev
+                        # TODO log
+                    else:
+                        self.save()
         return self._engine
 
     def init_scripting(self):

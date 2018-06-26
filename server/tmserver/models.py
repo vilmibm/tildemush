@@ -143,6 +143,7 @@ class Permission(BaseModel):
 
 class GameObject(BaseModel, ScriptedObjectMixin):
     author = pw.ForeignKeyField(UserAccount)
+    # TODO index?
     shortname = pw.CharField(null=False, unique=True)
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
