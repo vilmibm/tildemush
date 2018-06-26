@@ -3,8 +3,7 @@ import re
 from slugify import slugify
 
 from .config import get_db
-from .errors import ClientException, RevisionException
-from .models import Contains, GameObject, Script, ScriptRevision
+from .models import Contains, GameObject, Script, ScriptRevision, Permission
 from .util import strip_color_codes
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -474,11 +473,14 @@ class GameWorld:
         current_room = owner_obj.contained_by
         target_room = GameObject.get_or_none(
             GameObject.shortname == target_room_name)
+
         if target_room is None:
             raise ClientException('Could not find a room with the ID {}'.format(target_room_name))
-        if not owner_obj.user_account.is_god:
-            if current_room.author != owner_obj.user_account:
-                raise ClientException('In order to create an exit, run this command from a room you own.')
+
+        if not (owner_obj.user_account.is_god \
+                or current_room.author == owner_obj.user_account \
+                or owner_obj.can_write(current_room)):
+            raise ClientException('You lack the power to create an exit here.')
 
         # make the here_exit
         shortname = cls.derive_shortname(owner_obj, name)
@@ -488,15 +490,21 @@ class GameWorld:
             'description': description,
             'target_room_name': target_room.shortname})
 
+
         with get_db().atomic():
+            # exits inherit the write permission from the rooms they are
+            # created in
+            if current_room.perms.write == Permission.WORLD:
+                here_exit.set_perm('write', 'world')
             exits = current_room.get_data('exits', {})
             exits[direction] = here_exit.shortname
             current_room.set_data('exits', exits)
             cls.put_into(current_room, here_exit)
 
-
-        if owner_obj.user_account.is_god or target_room.author == owner_obj.user_account:
-            # make the there_exit
+        # make the there_exit
+        if owner_obj.user_account.is_god \
+           or target_room.author == owner_obj.user_account \
+           or owner_obj.can_write(target_room):
             shortname = cls.derive_shortname(owner_obj, name, 'reverse')
             there_exit = GameObject.create_scripted_object(
                 'exit', owner_obj.user_account, shortname, {
@@ -505,6 +513,10 @@ class GameWorld:
                 'target_room_name': current_room.shortname})
             rev_dir = REVERSE_DIRS[direction]
             with get_db().atomic():
+                # exits inherit the write permission from the rooms they are
+                # created in
+                if target_room.perms.write == Permission.WORLD:
+                    there_exit.set_perm('write', 'world')
                 exits = target_room.get_data('exits', {})
                 exits[rev_dir] = there_exit.shortname
                 target_room.set_data('exits', exits)
@@ -547,7 +559,6 @@ class GameWorld:
         if 0 == len(target_obj):
             raise ClientException('there is nothing named {} near you'.format(target_name))
         target_obj[0].handle_action(cls, sender_obj, 'whisper', message)
-
 
     @classmethod
     def handle_look(cls, sender_obj, action_args):

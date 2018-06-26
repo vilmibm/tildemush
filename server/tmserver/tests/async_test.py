@@ -479,7 +479,7 @@ async def test_create_oneway_exit(event_loop, mock_logger, client):
     await client.close()
 
 @pytest.mark.asyncio
-async def test_create_twoway_exit(event_loop, mock_logger, client):
+async def test_create_twoway_exit_between_owned_rooms(event_loop, mock_logger, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     sanctum = GameObject.get(
@@ -678,5 +678,52 @@ async def test_handle_remove(event_loop, mock_logger, client):
     assert msg.startswith('STATE')
     msg = await client.recv()
     assert msg == 'You remove a phaser from Fancy Space Chest and carry it with you.'
+
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_create_twoway_exit_via_world_perms(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    foyer = GameObject.get(GameObject.shortname=='foyer')
+    foyer.set_perm('write', 'world')
+
+    await client.send('COMMAND create room "Crystal Cube" a cube-shaped room made entirely of crystal.')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('You breathed light into a whole new room')
+
+    cube = GameObject.get(GameObject.shortname.startswith('vilmibm/crystal-cube'))
+
+    await client.send(
+        'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname))
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('You breathed light into a whole new exit')
+
+    await client.send('COMMAND go east')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg.startswith('You materialize')
+
+    assert vil.player_obj in cube.contains
+    assert vil.player_obj not in foyer.contains
+
+    await client.send('COMMAND go west')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg.startswith('You materialize')
+
+    assert vil.player_obj not in cube.contains
+    assert vil.player_obj in foyer.contains
 
     await client.close()
