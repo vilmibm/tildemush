@@ -727,3 +727,6 @@ async def test_create_twoway_exit_via_world_perms(event_loop, mock_logger, clien
     assert vil.player_obj in foyer.contains
 
     await client.close()
+
+
+# TODO REVISION golden path test
