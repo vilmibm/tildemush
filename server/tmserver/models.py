@@ -16,7 +16,7 @@ BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
 MIN_PASSWORD_LEN = 12
 
 class BaseModel(Model):
-    created_at = pw.DateTimeField(default=datetime.utcnow())
+    created_at = pw.DateTimeField(default=datetime.utcnow)
     class Meta:
         database = config.get_db()
 
@@ -206,6 +206,18 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         if self.is_player_obj:
             return self.author
         return None
+
+    @property
+    def latest_script_rev(self):
+        # TODO this barfs for objects without script revisions. ultimately
+        # objects probably shouldn't lack script revisions so i'll let it blow
+        # up as a reminder.
+        current_rev = self.script_revision
+        return ScriptRevision\
+            .select()\
+            .where(ScriptRevision.script==current_rev.script)\
+            .order_by(ScriptRevision.created_at.desc())\
+            .limit(1)[0]
 
     def set_perm(self, perm, setting):
         """Given a perm defined in Permission and either 'owner' or 'world',

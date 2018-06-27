@@ -1,50 +1,186 @@
-# TODO unit test parse_revision
-# TODO unit test handle_revision
-# TODO unit test UserSession.handle_revision
-# TODO unit test GameWorld.handle_revision
-# TODO unit test revision update handling in GameObject.engine()
+import json
+from unittest.mock import Mock, patch
 
+from ..core import GameServer, UserSession
+from ..errors import ClientException, RevisionException
+from ..models import GameObject, UserAccount, ScriptRevision
+from ..world import GameWorld
 from .tm_test_case import TildemushTestCase
 
 class GameServerRevisionHandlingTest(TildemushTestCase):
+    def setUp(self):
+        super().setUp()
+        self.sess = Mock()
+        self.sess.associated = True
+        self.gs = GameServer(GameWorld)
 
     def test_require_auth(self):
-        pass
+        self.sess.associated = False
+        with self.assertRaisesRegex(
+                ClientException,
+                'not logged in'):
+            self.gs.handle_revision(self.sess, 'REVISION {}')
 
     def test_malformed_payload(self):
-        pass
+        malformed = [
+            'REVISONfoo',
+            'REVISIONS {}',
+        ]
+        for bad in malformed:
+            with self.assertRaisesRegex(
+                    ClientException,
+                    'malformed revision'):
+                self.gs.handle_revision(self.sess, bad)
 
     def test_missing_keys(self):
-        pass
+        payload = {
+            'shortname': 'hmm',
+            'code': '(fart)'}
+        with self.assertRaisesRegex(
+                ClientException,
+                'revision payload missing key'):
+            self.gs.handle_revision(self.sess, 'REVISION {}'.format(json.dumps(payload)))
 
     def test_bad_json(self):
-        pass
+        with self.assertRaisesRegex(
+                ClientException,
+                'failed to parse'):
+            self.gs.handle_revision(self.sess, 'REVISION {"rad":"yeah"')
 
-    def test_chill(self):
-        pass
+    # golden path test starting from core is in async_test
 
 class UserSessionRevisionHandlingTest(TildemushTestCase):
     def test_revision_error(self):
-        pass
+        sess = UserSession(Mock(), GameWorld, Mock())
+        sess.user_account = Mock()
+        payload, error = (None, None)
+        with patch('tmserver.GameWorld.handle_revision', side_effect=RevisionException(
+                'aw shit',
+                payload={'fun': 'times'})):
+            payload, error = sess.handle_revision('vilmibm/snoozy', '(ohno)', 3)
+
+        assert payload == {'fun': 'times'}
+        assert error == 'aw shit'
 
     def test_chill(self):
-        pass
+        sess = UserSession(Mock(), GameWorld, Mock())
+        sess.user_account = Mock()
+        payload, error = (None, None)
+        with patch('tmserver.GameWorld.handle_revision', return_value={'sweet':'yeah'}):
+            payload, error = sess.handle_revision('vilmibm/snoozy', '(awyis)', 3)
+
+        assert payload == {'sweet': 'yeah'}
+        assert error == None
 
 class GameWorldRevisionHandlingTest(TildemushTestCase):
+    def setUp(self):
+        super().setUp()
+        self.vil = UserAccount.create(
+            username='vilmibm',
+            password='foobarbazquux')
+        self.someone = UserAccount.create(
+            username='someone',
+            password='foobarbazquux')
+        self.snoozy = GameObject.create_scripted_object(
+            'item', self.vil, 'vilmibm/snoozy', dict(
+                name='snoozy',
+                description='just a horse'))
+        self.book = GameObject.create_scripted_object(
+            'item', self.someone, 'someone/book', dict(
+                name='Book',
+                description='Electronic Life by Michael Crichton'))
+
     def test_perm_denied(self):
-        pass
+        cm = None
+        with self.assertRaisesRegex(
+                RevisionException,
+                'Tried to edit illegal') as cm:
+            GameWorld.handle_revision(
+                self.vil.player_obj,
+                'someone/book',
+                '(lol)',
+                self.book.script_revision.id)
+
+        assert cm.exception.payload == {
+            'shortname': 'someone/book',
+            'current_rev': self.book.script_revision.id,
+            'code': self.book.script_revision.code}
 
     def test_revision_mismatch(self):
-        pass
+        cm = None
+        with self.assertRaisesRegex(
+                RevisionException,
+                'Revision mismatch') as cm:
+            GameWorld.handle_revision(
+                self.vil.player_obj,
+                'vilmibm/snoozy',
+                '(lol)',
+                self.snoozy.script_revision.id - 1)
+
+        assert cm.exception.payload == {
+            'shortname': 'vilmibm/snoozy',
+            'current_rev': self.snoozy.script_revision.id,
+            'code': self.snoozy.script_revision.code}
 
     def test_no_change(self):
-        pass
+        cm = None
+        with self.assertRaisesRegex(
+                RevisionException,
+                'No change to code') as cm:
+            GameWorld.handle_revision(
+                self.vil.player_obj,
+                'vilmibm/snoozy',
+                self.snoozy.script_revision.code,
+                self.snoozy.script_revision.id)
+
+        assert cm.exception.payload == {
+            'shortname': 'vilmibm/snoozy',
+            'current_rev': self.snoozy.script_revision.id,
+            'code': self.snoozy.script_revision.code}
 
     def test_witch_error(self):
-        pass
+        bad_code = '(lol)'
+        result = GameWorld.handle_revision(
+            self.vil.player_obj,
+            'vilmibm/snoozy',
+            bad_code,
+            self.snoozy.script_revision.id)
+        latest_rev = self.snoozy.latest_script_rev
+        expected = {
+            'shortname': 'vilmibm/snoozy',
+            'current_rev': latest_rev.id,
+            'code': latest_rev.code,
+            'errors': [";_; There is a problem with your witch script: name 'lol' is not defined"]}
 
-    def test_chill(self):
-        pass
+        assert latest_rev.code == bad_code
+        assert self.snoozy.script_revision.code != latest_rev.code
+
+        assert expected == result
+
+    def test_success(self):
+        new_code = """
+        (witch "snoozy"
+          (has {"name" "snoozy"
+                "description" "just a horse"})
+          (hears "pet"
+             (says "neigh")))
+        """.rstrip().lstrip()
+        result = GameWorld.handle_revision(
+            self.vil.player_obj,
+            'vilmibm/snoozy',
+            new_code,
+            self.snoozy.script_revision.id)
+        latest_rev = self.snoozy.latest_script_rev
+        expected = {
+            'shortname': 'vilmibm/snoozy',
+            'current_rev': latest_rev.id,
+            'code': latest_rev.code,
+            'errors': []}
+
+        assert latest_rev.code == new_code
+        assert self.snoozy.script_revision.code != latest_rev.code
+
+        assert expected == result
 
 class GameObjectRevisionUpdateTest(TildemushTestCase):
     def test_already_on_latest_rev(self):

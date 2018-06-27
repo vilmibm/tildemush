@@ -5,7 +5,7 @@ import re
 
 import websockets as ws
 
-from .errors import ClientException, UserValidationError
+from .errors import ClientException, UserValidationError, RevisionException
 from .models import UserAccount, GameObject
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
@@ -63,7 +63,7 @@ class UserSession:
 
     def handle_revision(self, shortname, code, current_rev):
         return_payload = None
-        compilation_exception = None
+        revision_exception = None
         try:
             return_payload = self.game_world.handle_revision(
                 self.user_account.player_obj,
@@ -72,7 +72,7 @@ class UserSession:
                 current_rev)
         except RevisionException as e:
             return_payload = e.payload
-            revision_exception = e.msg
+            revision_exception = str(e)
 
         return return_payload, revision_exception
 
@@ -202,7 +202,7 @@ class GameServer:
         payload = self.parse_revision(message)
         return user_session.handle_revision(**payload)
 
-    def parse_revision(message):
+    def parse_revision(self, message):
         match = REVISION_RE.fullmatch(message)
         if match is None:
             raise ClientException('malformed revision payload: {}'.format(message))

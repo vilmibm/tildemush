@@ -3,6 +3,7 @@ import re
 from slugify import slugify
 
 from .config import get_db
+from .errors import RevisionException, WitchException
 from .models import Contains, GameObject, Script, ScriptRevision, Permission
 from .util import strip_color_codes
 
@@ -721,7 +722,7 @@ class GameWorld:
     @classmethod
     def handle_revision(cls, owner_obj, shortname, code, current_rev):
         result = {
-            'shortname': obj.shortname,
+            'shortname': shortname,
         }
         # if an error prevents us from saving anything, we want to just return
         # the current state to the user but also communicate what happened. for
@@ -734,13 +735,15 @@ class GameWorld:
         # want to include that error in the payload we send as REVISION so it
         # can be shown in the EDIT pane.
         with get_db().atomic():
+            # TODO this is going to create sadness; should be handled and user
+            # gently told
             obj = GameObject.get(GameObject.shortname==shortname)
             error = None
             if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
                 error = 'Tried to edit illegal object'
             elif obj.script_revision.id != current_rev:
                 error = 'Revision mismatch'
-            elif obj.script_revision.code == code.ltrim().rtrim():
+            elif obj.script_revision.code == code.lstrip().rstrip():
                 error = 'No change to code'
 
             if error:
@@ -752,15 +755,23 @@ class GameWorld:
                 code=code,
                 script=obj.script_revision.script)
 
+            # TODO i may regret allowing broken code to be saved, but otherwise
+            # you essentially can't save works in progress--your work is held
+            # hostage in the WITCH pane until it works. There might be a more
+            # elegant solution but for now I'm going with allowing buggy code
+            # to save.
             obj.script_revision = rev
             obj.save()
 
             result['current_rev'] = rev.id
+            result['code'] = rev.code
             result['errors'] = []
 
             try:
                 obj.init_scripting()
             except WitchException as e:
-                result['errors'].append(e)
+                # TODO i don't actually have a good reason for errors being a
+                # list yet
+                result['errors'].append(str(e))
 
         return result

@@ -1,5 +1,5 @@
 class RevisionException(Exception):
-    def __init__(*args, **kwargs):
+    def __init__(self, *args, **kwargs):
         payload = kwargs.pop('payload')
         super().__init__(*args, **kwargs)
         self.payload = payload

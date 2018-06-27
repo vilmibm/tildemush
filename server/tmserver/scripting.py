@@ -117,15 +117,22 @@ class ScriptedObjectMixin:
 
     @property
     def engine(self):
+        # TODO sadness, a circular dependency got introduced here
+        # as it is this module is a hack to just save on lines in models.py.
+        # models.py should probably just be refactored into a hierarchy of
+        # smaller files; until then i'm going to be disgusting and add a
+        # .latest_script_rev method to GameObject
         if not hasattr(self, '_engine'):
             self.init_scripting()
         else:
             with get_db().atomic():
+                # TODO this looks stupid and weird. Consider some kind of
+                # 'live_script_rev' that is probably just an alias for
+                # GameObject.script_revision; alternatively, change
+                # latest_script_rev to like get_latested_script_rev() or
+                # something.
                 current_rev = self.script_revision
-                latest_rev = ScriptRevision.select()\
-                                           .where(script=current_rev.script)\
-                                           .order_by(ScriptRevision.created_by.desc())\
-                                           .limit(1)
+                latested_rev = self.latest_script_rev
                 if latest_rev.id != current_rev.id:
                     try:
                         self.script_revision = latest_rev
