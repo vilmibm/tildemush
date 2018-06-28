@@ -183,12 +183,53 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
         assert expected == result
 
 class GameObjectRevisionUpdateTest(TildemushTestCase):
+    def setUp(self):
+        super().setUp()
+        self.vil = UserAccount.create(
+            username='vilmibm',
+            password='foobarbazquux')
+        self.snoozy = GameObject.create_scripted_object(
+            'item', self.vil, 'vilmibm/snoozy', dict(
+                name='snoozy',
+                description='just a horse'))
+
     def test_already_on_latest_rev(self):
-        pass
+        assert self.snoozy._engine is not None
+        with patch('tmserver.scripting.ScriptedObjectMixin.init_scripting') as m:
+            e = self.snoozy.engine
+        assert e is not None
+        assert not m.called
 
     def test_witch_error(self):
-        # TODO the behavior for this is undefined
-        pass
+        # I haven't really thought through the behavior here. currently, a
+        # witch exception means that the game object just stays with its
+        # current _engine and current revision.
+        assert self.snoozy._engine
+        new_code = "(lol)".rstrip().lstrip()
+        current_rev = self.snoozy.script_revision
+        result = GameWorld.handle_revision(
+            self.vil.player_obj,
+            'vilmibm/snoozy',
+            new_code,
+            self.snoozy.script_revision.id)
+        e = self.snoozy.engine
+        assert self.snoozy.script_revision.id == current_rev.id
 
-    def test_chill(self):
-        pass
+    def test_success(self):
+        assert self.snoozy._engine
+        new_code = """
+        (witch "snoozy"
+          (has {"name" "snoozy"
+                "description" "just a horse"})
+          (hears "pet"
+             (says "neigh")))
+        """.rstrip().lstrip()
+        current_rev = self.snoozy.script_revision
+        result = GameWorld.handle_revision(
+            self.vil.player_obj,
+            'vilmibm/snoozy',
+            new_code,
+            self.snoozy.script_revision.id)
+        e = self.snoozy.engine
+        assert self.snoozy.script_revision.id != current_rev.id
+        assert 'pet' in e.handlers

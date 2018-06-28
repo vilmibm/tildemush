@@ -132,7 +132,7 @@ class ScriptedObjectMixin:
                 # latest_script_rev to like get_latested_script_rev() or
                 # something.
                 current_rev = self.script_revision
-                latested_rev = self.latest_script_rev
+                latest_rev = self.latest_script_rev
                 if latest_rev.id != current_rev.id:
                     try:
                         self.script_revision = latest_rev
