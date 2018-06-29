@@ -207,10 +207,13 @@ class GameServer:
         if match is None:
             raise ClientException('malformed revision payload: {}'.format(message))
         payload = match.groups()[0]
+
         try:
             payload = json.loads(payload)
         except Exception as e:
             raise ClientException('failed to parse revision payload: {}'.format(payload))
+
+        # TODO ensure it's a dict, raise otherwise
 
         for k in REVISION_KEYS:
             if payload.get(k) is None:
