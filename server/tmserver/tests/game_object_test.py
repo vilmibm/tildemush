@@ -16,13 +16,13 @@ class FuzzyMatchTest(TildemushTestCase):
             password='foobarbazquux')
 
         self.phaser = GameObject.create_scripted_object(
-            'item', self.vil, 'phaser-vilmibm-666', dict(
+            self.vil, 'phaser-vilmibm-666', 'item', dict(
                 name='Federation Phaser',
                 description='Looks like a remote control, but is far deadlier. You should probably leave it set for stun.'))
 
     def test_ignores_color_codes(self):
         rainbow = GameObject.create_scripted_object(
-            'item', self.vil, 'contrived-example-vilmibm', dict(
+            self.vil, 'contrived-example-vilmibm', 'item', dict(
                 name='a {red}r{orange}a{yellow}i{green}n{blue}b{indigo}o{violet}w{/}',
                 description="all the way across the sky."))
         assert rainbow.fuzzy_match('rainbow')
@@ -62,7 +62,7 @@ class CreateScriptedObjectTest(TildemushTestCase):
 
     def test_data_initialized(self):
         banana = GameObject.create_scripted_object(
-            'item', self.vil, 'banana-vilmibm', dict(
+            self.vil, 'banana-vilmibm', 'item', dict(
                 name='A Banana',
                 description='Still green.'))
         assert banana.data == dict(

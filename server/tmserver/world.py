@@ -437,7 +437,7 @@ class GameWorld:
     def create_item(cls, owner_obj, name, additional_args):
         shortname = cls.derive_shortname(owner_obj, name)
         item = GameObject.create_scripted_object(
-            'item', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'item', {
             'name': name,
             'description': additional_args})
         cls.put_into(owner_obj, item)
@@ -448,7 +448,7 @@ class GameWorld:
     def create_room(cls, owner_obj, name, additional_args):
         shortname = cls.derive_shortname(owner_obj, name)
         room = GameObject.create_scripted_object(
-            'room', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'room', {
             'name': name,
             'description': additional_args})
 
@@ -486,7 +486,7 @@ class GameWorld:
         # make the here_exit
         shortname = cls.derive_shortname(owner_obj, name)
         here_exit = GameObject.create_scripted_object(
-            'exit', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'exit', {
             'name': name,
             'description': description,
             'target_room_name': target_room.shortname})
@@ -508,7 +508,7 @@ class GameWorld:
            or owner_obj.can_write(target_room):
             shortname = cls.derive_shortname(owner_obj, name, 'reverse')
             there_exit = GameObject.create_scripted_object(
-                'exit', owner_obj.user_account, shortname, {
+                owner_obj.user_account, shortname, 'exit', {
                 'name': name,
                 'description': description,
                 'target_room_name': current_room.shortname})
@@ -532,7 +532,7 @@ class GameWorld:
         description = 'Touching this stone will transport you to'.format(target.name)
         shortname = cls.derive_shortname(owner_obj, name)
         return GameObject.create_scripted_object(
-            'portkey', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'portkey', {
             'name': name,
             'description': description,
             'target_room_name': target.shortname})

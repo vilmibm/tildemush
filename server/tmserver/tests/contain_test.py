@@ -9,13 +9,14 @@ class ContainTest(TildemushTestCase):
         self.vil = UserAccount.create(
             username='vilmibm',
             password='foobarbazquux')
-        self.room = GameObject.create(
+        self.room = GameObject.create_scripted_object(
             author=self.vil,
-            shortname='foul-foyer',)
-        self.phone = GameObject.create(
+            shortname='foul-foyer',
+            obj_type='room')
+        self.phone = GameObject.create_scripted_object(
             author=self.vil,
             shortname='pixel-2')
-        self.app = GameObject.create(
+        self.app = GameObject.create_scripted_object(
             author=self.vil,
             shortname='signal')
 
@@ -28,15 +29,16 @@ class ContainTest(TildemushTestCase):
 
     def test_area_of_effect(self):
         player_obj = self.vil.player_obj
-        cigar = GameObject.create(
+        cigar = GameObject.create_scripted_object(
             author=self.vil,
             shortname='black-and-mild')
-        rug = GameObject.create(
+        rug = GameObject.create_scripted_object(
             author=self.vil,
             shortname='rug')
-        ship = GameObject.create(
+        ship = GameObject.create_scripted_object(
             author=self.vil,
-            shortname='voyager')
+            shortname='voyager',
+            obj_type='room')
 
         Contains.create(
             outer_obj=self.room,
@@ -89,15 +91,16 @@ class ContainTest(TildemushTestCase):
 
     def test_all_active_objects(self):
         player_obj = self.vil.player_obj
-        cigar = GameObject.create(
+        cigar = GameObject.create_scripted_object(
             author=self.vil,
             shortname='black-and-mild')
-        rug = GameObject.create(
+        rug = GameObject.create_scripted_object(
             author=self.vil,
             shortname='rug')
-        ship = GameObject.create(
+        ship = GameObject.create_scripted_object(
             author=self.vil,
-            shortname='voyager')
+            shortname='voyager',
+            obj_type='room')
 
         GameWorld.put_into(self.room, player_obj)
         GameWorld.put_into(self.phone, self.app)

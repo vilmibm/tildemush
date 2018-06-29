@@ -16,11 +16,11 @@ class InventoryTestCase(TildemushTestCase):
             password='foobarbazquux')
 
         can = GameObject.create_scripted_object(
-            'item', god, 'can-god', dict(
+            god, 'can-god', 'item', dict(
                 name='A Rusted Tin Can',
                 description='The label has been torn off. A patch of adhesive is still a little sticky, though the metal is all rusted over. Something about it is unsettling.'))
         bag = GameObject.create_scripted_object(
-            'item', god, 'bag-god', dict(
+            god, 'bag-god', 'item', dict(
                 name='A Garbage Bag',
                 description="It's just a garbage bag. The black, glossy kind. You wonder how much stuff you could fit in there."))
 
@@ -57,7 +57,7 @@ class GetTest(InventoryTestCase):
 
     def test_ambiguity(self, mock_hears):
         shiny_can = GameObject.create_scripted_object(
-            'item', self.god, 'can-shiny-god', dict(
+            self.god, 'can-shiny-god', 'item', dict(
                 name='A New, Shiny Tin Can',
                 description="A new can. Not even adhesive on this. You can see yourself in its reflection but you're all ripply."))
         GameWorld.put_into(self.foyer, shiny_can)
@@ -82,7 +82,7 @@ class DropTest(InventoryTestCase):
 
     def test_ambiguity(self, mock_hears):
         shiny_can = GameObject.create_scripted_object(
-            'item', self.god, 'can-shiny-god', dict(
+            self.god, 'can-shiny-god', 'item', dict(
                 name='A New, Shiny Tin Can',
                 description="A new can. Not even adhesive on this. You can see yourself in its reflection but you're all ripply."))
         GameWorld.put_into(self.foyer, shiny_can)

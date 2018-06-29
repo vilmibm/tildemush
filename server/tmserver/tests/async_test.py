@@ -218,15 +218,15 @@ async def test_look(event_loop, mock_logger, client):
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     await setup_user(snoozy_client, 'snoozy')
     cigar = GameObject.create_scripted_object(
-        'item', vil, 'cigar', {
+        vil, 'cigar', 'item', {
             'name': 'cigar',
             'description': 'a fancy cigar ready for lighting'})
     phone = GameObject.create_scripted_object(
-        'item', vil, 'smartphone', dict(
+        vil, 'smartphone', 'item', dict(
             name='smartphone',
             description='the devil'))
     app = GameObject.create_scripted_object(
-        'item', vil, 'kwam', {
+        vil, 'kwam', 'item', {
             'name': 'Kwam',
             'description': 'A smartphone application for KWAM'})
     foyer = GameObject.get(GameObject.shortname=='foyer')
@@ -256,43 +256,43 @@ async def test_client_state(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
 
     room = GameObject.create_scripted_object(
-        'room', god, 'ten-forward', dict(
+        god, 'ten-forward', 'room', dict(
             name='ten forward',
             description='the bar lounge of the starship enterprise.'))
     quadchess = GameObject.create_scripted_object(
-        'item', god, 'quadchess', dict(
+        god, 'quadchess', 'item', dict(
             name='quadchess',
             description='a chess game with four decks'))
     chess_piece = GameObject.create_scripted_object(
-        'item', god, 'chess-piece', dict(
+        god, 'chess-piece', 'item', dict(
             name='chess piece',
             description='a chess piece. Looks like a bishop.'))
     drink = GameObject.create_scripted_object(
-        'item', god, 'weird-drink', dict(
+        god, 'weird-drink', 'item', dict(
             name='weird drink',
             description='an in-house invention of Guinan. It is purple and fizzes ominously.'))
     tricorder = GameObject.create_scripted_object(
-        'item', god, 'tricorder', dict(
+        god, 'tricorder', 'item', dict(
             name='tricorder',
             description='looks like someone left their tricorder here.'))
     medical_app = GameObject.create_scripted_object(
-        'item', god, 'medical-program', dict(
+        god, 'medical-program', 'item', dict(
             name='medical program',
             description='you can use this to scan or call up data about a patient.'))
     patient_file = GameObject.create_scripted_object(
-        'item', god, 'patient-file', dict(
+        god, 'patient-file', 'item', dict(
             name='patient file',
             description='a scan of Lt Barclay'))
     phase_analyzer_app = GameObject.create_scripted_object(
-        'item', god, 'phase-analyzer-program', dict(
+        god, 'phase-analyzer-program', 'item', dict(
             name='phase analyzer program',
             description='you can use this to scan for phase shift anomalies'))
     music_app = GameObject.create_scripted_object(
-        'item', god, 'media-app', dict(
+        god, 'media-app', 'item', dict(
             name='media app',
             description='this program turns your tricorder into a jukebox'))
     klingon_opera = GameObject.create_scripted_object(
-        'item', god, 'klingon-opera-music', dict(
+        god, 'klingon-opera-music', 'item', dict(
             name='klingon opera music',
             description='a recording of a klingon opera'))
     GameWorld.put_into(room, quadchess)
@@ -306,11 +306,11 @@ async def test_client_state(event_loop, mock_logger, client):
     GameWorld.put_into(music_app, klingon_opera)
 
     GameObject.create_scripted_object(
-        'room', god, 'jeffries-tube-god', dict(
+        god, 'jeffries-tube-god', 'room', dict(
             name='Jeffries Tube',
             description='A cramped little space used for maintenance.'))
     GameObject.create_scripted_object(
-        'room', god, 'replicator-room-god', dict(
+        god, 'replicator-room-god', 'room', dict(
             name='Replicator Room',
             description="Little more than a closet, you can use this room to interact with the replicator in case you don't want to make an order a the bar."))
 
@@ -544,7 +544,7 @@ async def test_handle_get(event_loop, mock_logger, client):
     foyer = GameObject.get(GameObject.shortname == 'foyer')
 
     cigar = GameObject.create_scripted_object(
-        'item', vil, 'vilmibm/a-fresh-cigar', dict(
+        vil, 'vilmibm/a-fresh-cigar', 'item', dict(
             name='A fresh cigar',
             description='smoke it if you want'))
 
@@ -571,7 +571,7 @@ async def test_handle_get_denied(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
-        'item', god, 'phaser-god', dict(
+        god, 'phaser-god', 'item', dict(
             name='a phaser',
             description='watch where u point it'))
 
@@ -592,7 +592,7 @@ async def test_handle_drop(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
-        'item', god, 'phaser-god', dict(
+        god, 'phaser-god', 'item', dict(
             name='a phaser',
             description='watch where u point it'))
 
@@ -627,11 +627,11 @@ async def test_handle_put(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
-        'item', god, 'phaser-god', dict(
+        god, 'phaser-god', 'item', dict(
             name='a phaser',
             description='watch where u point it'))
     space_chest = GameObject.create_scripted_object(
-        'item', god, 'space-chest-god', dict(
+        god, 'space-chest-god', 'item', dict(
             name='Fancy Space Chest',
             description="It's like a fantasy chest but palette swapped."))
 
@@ -658,11 +658,11 @@ async def test_handle_remove(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
-        'item', god, 'phaser-god', dict(
+        god, 'phaser-god', 'item', dict(
             name='a phaser',
             description='watch where u point it'))
     space_chest = GameObject.create_scripted_object(
-        'item', god, 'space-chest-god', dict(
+        god, 'space-chest-god', 'item', dict(
             name='Fancy Space Chest',
             description="It's like a fantasy chest but palette swapped."))
 

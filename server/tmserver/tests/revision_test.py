@@ -82,11 +82,11 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
             username='someone',
             password='foobarbazquux')
         self.snoozy = GameObject.create_scripted_object(
-            'item', self.vil, 'vilmibm/snoozy', dict(
+            self.vil, 'vilmibm/snoozy', 'item', dict(
                 name='snoozy',
                 description='just a horse'))
         self.book = GameObject.create_scripted_object(
-            'item', self.someone, 'someone/book', dict(
+            self.someone, 'someone/book', 'item', dict(
                 name='Book',
                 description='Electronic Life by Michael Crichton'))
 
@@ -189,7 +189,7 @@ class GameObjectRevisionUpdateTest(TildemushTestCase):
             username='vilmibm',
             password='foobarbazquux')
         self.snoozy = GameObject.create_scripted_object(
-            'item', self.vil, 'vilmibm/snoozy', dict(
+            self.vil, 'vilmibm/snoozy', 'item', dict(
                 name='snoozy',
                 description='just a horse'))
 
