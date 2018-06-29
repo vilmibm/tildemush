@@ -221,7 +221,10 @@ async def test_look(event_loop, mock_logger, client):
         'item', vil, 'cigar', {
             'name': 'cigar',
             'description': 'a fancy cigar ready for lighting'})
-    phone = GameObject.create(author=vil, shortname='smartphone')
+    phone = GameObject.create_scripted_object(
+        'item', vil, 'smartphone', dict(
+            name='smartphone',
+            description='the devil'))
     app = GameObject.create_scripted_object(
         'item', vil, 'kwam', {
             'name': 'Kwam',

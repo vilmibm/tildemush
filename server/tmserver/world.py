@@ -3,7 +3,7 @@ import re
 from slugify import slugify
 
 from .config import get_db
-from .errors import RevisionException, WitchException
+from .errors import RevisionException, WitchException, ClientException
 from .models import Contains, GameObject, Script, ScriptRevision, Permission
 from .util import strip_color_codes
 
