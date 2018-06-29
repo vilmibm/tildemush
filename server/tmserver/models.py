@@ -152,13 +152,16 @@ class GameObject(BaseModel, ScriptedObjectMixin):
     perms = pw.ForeignKeyField(Permission, backref='obj', null=True)
 
     @classmethod
-    def create_scripted_object(cls, obj_type, author, shortname, format_dict=None):
+    def create_scripted_object(cls, author, shortname, obj_type='item', format_dict=None):
         """This function does the necessary shenanigans to create a
         script/scriptrev/obj. It creates them all in the DB and returns the
         GameObject."""
 
         if format_dict is None:
-            format_dict = {}
+            format_dict = {
+                'name': 'an object',
+                'description': 'a perfect gray sphere'
+            }
 
         if 'description' in format_dict:
             format_dict['description'] = collapse_whitespace(format_dict['description'])
