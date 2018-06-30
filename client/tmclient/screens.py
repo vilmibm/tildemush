@@ -125,10 +125,13 @@ class GameMain(urwid.Frame):
                         "contains":[]}
                     }
         self.hotkeys = self.load_hotkeys()
+        self.input_history = [""]
+        self.input_index = 0
 
         # game view stuff
         self.game_walker = urwid.SimpleFocusListWalker([
-            ColorText('{yellow}you have reconstituted into tildemush')
+            ColorText('{yellow}you have reconstituted into tildemush'),
+            ColorText("")
             ])
         self.game_text = urwid.ListBox(self.game_walker)
         self.here_text = urwid.Pile(self.here_info())
@@ -199,7 +202,9 @@ class GameMain(urwid.Frame):
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
         else:
+            spacer = self.game_walker.pop()
             self.game_walker.append(ColorText(server_msg))
+            self.game_walker.append(spacer)
             self.game_walker.set_focus(len(self.game_walker)-1)
 
         self.focus_prompt()
@@ -220,6 +225,11 @@ class GameMain(urwid.Frame):
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
+        blank = self.input_history.pop()
+        self.input_history.append(text)
+        self.input_history.append(blank)
+        self.input_index += 1
+
         if not self.client_state.listening:
             asyncio.ensure_future(self.client_state.start_listen_loop(), loop=self.loop)
 
@@ -242,15 +252,28 @@ class GameMain(urwid.Frame):
         if key in self.hotkeys.get("quit"):
             quit_client(self)
         elif key in self.tabs.keys():
-            # tab switcher
             self.body.unfocus()
             self.body = self.tabs.get(key)
             self.body.focus()
             self.focus_prompt()
             self.refresh_tabs()
-        elif key in self.hotkeys.get("scrolling"):
+        elif key in self.hotkeys.get("scrolling").keys():
             if self.body == self.main_tab:
                 self.game_text.keypress(size, key)
+        elif key in self.hotkeys.get("movement").keys():
+            asyncio.ensure_future(self.client_state.send(
+                    "COMMAND {}".format(self.hotkeys.get("movement").get(key))
+                ), loop=self.loop)
+        elif key in self.hotkeys.get("input scroll").keys():
+            self.handle_input_scroll(self.hotkeys.get("input scroll").get(key))
+
+    def handle_input_scroll(self, key):
+        if key == "up":
+            self.input_index = max(0, self.input_index - 1)
+        else:
+            self.input_index = min(len(self.input_history) - 1, self.input_index + 1)
+
+        self.prompt.edit_text = self.input_history[self.input_index]
 
     def refresh_tabs(self):
         headers = []
@@ -336,12 +359,22 @@ class GameMain(urwid.Frame):
                 "scrolling": {
                     "page up": "up",
                     "page down": "down",
-                    "up": "up",
-                    "down": "down"
                     },
                 "quit": [
                     "f9"
-                    ]
+                    ],
+                "movement": {
+                    "shift up": "go north",
+                    "shift down": "go south",
+                    "shift left": "go west",
+                    "shift right": "go east",
+                    "shift page up": "go above",
+                    "shift page down": "go below",
+                    },
+                "input scroll": {
+                    "up": "up",
+                    "down": "down"
+                    }
                 }
 
         return hotkeys
@@ -350,7 +383,10 @@ class GameMain(urwid.Frame):
         """Generates a minimap for the cardinal exits of the current room."""
         room = self.state.get("room", {})
         exits = room.get("exits", {})
-        blank = urwid.Text(" ")
+        blank = urwid.LineBox(urwid.Text(" "),
+                tlcorner=' ', tline=' ', lline=' ', trcorner=' ', blcorner=' ',
+                rline=' ', bline=' ', brcorner=' '
+        )
         map_nodes = {
                 "north": blank,
                 "east": blank,
