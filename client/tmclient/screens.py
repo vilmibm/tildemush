@@ -129,7 +129,8 @@ class GameMain(urwid.Frame):
 
         # game view stuff
         self.game_walker = urwid.SimpleFocusListWalker([
-            ColorText('{yellow}you have reconstituted into tildemush')
+            ColorText('{yellow}you have reconstituted into tildemush'),
+            ColorText("")
             ])
         self.game_text = urwid.ListBox(self.game_walker)
         self.here_text = urwid.Pile(self.here_info())
@@ -200,7 +201,9 @@ class GameMain(urwid.Frame):
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
         else:
+            spacer = self.game_walker.pop()
             self.game_walker.append(ColorText(server_msg))
+            self.game_walker.append(spacer)
             self.game_walker.set_focus(len(self.game_walker)-1)
 
         self.focus_prompt()
