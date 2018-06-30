@@ -257,7 +257,11 @@ class GameMain(urwid.Frame):
             asyncio.ensure_future(self.client_state.send(
                     "COMMAND {}".format(self.hotkeys.get("movement").get(key))
                 ), loop=self.loop)
+        elif key in self.hotkeys.get("input scroll"):
+            self.handle_input_scroll(self, key)
 
+    def handle_input_scroll(self, key):
+        pass
 
     def refresh_tabs(self):
         headers = []
@@ -367,7 +371,10 @@ class GameMain(urwid.Frame):
         """Generates a minimap for the cardinal exits of the current room."""
         room = self.state.get("room", {})
         exits = room.get("exits", {})
-        blank = urwid.Text(" ")
+        blank = urwid.LineBox(urwid.Text(" "),
+                tlcorner=' ', tline=' ', lline=' ', trcorner=' ', blcorner=' ',
+                rline=' ', bline=' ', brcorner=' '
+        )
         map_nodes = {
                 "north": blank,
                 "east": blank,
