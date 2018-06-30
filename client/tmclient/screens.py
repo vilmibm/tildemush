@@ -158,7 +158,8 @@ class GameMain(urwid.Frame):
         # witch view stuff
         self.witch_prompt = urwid.Edit()
         self.witch_header = ColorText("WELCOME TO WITCH")
-        self.witch_editor = urwid.LineBox(urwid.Filler(ColorText("witch editor in progress", align='center'), valign='middle'))
+        self.witch_editor = ui.SpookyBox(urwid.Terminal("bash -c $EDITOR",
+            main_loop=None))
         self.witch_status = ColorText("WITCH STATUS: <unknown>")
         self.witch_data = urwid.Filler(ColorText("Current Object: <None>"))
         self.witch_perms = urwid.Filler(ColorText("Permissions: <unknown>"))

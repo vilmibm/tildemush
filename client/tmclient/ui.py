@@ -89,6 +89,12 @@ class DashedBox(urwid.LineBox):
                 rline='╎', bline='╌', brcorner='┘'
                 )
 
+class SpookyBox(urwid.LineBox):
+    def __init__(self, box_item):
+        super().__init__(box_item,
+                tline='~', bline='~', lline='┆', rline='┆', tlcorner='o',
+                trcorner='o', blcorner='o', brcorner='o')
+
 class TabHeader(urwid.LineBox):
     """
     Stylizations for tab headers. Position can be 'first', 'last', or none for
