@@ -247,7 +247,7 @@ class GameMain(urwid.Frame):
 
     def handle_keypress(self, size, key):
         # debugging output
-        self.footer = urwid.Text(key)
+        #self.footer = urwid.Text(key)
 
         if key in self.hotkeys.get("quit"):
             quit_client(self)
@@ -257,15 +257,15 @@ class GameMain(urwid.Frame):
             self.body.focus()
             self.focus_prompt()
             self.refresh_tabs()
-        elif key in self.hotkeys.get("scrolling"):
+        elif key in self.hotkeys.get("scrolling").keys():
             if self.body == self.main_tab:
                 self.game_text.keypress(size, key)
         elif key in self.hotkeys.get("movement").keys():
             asyncio.ensure_future(self.client_state.send(
                     "COMMAND {}".format(self.hotkeys.get("movement").get(key))
                 ), loop=self.loop)
-        elif key in self.hotkeys.get("input scroll"):
-            self.handle_input_scroll(key)
+        elif key in self.hotkeys.get("input scroll").keys():
+            self.handle_input_scroll(self.hotkeys.get("input scroll").get(key))
 
     def handle_input_scroll(self, key):
         if key == "up":
@@ -371,10 +371,10 @@ class GameMain(urwid.Frame):
                     "shift page up": "go above",
                     "shift page down": "go below",
                     },
-                "input scroll": [
-                    "up",
-                    "down"
-                    ]
+                "input scroll": {
+                    "up": "up",
+                    "down": "down"
+                    }
                 }
 
         return hotkeys
