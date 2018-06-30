@@ -125,6 +125,7 @@ class GameMain(urwid.Frame):
                         "contains":[]}
                     }
         self.hotkeys = self.load_hotkeys()
+        self.input_history = []
 
         # game view stuff
         self.game_walker = urwid.SimpleFocusListWalker([
@@ -220,6 +221,7 @@ class GameMain(urwid.Frame):
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
+        self.input_history.append(text)
         if not self.client_state.listening:
             asyncio.ensure_future(self.client_state.start_listen_loop(), loop=self.loop)
 
@@ -237,7 +239,7 @@ class GameMain(urwid.Frame):
 
     def handle_keypress(self, size, key):
         # debugging output
-        #self.footer = urwid.Text(key)
+        self.footer = urwid.Text(key)
 
         if key in self.hotkeys.get("quit"):
             quit_client(self)
@@ -251,6 +253,11 @@ class GameMain(urwid.Frame):
         elif key in self.hotkeys.get("scrolling"):
             if self.body == self.main_tab:
                 self.game_text.keypress(size, key)
+        elif key in self.hotkeys.get("movement").keys():
+            asyncio.ensure_future(self.client_state.send(
+                    "COMMAND {}".format(self.hotkeys.get("movement").get(key))
+                ), loop=self.loop)
+
 
     def refresh_tabs(self):
         headers = []
@@ -336,11 +343,21 @@ class GameMain(urwid.Frame):
                 "scrolling": {
                     "page up": "up",
                     "page down": "down",
-                    "up": "up",
-                    "down": "down"
                     },
                 "quit": [
                     "f9"
+                    ],
+                "movement": {
+                    "shift up": "go north",
+                    "shift down": "go south",
+                    "shift left": "go west",
+                    "shift right": "go east",
+                    "shift page up": "go above",
+                    "shift page down": "go below",
+                    },
+                "input scroll": [
+                    "up",
+                    "down"
                     ]
                 }
 
