@@ -157,7 +157,20 @@ class GameMain(urwid.Frame):
 
         # witch view stuff
         self.witch_prompt = urwid.Edit()
-        self.witch_view= urwid.Filler(ColorText("witch editor in progress", align='center'), valign='middle')
+        self.witch_header = ColorText("WELCOME TO WITCH")
+        self.witch_editor = urwid.LineBox(urwid.Filler(ColorText("witch editor in progress", align='center'), valign='middle'))
+        self.witch_status = ColorText("WITCH STATUS: <unknown>")
+        self.witch_data = urwid.Filler(ColorText("Current Object: <None>"))
+        self.witch_perms = urwid.Filler(ColorText("Permissions: <unknown>"))
+        self.witch_body = urwid.Pile([
+                urwid.Columns([
+                    self.witch_data,
+                    self.witch_perms
+                ]),
+                self.witch_editor
+            ])
+        self.witch_view = urwid.Frame(header=self.witch_header, body=self.witch_body, footer=self.witch_status)
+        self.witch_view.focus_position = 'body'
         self.witch_tab = ui.GameTab(self.witch_view,
                 ui.TabHeader("F2 WITCH"), self.witch_prompt)
 
