@@ -125,7 +125,8 @@ class GameMain(urwid.Frame):
                         "contains":[]}
                     }
         self.hotkeys = self.load_hotkeys()
-        self.input_history = []
+        self.input_history = [""]
+        self.input_index = 0
 
         # game view stuff
         self.game_walker = urwid.SimpleFocusListWalker([
@@ -224,7 +225,11 @@ class GameMain(urwid.Frame):
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
+        blank = self.input_history.pop()
         self.input_history.append(text)
+        self.input_history.append(blank)
+        self.input_index += 1
+
         if not self.client_state.listening:
             asyncio.ensure_future(self.client_state.start_listen_loop(), loop=self.loop)
 
@@ -247,7 +252,6 @@ class GameMain(urwid.Frame):
         if key in self.hotkeys.get("quit"):
             quit_client(self)
         elif key in self.tabs.keys():
-            # tab switcher
             self.body.unfocus()
             self.body = self.tabs.get(key)
             self.body.focus()
@@ -261,10 +265,15 @@ class GameMain(urwid.Frame):
                     "COMMAND {}".format(self.hotkeys.get("movement").get(key))
                 ), loop=self.loop)
         elif key in self.hotkeys.get("input scroll"):
-            self.handle_input_scroll(self, key)
+            self.handle_input_scroll(key)
 
     def handle_input_scroll(self, key):
-        pass
+        if key == "up":
+            self.input_index = max(0, self.input_index - 1)
+        else:
+            self.input_index = min(len(self.input_history) - 1, self.input_index + 1)
+
+        self.prompt.edit_text = self.input_history[self.input_index]
 
     def refresh_tabs(self):
         headers = []
