@@ -4,7 +4,7 @@ from slugify import slugify
 
 from .config import get_db
 from .errors import RevisionException, WitchException, ClientException
-from .models import Contains, GameObject, Script, ScriptRevision, Permission
+from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing
 from .util import strip_color_codes
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -138,7 +138,10 @@ class GameWorld:
         if action == 'create':
             cls.handle_create(sender_obj, action_args)
 
-        # TODO edit
+        if action == 'edit':
+            cls.handle_edit(sender_obj, action_args)
+            return
+
         # TODO teleport, either 'home' or 'foyer'
 
         # movement
@@ -369,6 +372,50 @@ class GameWorld:
         cls.user_hears(sender_obj, sender_obj, 'You remove {} from {} and carry it with you.'.format(
             target_obj.name,
             container_obj.name))
+
+    @classmethod
+    def handle_edit(cls, sender_obj, action_args):
+        """When a user runs /edit, we don't do a ton on the server. This handler:
+
+           - sets the editing property to user's fk
+           - clears the editing property for anything still edited by user
+           - sends an OBJECT payload to the client
+        """
+        # TODO a lot of the editing stuff depends on people only being allowed
+        #      to have one active client at a time. i think that's an ok
+        #      limitation for now, but we should actually enforce it.
+
+        # TODO this is going to create sadness; should be handled and user
+        #      gently told
+        obj = GameObject.get(GameObject.shortname==action_args)
+
+        # TODO if we're switching users to the WITCH tab when they run /edit,
+        # they might miss these errors. they can always switch back to the main
+        # tab though if nothing appears in the WITCH tab.
+        if not sender_obj.can_write(obj):
+            cls.user_hears('{{red}}You lack the authority to edit {}'.format(obj.name))
+
+        if Editing.select().where(Editing.game_obj==obj).count() > 0:
+            cls.user_hears('{{red}}That object is already being edited')
+
+        # TODO we still aren't cleanly handling disconnects. Part of the
+        # cleanup for a disconnect is clearing out any related entries in the
+        # Editing table. It should probably be cleared out on server start,
+        # too, now that I think about it.
+        with get_db().atomic():
+            Editing.delete(Editing.user_account==sender_obj.user_account)
+            Editing.delete(Editing.game_obj==obj)
+            Editing.create(
+                user_account=sender_obj.user_account,
+                game_obj=obj)
+
+        cls.send_object(o.user_account, obj)
+
+    @classmethod
+    def send_object_state(cls, user_account, game_obj):
+        if user_account.id in cls._sessions:
+            cls.get_session(user_account.id).send_object_state(
+                cls.object_state(game_obj))
 
     @classmethod
     def handle_create(cls, sender_obj, action_args):
