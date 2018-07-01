@@ -249,6 +249,9 @@ class GameMain(urwid.Frame):
 
         if text.startswith('/quit'):
             quit_client(self)
+        elif text.startswith('/edit'):
+            # TODO: object select validation
+            self.switch_tab("")
         elif text.startswith('/'):
             text = text[1:]
         else:
@@ -266,11 +269,14 @@ class GameMain(urwid.Frame):
         if key in self.hotkeys.get("quit"):
             quit_client(self)
         elif key in self.tabs.keys():
+            """
             self.body.unfocus()
             self.body = self.tabs.get(key)
             self.body.focus()
             self.focus_prompt()
             self.refresh_tabs()
+            """
+            self.switch_tab(self.tabs.get(key))
         elif key in self.hotkeys.get("scrolling").keys():
             if self.body == self.main_tab:
                 self.game_text.keypress(size, key)
@@ -288,6 +294,13 @@ class GameMain(urwid.Frame):
             self.input_index = min(len(self.input_history) - 1, self.input_index + 1)
 
         self.prompt.edit_text = self.input_history[self.input_index]
+
+    def switch_tab(self, new_tab):
+        self.body.unfocus()
+        self.body = new_tab
+        self.body.focus()
+        self.focus_prompt()
+        self.refresh_tabs()
 
     def refresh_tabs(self):
         headers = []
@@ -333,7 +346,7 @@ class GameMain(urwid.Frame):
         room = self.state.get("room", {})
         info = "[{}]".format(room.get("name"))
         contents = []
-        if len(room.get("contains", [])) < 2:
+        if len(room.get("contains", [])) < 1:
             contents.append("no one but yourself")
         else:
             for o in room.get("contains"):
@@ -417,9 +430,9 @@ class GameMain(urwid.Frame):
 
         map_grid = [
                 urwid.Columns([
-                    urwid.Text(" "),
+                    map_nodes.get("above"),
                     map_nodes.get("north"),
-                    map_nodes.get("above")
+                    urwid.Text(" ")
                     ]),
                 urwid.Columns([
                     map_nodes.get("west"),
@@ -427,9 +440,9 @@ class GameMain(urwid.Frame):
                     map_nodes.get("east")
                     ]),
                 urwid.Columns([
-                    map_nodes.get("below"),
+                    urwid.Text(" "),
                     map_nodes.get("south"),
-                    urwid.Text(" ")
+                    map_nodes.get("below")
                     ])
                 ]
 
