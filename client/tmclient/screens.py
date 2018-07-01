@@ -124,6 +124,7 @@ class GameMain(urwid.Frame):
                         "description": "a liminal space. type /look to open your eyes.",
                         "contains":[]}
                     }
+        self.scope = []
         self.hotkeys = self.load_hotkeys()
         self.input_history = [""]
         self.input_index = 0
@@ -216,10 +217,7 @@ class GameMain(urwid.Frame):
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
         else:
-            spacer = self.game_walker.pop()
-            self.game_walker.append(ColorText(server_msg))
-            self.game_walker.append(spacer)
-            self.game_walker.set_focus(len(self.game_walker)-1)
+            self.add_game_message(server_msg)
 
         self.focus_prompt()
 
@@ -237,6 +235,12 @@ class GameMain(urwid.Frame):
             self.prompt.keypress((size[0],), key)
             self.handle_keypress(size, key)
 
+    def add_game_message(self, msg):
+        spacer = self.game_walker.pop()
+        self.game_walker.append(ColorText(msg))
+        self.game_walker.append(spacer)
+        self.game_walker.set_focus(len(self.game_walker)-1)
+
     def handle_game_input(self, text):
         # TODO handle any validation of text
         blank = self.input_history.pop()
@@ -251,7 +255,13 @@ class GameMain(urwid.Frame):
             quit_client(self)
         elif text.startswith('/edit'):
             # TODO: object select validation
-            self.switch_tab("")
+            obj_name = text.split("/edit ")[1]
+            if self.valid_edit_object(obj_name):
+                asyncio.ensure_future(self.client_state.send("EDIT {}".format(obj_name)), loop=self.loop)
+                self.prompt.edit_text = ''
+                self.switch_tab(self.tabs.get("f2"))
+            else:
+                self.add_game_message("ERROR: Object not available here :(")
         elif text.startswith('/'):
             text = text[1:]
         else:
@@ -309,12 +319,20 @@ class GameMain(urwid.Frame):
         self.tab_headers = urwid.Columns(headers)
         self.header = self.tab_headers
 
+    def valid_edit_object(self, obj_name):
+        return obj_name in self.scope
+
     def update_state(self, raw_state):
         self.state = json.loads(raw_state)
+        self.scope.clear()
+        for o in self.state.get("room").get("contains"):
+            self.scope.append(o.get("name"))
+        for o in self.state.get("inventory"):
+            self.scope.append(o.get("name"))
         self.here_text.contents.clear()
         self.user_text.contents.clear()
         self.minimap_grid.contents.clear()
-
+        
         # TODO: this is kind of hardcoded for the current three-widget
         # here_info(), two-widget user_info(), three-widget generate_minimap()
 
