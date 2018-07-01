@@ -3,6 +3,7 @@ import os
 
 import hy
 
+from .config import get_db
 from .errors import ClientException, WitchException
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
@@ -116,8 +117,31 @@ class ScriptedObjectMixin:
 
     @property
     def engine(self):
+        # TODO sadness, a circular dependency got introduced here
+        # as it is this module is a hack to just save on lines in models.py.
+        # models.py should probably just be refactored into a hierarchy of
+        # smaller files; until then i'm going to be disgusting and add a
+        # .latest_script_rev method to GameObject
         if not hasattr(self, '_engine'):
             self.init_scripting()
+        else:
+            with get_db().atomic():
+                # TODO this looks stupid and weird. Consider some kind of
+                # 'live_script_rev' that is probably just an alias for
+                # GameObject.script_revision; alternatively, change
+                # latest_script_rev to like get_latested_script_rev() or
+                # something.
+                current_rev = self.script_revision
+                latest_rev = self.latest_script_rev
+                if latest_rev.id != current_rev.id:
+                    try:
+                        self.script_revision = latest_rev
+                        self.init_scripting()
+                    except WitchException as e:
+                        self.script_revision = current_rev
+                        # TODO log
+                    else:
+                        self.save()
         return self._engine
 
     def init_scripting(self):
@@ -178,9 +202,13 @@ class ScriptedObjectMixin:
     def _ensure_data(self, data_mapping):
         """Given the default values for some gameobject's script, initialize
         this object's data column to those defaults. Saves the instance."""
-        if data_mapping == {} or self.data != {}:
+        if data_mapping == {}:
             return
-        self.data = data_mapping
+
+        for k,v in data_mapping.items():
+            if k not in self.data:
+                self.data[k] = v
+
         self.save()
 
     def _ensure_world(self, game_world):

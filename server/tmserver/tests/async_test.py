@@ -8,7 +8,7 @@ import websockets
 
 from ..core import GameServer
 from ..migrations import reset_db
-from ..models import UserAccount, Script, GameObject, ScriptRevision
+from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing
 from ..world import GameWorld
 
 @pytest.fixture(autouse=True)
@@ -218,12 +218,15 @@ async def test_look(event_loop, mock_logger, client):
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     await setup_user(snoozy_client, 'snoozy')
     cigar = GameObject.create_scripted_object(
-        'item', vil, 'cigar', {
+        vil, 'cigar', 'item', {
             'name': 'cigar',
             'description': 'a fancy cigar ready for lighting'})
-    phone = GameObject.create(author=vil, shortname='smartphone')
+    phone = GameObject.create_scripted_object(
+        vil, 'smartphone', 'item', dict(
+            name='smartphone',
+            description='the devil'))
     app = GameObject.create_scripted_object(
-        'item', vil, 'kwam', {
+        vil, 'kwam', 'item', {
             'name': 'Kwam',
             'description': 'A smartphone application for KWAM'})
     foyer = GameObject.get(GameObject.shortname=='foyer')
@@ -253,43 +256,43 @@ async def test_client_state(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
 
     room = GameObject.create_scripted_object(
-        'room', god, 'ten-forward', dict(
+        god, 'ten-forward', 'room', dict(
             name='ten forward',
             description='the bar lounge of the starship enterprise.'))
     quadchess = GameObject.create_scripted_object(
-        'item', god, 'quadchess', dict(
+        god, 'quadchess', 'item', dict(
             name='quadchess',
             description='a chess game with four decks'))
     chess_piece = GameObject.create_scripted_object(
-        'item', god, 'chess-piece', dict(
+        god, 'chess-piece', 'item', dict(
             name='chess piece',
             description='a chess piece. Looks like a bishop.'))
     drink = GameObject.create_scripted_object(
-        'item', god, 'weird-drink', dict(
+        god, 'weird-drink', 'item', dict(
             name='weird drink',
             description='an in-house invention of Guinan. It is purple and fizzes ominously.'))
     tricorder = GameObject.create_scripted_object(
-        'item', god, 'tricorder', dict(
+        god, 'tricorder', 'item', dict(
             name='tricorder',
             description='looks like someone left their tricorder here.'))
     medical_app = GameObject.create_scripted_object(
-        'item', god, 'medical-program', dict(
+        god, 'medical-program', 'item', dict(
             name='medical program',
             description='you can use this to scan or call up data about a patient.'))
     patient_file = GameObject.create_scripted_object(
-        'item', god, 'patient-file', dict(
+        god, 'patient-file', 'item', dict(
             name='patient file',
             description='a scan of Lt Barclay'))
     phase_analyzer_app = GameObject.create_scripted_object(
-        'item', god, 'phase-analyzer-program', dict(
+        god, 'phase-analyzer-program', 'item', dict(
             name='phase analyzer program',
             description='you can use this to scan for phase shift anomalies'))
     music_app = GameObject.create_scripted_object(
-        'item', god, 'media-app', dict(
+        god, 'media-app', 'item', dict(
             name='media app',
             description='this program turns your tricorder into a jukebox'))
     klingon_opera = GameObject.create_scripted_object(
-        'item', god, 'klingon-opera-music', dict(
+        god, 'klingon-opera-music', 'item', dict(
             name='klingon opera music',
             description='a recording of a klingon opera'))
     GameWorld.put_into(room, quadchess)
@@ -303,11 +306,11 @@ async def test_client_state(event_loop, mock_logger, client):
     GameWorld.put_into(music_app, klingon_opera)
 
     GameObject.create_scripted_object(
-        'room', god, 'jeffries-tube-god', dict(
+        god, 'jeffries-tube-god', 'room', dict(
             name='Jeffries Tube',
             description='A cramped little space used for maintenance.'))
     GameObject.create_scripted_object(
-        'room', god, 'replicator-room-god', dict(
+        god, 'replicator-room-god', 'room', dict(
             name='Replicator Room',
             description="Little more than a closet, you can use this room to interact with the replicator in case you don't want to make an order a the bar."))
 
@@ -541,7 +544,7 @@ async def test_handle_get(event_loop, mock_logger, client):
     foyer = GameObject.get(GameObject.shortname == 'foyer')
 
     cigar = GameObject.create_scripted_object(
-        'item', vil, 'vilmibm/a-fresh-cigar', dict(
+        vil, 'vilmibm/a-fresh-cigar', 'item', dict(
             name='A fresh cigar',
             description='smoke it if you want'))
 
@@ -568,7 +571,7 @@ async def test_handle_get_denied(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
-        'item', god, 'phaser-god', dict(
+        god, 'phaser-god', 'item', dict(
             name='a phaser',
             description='watch where u point it'))
 
@@ -589,7 +592,7 @@ async def test_handle_drop(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
-        'item', god, 'phaser-god', dict(
+        god, 'phaser-god', 'item', dict(
             name='a phaser',
             description='watch where u point it'))
 
@@ -619,19 +622,16 @@ async def test_handle_drop(event_loop, mock_logger, client):
 
     await client.close()
 
-# TODO unit test all of the inventory stuff until writing async tests is easier
-# (aside from a single smoke test per remaining command)
-
 @pytest.mark.asyncio
 async def test_handle_put(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
-        'item', god, 'phaser-god', dict(
+        god, 'phaser-god', 'item', dict(
             name='a phaser',
             description='watch where u point it'))
     space_chest = GameObject.create_scripted_object(
-        'item', god, 'space-chest-god', dict(
+        god, 'space-chest-god', 'item', dict(
             name='Fancy Space Chest',
             description="It's like a fantasy chest but palette swapped."))
 
@@ -658,11 +658,11 @@ async def test_handle_remove(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
-        'item', god, 'phaser-god', dict(
+        god, 'phaser-god', 'item', dict(
             name='a phaser',
             description='watch where u point it'))
     space_chest = GameObject.create_scripted_object(
-        'item', god, 'space-chest-god', dict(
+        god, 'space-chest-god', 'item', dict(
             name='Fancy Space Chest',
             description="It's like a fantasy chest but palette swapped."))
 
@@ -729,4 +729,149 @@ async def test_create_twoway_exit_via_world_perms(event_loop, mock_logger, clien
     assert vil.player_obj not in cube.contains
     assert vil.player_obj in foyer.contains
 
+    await client.close()
+
+
+@pytest.mark.asyncio
+async def test_revision(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+
+    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
+
+    cigar = GameObject.get(GameObject.shortname=='vilmibm/a-fresh-cigar')
+
+    # TODO i left out the closing " on the description field and the witch
+    # still compiled -- it resulted in None. very weird. need better checking
+    # on code quality.
+    new_code = """
+    (witch "cigar"
+      (has {"name" "A fresh cigar"
+            "description" "An untouched black and mild with a wood tip"
+            "smoked" False})
+      (hears "smoke"
+        (says "i'm cancer")))""".rstrip().lstrip()
+
+    revision_payload = dict(
+        shortname='vilmibm/a-fresh-cigar',
+        code=new_code,
+        current_rev=cigar.script_revision.id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)))
+
+    msg = await client.recv()
+    assert msg.startswith('OBJECT')
+    payload = json.loads(msg.split(' ', maxsplit=1)[1])
+
+    latest_rev = cigar.latest_script_rev
+
+    assert payload == dict(
+        shortname='vilmibm/a-fresh-cigar',
+        data=dict(
+            name='A fresh cigar',
+            description='An untouched black and mild with a wood tip',
+            smoked=False),
+        permissions=dict(
+            read='world',
+            write='owner',
+            carry='world',
+            execute='world'),
+        errors=[],
+        code=new_code,
+        current_rev=latest_rev.id)
+
+    await client.send('COMMAND smoke')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+
+    msg = await client.recv()
+    assert msg == "A fresh cigar says, \"i'm cancer\""
+
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_edit(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
+    await setup_user(snoozy_client, 'snoozy')
+
+    # create obj for vil
+    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
+
+    # create obj for snoozy
+    await snoozy_client.send('COMMAND create item "A stick" Seems to be maple.')
+    msg = await snoozy_client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await snoozy_client.recv()
+    assert msg.startswith('STATE')
+    msg = await snoozy_client.recv()
+    assert msg == 'You breathed light into a whole new item. Its true name is snoozy/a-stick'
+
+    # obj not found
+    await client.send('COMMAND edit vilmibm/fart')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg =='{red}You do not see an object with the true name vilmibm/fart'
+
+    # perm denied
+    await client.send('COMMAND edit snoozy/a-stick')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg =='{red}You lack the authority to edit A stick'
+
+    # success
+    await client.send('COMMAND edit vilmibm/a-fresh-cigar')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('OBJECT')
+    cigar = GameObject.get(GameObject.shortname=='vilmibm/a-fresh-cigar')
+    payload = json.loads(msg.split(' ', maxsplit=1)[1])
+    assert payload == dict(
+        shortname=cigar.shortname,
+        data=cigar.data,
+        permissions=cigar.perms.as_dict(),
+        code=cigar.script_revision.code,
+        current_rev=cigar.script_revision.id)
+
+    # TODO already being edited
+    await client.send('COMMAND edit vilmibm/a-fresh-cigar')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg == '{red}That object is already being edited'
+
+    assert 1 == Editing.select().where(Editing.user_account==vil).count()
+    assert 1 == Editing.select().where(Editing.game_obj==cigar).count()
+
+    # success on snoozy's obj, ensuring we clear out first lock
+    stick = GameObject.get(GameObject.shortname=='snoozy/a-stick')
+    stick.set_perm('write', 'world')
+    await client.send('COMMAND edit snoozy/a-stick')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('OBJECT')
+    assert 'a-stick' in msg
+
+    assert 1 == Editing.select().where(Editing.user_account==vil).count()
+    assert 0 == Editing.select().where(Editing.game_obj==cigar).count()
+    assert 1 == Editing.select().where(Editing.game_obj==stick).count()
+
+    await snoozy_client.close()
     await client.close()

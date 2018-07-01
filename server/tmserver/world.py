@@ -3,8 +3,8 @@ import re
 from slugify import slugify
 
 from .config import get_db
-from .errors import ClientException
-from .models import Contains, GameObject, Script, Permission
+from .errors import RevisionException, WitchException, ClientException
+from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing
 from .util import strip_color_codes
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -84,6 +84,7 @@ class GameWorld:
             'room': {
                 'name': room.name,
                 'description': room.description,
+                # TODO include shortname and current script rev
                 'contains': [dict(name=o.name, description=o.description)
                              for o in room.contains
                              if o.name != player_obj.name],
@@ -107,6 +108,7 @@ class GameWorld:
 
         out = []
         for o in obj.contains:
+            # TODO include shortname and current script rev
             out.append({
                 'name': o.name,
                 'description': o.description,
@@ -136,7 +138,10 @@ class GameWorld:
         if action == 'create':
             cls.handle_create(sender_obj, action_args)
 
-        # TODO edit
+        if action == 'edit':
+            cls.handle_edit(sender_obj, action_args)
+            return
+
         # TODO teleport, either 'home' or 'foyer'
 
         # movement
@@ -369,6 +374,53 @@ class GameWorld:
             container_obj.name))
 
     @classmethod
+    def handle_edit(cls, sender_obj, action_args):
+        """When a user runs /edit, we don't do a ton on the server. This handler:
+
+           - sets the editing property to user's fk
+           - clears the editing property for anything still edited by user
+           - sends an OBJECT payload to the client
+        """
+        # TODO a lot of the editing stuff depends on people only being allowed
+        #      to have one active client at a time. i think that's an ok
+        #      limitation for now, but we should actually enforce it.
+
+        obj = GameObject.get_or_none(GameObject.shortname==action_args)
+        if obj is None:
+            cls.user_hears(sender_obj, sender_obj, '{{red}}You do not see an object with the true name {}'.format(action_args))
+            return
+
+        # TODO if we're switching users to the WITCH tab when they run /edit,
+        # they might miss these errors. they can always switch back to the main
+        # tab though if nothing appears in the WITCH tab.
+        if not sender_obj.can_write(obj):
+            cls.user_hears(sender_obj, sender_obj, '{{red}}You lack the authority to edit {}'.format(obj.name))
+            return
+
+        if Editing.select().where(Editing.game_obj==obj).count() > 0:
+            cls.user_hears(sender_obj, sender_obj, '{red}That object is already being edited')
+            return
+
+        # TODO we still aren't cleanly handling disconnects. Part of the
+        # cleanup for a disconnect is clearing out any related entries in the
+        # Editing table. It should probably be cleared out on server start,
+        # too, now that I think about it.
+        with get_db().atomic():
+            Editing.delete().where(Editing.user_account==sender_obj.user_account).execute()
+            Editing.delete().where(Editing.game_obj==obj).execute()
+            Editing.create(
+                user_account=sender_obj.user_account,
+                game_obj=obj)
+
+        cls.send_object_state(sender_obj.user_account, obj)
+
+    @classmethod
+    def send_object_state(cls, user_account, game_obj):
+        if user_account.id in cls._sessions:
+            cls.get_session(user_account.id).send_object_state(
+                cls.object_state(game_obj))
+
+    @classmethod
     def handle_create(cls, sender_obj, action_args):
         """When a player runs /create, our goal is to create a default version
         of whatever thing they want. If they want to customize a thing further,
@@ -435,7 +487,7 @@ class GameWorld:
     def create_item(cls, owner_obj, name, additional_args):
         shortname = cls.derive_shortname(owner_obj, name)
         item = GameObject.create_scripted_object(
-            'item', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'item', {
             'name': name,
             'description': additional_args})
         cls.put_into(owner_obj, item)
@@ -446,7 +498,7 @@ class GameWorld:
     def create_room(cls, owner_obj, name, additional_args):
         shortname = cls.derive_shortname(owner_obj, name)
         room = GameObject.create_scripted_object(
-            'room', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'room', {
             'name': name,
             'description': additional_args})
 
@@ -484,7 +536,7 @@ class GameWorld:
         # make the here_exit
         shortname = cls.derive_shortname(owner_obj, name)
         here_exit = GameObject.create_scripted_object(
-            'exit', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'exit', {
             'name': name,
             'description': description,
             'target_room_name': target_room.shortname})
@@ -506,7 +558,7 @@ class GameWorld:
            or owner_obj.can_write(target_room):
             shortname = cls.derive_shortname(owner_obj, name, 'reverse')
             there_exit = GameObject.create_scripted_object(
-                'exit', owner_obj.user_account, shortname, {
+                owner_obj.user_account, shortname, 'exit', {
                 'name': name,
                 'description': description,
                 'target_room_name': current_room.shortname})
@@ -530,7 +582,7 @@ class GameWorld:
         description = 'Touching this stone will transport you to'.format(target.name)
         shortname = cls.derive_shortname(owner_obj, name)
         return GameObject.create_scripted_object(
-            'portkey', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'portkey', {
             'name': name,
             'description': description,
             'target_room_name': target.shortname})
@@ -716,3 +768,58 @@ class GameWorld:
     @classmethod
     def user_hears(cls, receiver_obj, sender_obj, msg):
         cls.get_session(receiver_obj.user_account.id).handle_hears(sender_obj, msg)
+
+    @classmethod
+    def object_state(cls, game_obj):
+        return {
+            'shortname': game_obj.shortname,
+            'data': game_obj.data,
+            'permissions': game_obj.perms.as_dict(),
+            'current_rev': game_obj.script_revision.id,
+            'code': game_obj.script_revision.code}
+
+    @classmethod
+    def handle_revision(cls, owner_obj, shortname, code, current_rev):
+        result = None
+        with get_db().atomic():
+            # TODO this is going to create sadness; should be handled and user
+            # gently told
+            obj = GameObject.get(GameObject.shortname==shortname)
+            result = cls.object_state(obj)
+
+            error = None
+            if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
+                error = 'Tried to edit illegal object'
+            elif obj.script_revision.id != current_rev:
+                error = 'Revision mismatch'
+            elif obj.script_revision.code == code.lstrip().rstrip():
+                error = 'No change to code'
+
+            if error:
+                raise RevisionException(error, payload=result)
+
+            rev = ScriptRevision.create(
+                code=code,
+                script=obj.script_revision.script)
+
+            # TODO i may regret allowing broken code to be saved, but otherwise
+            # you essentially can't save works in progress--your work is held
+            # hostage in the WITCH pane until it works. There might be a more
+            # elegant solution but for now I'm going with allowing buggy code
+            # to save.
+            obj.script_revision = rev
+            obj.save()
+
+            witch_errors = []
+
+            try:
+                obj.init_scripting()
+            except WitchException as e:
+                # TODO i don't actually have a good reason for errors being a
+                # list yet
+                witch_errors.append(str(e))
+
+            result = cls.object_state(obj)
+            result['errors'] = witch_errors
+
+        return result

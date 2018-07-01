@@ -16,13 +16,13 @@ class FuzzyMatchTest(TildemushTestCase):
             password='foobarbazquux')
 
         self.phaser = GameObject.create_scripted_object(
-            'item', self.vil, 'phaser-vilmibm-666', dict(
+            self.vil, 'phaser-vilmibm-666', 'item', dict(
                 name='Federation Phaser',
                 description='Looks like a remote control, but is far deadlier. You should probably leave it set for stun.'))
 
     def test_ignores_color_codes(self):
         rainbow = GameObject.create_scripted_object(
-            'item', self.vil, 'contrived-example-vilmibm', dict(
+            self.vil, 'contrived-example-vilmibm', 'item', dict(
                 name='a {red}r{orange}a{yellow}i{green}n{blue}b{indigo}o{violet}w{/}',
                 description="all the way across the sky."))
         assert rainbow.fuzzy_match('rainbow')
@@ -62,7 +62,7 @@ class CreateScriptedObjectTest(TildemushTestCase):
 
     def test_data_initialized(self):
         banana = GameObject.create_scripted_object(
-            'item', self.vil, 'banana-vilmibm', dict(
+            self.vil, 'banana-vilmibm', 'item', dict(
                 name='A Banana',
                 description='Still green.'))
         assert banana.data == dict(
@@ -90,13 +90,6 @@ class GameObjectDataTest(TildemushTestCase):
 
         assert not save_m.called
 
-    def test_ensure_data_ignores_populated_data_mapping(self):
-        self.snoozy.data = {'stuff': 'here'}
-        self.snoozy.save()
-        with mock.patch('tmserver.models.GameObject.save') as save_m:
-            self.snoozy._ensure_data({'aw':'yis'})
-        assert not save_m.called
-
     def test_ensure_data(self):
         some_data = {
             'stuff': 'here',
@@ -122,6 +115,24 @@ class GameObjectDataTest(TildemushTestCase):
         self.snoozy._ensure_data(some_data)
         self.snoozy.set_data('num_pets', self.snoozy.get_data('num_pets') + 1)
         assert 1 == GameObject.get_by_id(self.snoozy.id).get_data('num_pets')
+
+    def test_handles_new_default_keys(self):
+        some_data = {
+            'smoked': False,
+            'length': 4
+        }
+        self.snoozy._ensure_data(some_data)
+        assert False == self.snoozy.get_data('smoked')
+        assert 4 == self.snoozy.get_data('length')
+        new_data = {
+            'smoked': True,
+            'length': 20,
+            'wrapper': 'brown',
+        }
+        self.snoozy._ensure_data(new_data)
+        assert False == self.snoozy.get_data('smoked')
+        assert 4 == self.snoozy.get_data('length')
+        assert 'brown' == self.snoozy.get_data('wrapper')
 
 
 def GameObjectComparisonTest(self):
