@@ -738,6 +738,10 @@ class GameWorld:
             # TODO this is going to create sadness; should be handled and user
             # gently told
             obj = GameObject.get(GameObject.shortname==shortname)
+
+            result['data'] = obj.data
+            result['permissions'] = obj.perms.as_dict()
+
             error = None
             if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
                 error = 'Tried to edit illegal object'

@@ -140,6 +140,16 @@ class Permission(BaseModel):
     carry = pw.IntegerField(default=WORLD)
     execute = pw.IntegerField(default=WORLD)
 
+    def _enum_to_str(self, perm):
+        return 'world' if perm == self.WORLD else 'owner'
+
+    def as_dict(self):
+        return dict(
+            read=self._enum_to_str(self.read),
+            write=self._enum_to_str(self.write),
+            carry=self._enum_to_str(self.carry),
+            execute=self._enum_to_str(self.execute))
+
 
 class GameObject(BaseModel, ScriptedObjectMixin):
     author = pw.ForeignKeyField(UserAccount)

@@ -137,7 +137,7 @@ class GameServer:
                 if revision_exception:
                     # TODO consider something more specific than ERROR
                     await user_session.client_send('ERROR: {}'.revision_exception)
-                await user_session.client_send('REVISION {}'.format(json.dumps(revision_result)))
+                await user_session.client_send('OBJECT {}'.format(json.dumps(revision_result)))
             elif message.startswith('PING'):
                 await user_session.client_send('PONG')
             else:

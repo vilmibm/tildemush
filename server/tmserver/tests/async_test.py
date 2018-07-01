@@ -753,7 +753,8 @@ async def test_revision(event_loop, mock_logger, client):
     new_code = """
     (witch "cigar"
       (has {"name" "A fresh cigar"
-            "description" "An untouched black and mild with a wood tip"})
+            "description" "An untouched black and mild with a wood tip"
+            "smoked" False})
       (hears "smoke"
         (says "i'm cancer")))""".rstrip().lstrip()
 
@@ -765,13 +766,22 @@ async def test_revision(event_loop, mock_logger, client):
     await client.send('REVISION {}'.format(json.dumps(revision_payload)))
 
     msg = await client.recv()
-    assert msg.startswith('REVISION')
+    assert msg.startswith('OBJECT')
     payload = json.loads(msg.split(' ', maxsplit=1)[1])
 
     latest_rev = cigar.latest_script_rev
 
     assert payload == dict(
         shortname='vilmibm/a-fresh-cigar',
+        data=dict(
+            name='A fresh cigar',
+            description='An untouched black and mild with a wood tip',
+            smoked=False),
+        permissions=dict(
+            read='world',
+            write='owner',
+            carry='world',
+            execute='world'),
         errors=[],
         code=new_code,
         current_rev=latest_rev.id)
