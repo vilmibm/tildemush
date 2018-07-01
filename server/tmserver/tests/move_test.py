@@ -13,13 +13,13 @@ class MoveTest(TildemushTestCase):
             password='foobarbazquux')
         user_session = UserSession(None, GameWorld, mock.Mock())
         user_session.associate(self.same)
-        self.pond = GameObject.create(
+        self.pond = GameObject.create_scripted_object(
             author=self.same,
             shortname='pond',)
-        self.cabin = GameObject.create(
+        self.cabin = GameObject.create_scripted_object(
             author=self.same,
             shortname='cabin',)
-        self.frog = GameObject.create(
+        self.frog = GameObject.create_scripted_object(
             author=self.same,
             shortname='dumb frog')
 

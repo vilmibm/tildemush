@@ -3,8 +3,8 @@ import re
 from slugify import slugify
 
 from .config import get_db
-from .errors import ClientException
-from .models import Contains, GameObject, Script, Permission
+from .errors import RevisionException, WitchException, ClientException
+from .models import Contains, GameObject, Script, ScriptRevision, Permission
 from .util import strip_color_codes
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -84,6 +84,7 @@ class GameWorld:
             'room': {
                 'name': room.name,
                 'description': room.description,
+                # TODO include shortname and current script rev
                 'contains': [dict(name=o.name, description=o.description)
                              for o in room.contains
                              if o.name != player_obj.name],
@@ -107,6 +108,7 @@ class GameWorld:
 
         out = []
         for o in obj.contains:
+            # TODO include shortname and current script rev
             out.append({
                 'name': o.name,
                 'description': o.description,
@@ -435,7 +437,7 @@ class GameWorld:
     def create_item(cls, owner_obj, name, additional_args):
         shortname = cls.derive_shortname(owner_obj, name)
         item = GameObject.create_scripted_object(
-            'item', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'item', {
             'name': name,
             'description': additional_args})
         cls.put_into(owner_obj, item)
@@ -446,7 +448,7 @@ class GameWorld:
     def create_room(cls, owner_obj, name, additional_args):
         shortname = cls.derive_shortname(owner_obj, name)
         room = GameObject.create_scripted_object(
-            'room', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'room', {
             'name': name,
             'description': additional_args})
 
@@ -484,7 +486,7 @@ class GameWorld:
         # make the here_exit
         shortname = cls.derive_shortname(owner_obj, name)
         here_exit = GameObject.create_scripted_object(
-            'exit', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'exit', {
             'name': name,
             'description': description,
             'target_room_name': target_room.shortname})
@@ -506,7 +508,7 @@ class GameWorld:
            or owner_obj.can_write(target_room):
             shortname = cls.derive_shortname(owner_obj, name, 'reverse')
             there_exit = GameObject.create_scripted_object(
-                'exit', owner_obj.user_account, shortname, {
+                owner_obj.user_account, shortname, 'exit', {
                 'name': name,
                 'description': description,
                 'target_room_name': current_room.shortname})
@@ -530,7 +532,7 @@ class GameWorld:
         description = 'Touching this stone will transport you to'.format(target.name)
         shortname = cls.derive_shortname(owner_obj, name)
         return GameObject.create_scripted_object(
-            'portkey', owner_obj.user_account, shortname, {
+            owner_obj.user_account, shortname, 'portkey', {
             'name': name,
             'description': description,
             'target_room_name': target.shortname})
@@ -716,3 +718,64 @@ class GameWorld:
     @classmethod
     def user_hears(cls, receiver_obj, sender_obj, msg):
         cls.get_session(receiver_obj.user_account.id).handle_hears(sender_obj, msg)
+
+    @classmethod
+    def handle_revision(cls, owner_obj, shortname, code, current_rev):
+        result = {
+            'shortname': shortname,
+        }
+        # if an error prevents us from saving anything, we want to just return
+        # the current state to the user but also communicate what happened. for
+        # now i'm thinking that results in two things being sent to the client:
+        # the REVISION payload for the unchanged object and an REVERROR message
+        # with the relevant exception that can be handled specially by the
+        # client.
+        #
+        # if we are clear to save and do but then there's a WitchException, we
+        # want to include that error in the payload we send as REVISION so it
+        # can be shown in the EDIT pane.
+        with get_db().atomic():
+            # TODO this is going to create sadness; should be handled and user
+            # gently told
+            obj = GameObject.get(GameObject.shortname==shortname)
+
+            result['data'] = obj.data
+            result['permissions'] = obj.perms.as_dict()
+
+            error = None
+            if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
+                error = 'Tried to edit illegal object'
+            elif obj.script_revision.id != current_rev:
+                error = 'Revision mismatch'
+            elif obj.script_revision.code == code.lstrip().rstrip():
+                error = 'No change to code'
+
+            if error:
+                result['current_rev'] = obj.script_revision.id
+                result['code'] = obj.script_revision.code
+                raise RevisionException(error, payload=result)
+
+            rev = ScriptRevision.create(
+                code=code,
+                script=obj.script_revision.script)
+
+            # TODO i may regret allowing broken code to be saved, but otherwise
+            # you essentially can't save works in progress--your work is held
+            # hostage in the WITCH pane until it works. There might be a more
+            # elegant solution but for now I'm going with allowing buggy code
+            # to save.
+            obj.script_revision = rev
+            obj.save()
+
+            result['current_rev'] = rev.id
+            result['code'] = rev.code
+            result['errors'] = []
+
+            try:
+                obj.init_scripting()
+            except WitchException as e:
+                # TODO i don't actually have a good reason for errors being a
+                # list yet
+                result['errors'].append(str(e))
+
+        return result

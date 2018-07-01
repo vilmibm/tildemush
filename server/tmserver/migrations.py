@@ -44,7 +44,7 @@ def init_db():
     if 0 == GameObject.select().where(GameObject.shortname=='foyer').count():
         god_ua = UserAccount.get(UserAccount.username=='god')
         GameObject.create_scripted_object(
-            'room', god_ua, 'foyer',
+            god_ua, 'foyer', 'room',
             {'name': 'Foyer',
              'description': "A waiting room. Magazines in every language from every decade litter dusty end tables sitting between overstuffed armchairs." })
 

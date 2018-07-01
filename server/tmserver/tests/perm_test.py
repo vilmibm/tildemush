@@ -13,11 +13,11 @@ class PermissionTest(TildemushTestCase):
         self.vil = vil_ua.player_obj
         self.zechs = zechs_ua.player_obj
         self.tofu = GameObject.create_scripted_object(
-            'item', vil_ua, 'tofu-vilmibm', dict(
+            vil_ua, 'tofu-vilmibm', 'item', dict(
                 name='a block of tofu',
                 description='squishy and cubic'))
         self.tallgeese = GameObject.create_scripted_object(
-            'item', zechs_ua, 'tallgeese-zechs', dict(
+            zechs_ua, 'tallgeese-zechs', 'item', dict(
                 name='a large mobile suit',
                 description='tall and fast'))
 

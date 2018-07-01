@@ -5,12 +5,16 @@ import re
 
 import websockets as ws
 
-from .errors import ClientException, UserValidationError
+from .errors import ClientException, UserValidationError, RevisionException
 from .models import UserAccount, GameObject
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
 REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
 COMMAND_RE = re.compile(r'^COMMAND ([^ ]+) ?(.*)$')
+REVISION_RE = re.compile(r'^REVISION (.+)$')
+# TODO ensure that object shortnames are ending up in the client state so they
+# can be sent in REVISION messages
+REVISION_KEYS = ('shortname', 'code', 'current_rev')
 
 LOOP = asyncio.get_event_loop()
 
@@ -56,6 +60,21 @@ class UserSession:
             self.user_account.player_obj,
             action,
             action_args)
+
+    def handle_revision(self, shortname, code, current_rev):
+        return_payload = None
+        revision_exception = None
+        try:
+            return_payload = self.game_world.handle_revision(
+                self.user_account.player_obj,
+                shortname,
+                code,
+                current_rev)
+        except RevisionException as e:
+            return_payload = e.payload
+            revision_exception = str(e)
+
+        return return_payload, revision_exception
 
     def __str__(self):
         s = 'UserSession<{}>'.format(None)
@@ -113,6 +132,12 @@ class GameServer:
             elif message.startswith('COMMAND'):
                 self.handle_command(user_session, message)
                 await user_session.client_send('COMMAND OK')
+            elif message.startswith('REVISION'):
+                revision_result, revision_exception = self.handle_revision(user_session, message)
+                if revision_exception:
+                    # TODO consider something more specific than ERROR
+                    await user_session.client_send('ERROR: {}'.revision_exception)
+                await user_session.client_send('OBJECT {}'.format(json.dumps(revision_result)))
             elif message.startswith('PING'):
                 await user_session.client_send('PONG')
             else:
@@ -170,6 +195,31 @@ class GameServer:
         if match is None:
             raise ClientException('malformed registration message: {}'.format(message))
         return match.groups()
+
+    def handle_revision(self, user_session, message):
+        if not user_session.associated:
+            raise ClientException('not logged in')
+        payload = self.parse_revision(message)
+        return user_session.handle_revision(**payload)
+
+    def parse_revision(self, message):
+        match = REVISION_RE.fullmatch(message)
+        if match is None:
+            raise ClientException('malformed revision payload: {}'.format(message))
+        payload = match.groups()[0]
+
+        try:
+            payload = json.loads(payload)
+        except Exception as e:
+            raise ClientException('failed to parse revision payload: {}'.format(payload))
+
+        # TODO ensure it's a dict, raise otherwise
+
+        for k in REVISION_KEYS:
+            if payload.get(k) is None:
+                raise ClientException('revision payload missing key: {}'.format(k))
+
+        return payload
 
     def start(self):
         self.logger.info('Starting up asyncio loop')
