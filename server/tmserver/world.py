@@ -4,7 +4,7 @@ from slugify import slugify
 
 from .config import get_db
 from .errors import RevisionException, WitchException, ClientException
-from .models import Contains, GameObject, Script, ScriptRevision, Permission
+from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing
 from .util import strip_color_codes
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -138,7 +138,10 @@ class GameWorld:
         if action == 'create':
             cls.handle_create(sender_obj, action_args)
 
-        # TODO edit
+        if action == 'edit':
+            cls.handle_edit(sender_obj, action_args)
+            return
+
         # TODO teleport, either 'home' or 'foyer'
 
         # movement
@@ -369,6 +372,53 @@ class GameWorld:
         cls.user_hears(sender_obj, sender_obj, 'You remove {} from {} and carry it with you.'.format(
             target_obj.name,
             container_obj.name))
+
+    @classmethod
+    def handle_edit(cls, sender_obj, action_args):
+        """When a user runs /edit, we don't do a ton on the server. This handler:
+
+           - sets the editing property to user's fk
+           - clears the editing property for anything still edited by user
+           - sends an OBJECT payload to the client
+        """
+        # TODO a lot of the editing stuff depends on people only being allowed
+        #      to have one active client at a time. i think that's an ok
+        #      limitation for now, but we should actually enforce it.
+
+        obj = GameObject.get_or_none(GameObject.shortname==action_args)
+        if obj is None:
+            cls.user_hears(sender_obj, sender_obj, '{{red}}You do not see an object with the true name {}'.format(action_args))
+            return
+
+        # TODO if we're switching users to the WITCH tab when they run /edit,
+        # they might miss these errors. they can always switch back to the main
+        # tab though if nothing appears in the WITCH tab.
+        if not sender_obj.can_write(obj):
+            cls.user_hears(sender_obj, sender_obj, '{{red}}You lack the authority to edit {}'.format(obj.name))
+            return
+
+        if Editing.select().where(Editing.game_obj==obj).count() > 0:
+            cls.user_hears(sender_obj, sender_obj, '{red}That object is already being edited')
+            return
+
+        # TODO we still aren't cleanly handling disconnects. Part of the
+        # cleanup for a disconnect is clearing out any related entries in the
+        # Editing table. It should probably be cleared out on server start,
+        # too, now that I think about it.
+        with get_db().atomic():
+            Editing.delete().where(Editing.user_account==sender_obj.user_account).execute()
+            Editing.delete().where(Editing.game_obj==obj).execute()
+            Editing.create(
+                user_account=sender_obj.user_account,
+                game_obj=obj)
+
+        cls.send_object_state(sender_obj.user_account, obj)
+
+    @classmethod
+    def send_object_state(cls, user_account, game_obj):
+        if user_account.id in cls._sessions:
+            cls.get_session(user_account.id).send_object_state(
+                cls.object_state(game_obj))
 
     @classmethod
     def handle_create(cls, sender_obj, action_args):
@@ -720,27 +770,22 @@ class GameWorld:
         cls.get_session(receiver_obj.user_account.id).handle_hears(sender_obj, msg)
 
     @classmethod
+    def object_state(cls, game_obj):
+        return {
+            'shortname': game_obj.shortname,
+            'data': game_obj.data,
+            'permissions': game_obj.perms.as_dict(),
+            'current_rev': game_obj.script_revision.id,
+            'code': game_obj.script_revision.code}
+
+    @classmethod
     def handle_revision(cls, owner_obj, shortname, code, current_rev):
-        result = {
-            'shortname': shortname,
-        }
-        # if an error prevents us from saving anything, we want to just return
-        # the current state to the user but also communicate what happened. for
-        # now i'm thinking that results in two things being sent to the client:
-        # the REVISION payload for the unchanged object and an REVERROR message
-        # with the relevant exception that can be handled specially by the
-        # client.
-        #
-        # if we are clear to save and do but then there's a WitchException, we
-        # want to include that error in the payload we send as REVISION so it
-        # can be shown in the EDIT pane.
+        result = None
         with get_db().atomic():
             # TODO this is going to create sadness; should be handled and user
             # gently told
             obj = GameObject.get(GameObject.shortname==shortname)
-
-            result['data'] = obj.data
-            result['permissions'] = obj.perms.as_dict()
+            result = cls.object_state(obj)
 
             error = None
             if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
@@ -751,8 +796,6 @@ class GameWorld:
                 error = 'No change to code'
 
             if error:
-                result['current_rev'] = obj.script_revision.id
-                result['code'] = obj.script_revision.code
                 raise RevisionException(error, payload=result)
 
             rev = ScriptRevision.create(
@@ -767,15 +810,16 @@ class GameWorld:
             obj.script_revision = rev
             obj.save()
 
-            result['current_rev'] = rev.id
-            result['code'] = rev.code
-            result['errors'] = []
+            witch_errors = []
 
             try:
                 obj.init_scripting()
             except WitchException as e:
                 # TODO i don't actually have a good reason for errors being a
                 # list yet
-                result['errors'].append(str(e))
+                witch_errors.append(str(e))
+
+            result = cls.object_state(obj)
+            result['errors'] = witch_errors
 
         return result

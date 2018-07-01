@@ -334,6 +334,9 @@ def on_game_object_create(cls, instance, created):
     instance.perms = Permission.create()
     instance.save()
 
+class Editing(BaseModel):
+    user_account = pw.ForeignKeyField(UserAccount)
+    game_obj = pw.ForeignKeyField(GameObject)
 
 class Contains(BaseModel):
     outer_obj = pw.ForeignKeyField(GameObject)
@@ -346,4 +349,4 @@ class Log(BaseModel):
     raw = pw.CharField()
 
 
-MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission]
+MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission, Editing]

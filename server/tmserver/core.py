@@ -52,6 +52,12 @@ class UserSession:
             self.client_send('STATE {}'.format(json.dumps(client_state))),
             loop=self.loop)
 
+    def send_object_state(self, object_state):
+        asyncio.ensure_future(
+            self.client_send('OBJECT {}'.format(json.dumps(object_state))),
+            loop=self.loop
+        )
+
     async def client_send(self, message):
         await self.websocket.send(message)
 
@@ -137,7 +143,7 @@ class GameServer:
                 if revision_exception:
                     # TODO consider something more specific than ERROR
                     await user_session.client_send('ERROR: {}'.revision_exception)
-                await user_session.client_send('OBJECT {}'.format(json.dumps(revision_result)))
+                user_session.send_object_state(revision_result)
             elif message.startswith('PING'):
                 await user_session.client_send('PONG')
             else:
