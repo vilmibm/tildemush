@@ -103,6 +103,11 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
 
         assert cm.exception.payload == {
             'shortname': 'someone/book',
+            'data': {'description': 'Electronic Life by Michael Crichton', 'name':'Book'},
+            'permissions': {'carry': 'world',
+                            'execute': 'world',
+                            'read': 'world',
+                            'write': 'owner'},
             'current_rev': self.book.script_revision.id,
             'code': self.book.script_revision.code}
 
@@ -119,6 +124,11 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
 
         assert cm.exception.payload == {
             'shortname': 'vilmibm/snoozy',
+            'data': {'description': 'just a horse', 'name':'snoozy'},
+            'permissions': {'carry': 'world',
+                            'execute': 'world',
+                            'read': 'world',
+                            'write': 'owner'},
             'current_rev': self.snoozy.script_revision.id,
             'code': self.snoozy.script_revision.code}
 
@@ -135,6 +145,11 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
 
         assert cm.exception.payload == {
             'shortname': 'vilmibm/snoozy',
+            'data': {'description': 'just a horse', 'name':'snoozy'},
+            'permissions': {'carry': 'world',
+                            'execute': 'world',
+                            'read': 'world',
+                            'write': 'owner'},
             'current_rev': self.snoozy.script_revision.id,
             'code': self.snoozy.script_revision.code}
 
@@ -148,6 +163,11 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
         latest_rev = self.snoozy.latest_script_rev
         expected = {
             'shortname': 'vilmibm/snoozy',
+            'data': {'description': 'just a horse', 'name':'snoozy'},
+            'permissions': {'carry': 'world',
+                            'execute': 'world',
+                            'read': 'world',
+                            'write': 'owner'},
             'current_rev': latest_rev.id,
             'code': latest_rev.code,
             'errors': [";_; There is a problem with your witch script: name 'lol' is not defined"]}
@@ -173,6 +193,11 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
         latest_rev = self.snoozy.latest_script_rev
         expected = {
             'shortname': 'vilmibm/snoozy',
+            'data': {'description': 'just a horse', 'name':'snoozy'},
+            'permissions': {'carry': 'world',
+                            'execute': 'world',
+                            'read': 'world',
+                            'write': 'owner'},
             'current_rev': latest_rev.id,
             'code': latest_rev.code,
             'errors': []}
