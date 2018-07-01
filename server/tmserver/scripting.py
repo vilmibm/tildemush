@@ -202,9 +202,13 @@ class ScriptedObjectMixin:
     def _ensure_data(self, data_mapping):
         """Given the default values for some gameobject's script, initialize
         this object's data column to those defaults. Saves the instance."""
-        if data_mapping == {} or self.data != {}:
+        if data_mapping == {}:
             return
-        self.data = data_mapping
+
+        for k,v in data_mapping.items():
+            if k not in self.data:
+                self.data[k] = v
+
         self.save()
 
     def _ensure_world(self, game_world):
