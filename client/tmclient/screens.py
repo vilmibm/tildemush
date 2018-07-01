@@ -257,7 +257,7 @@ class GameMain(urwid.Frame):
             # TODO: object select validation
             obj_name = text.split("/edit ")[1]
             if self.valid_edit_object(obj_name):
-                asyncio.ensure_future(self.client_state.send("EDIT {}".format(obj_name)), loop=self.loop)
+            #    asyncio.ensure_future(self.client_state.send("EDIT {}".format(obj_name)), loop=self.loop)
                 self.prompt.edit_text = ''
                 self.switch_tab(self.tabs.get("f2"))
             else:
@@ -265,7 +265,12 @@ class GameMain(urwid.Frame):
         elif text.startswith('/'):
             text = text[1:]
         else:
-            text = 'say {}'.format(text)
+            # TODO: text color is hardcoded here, but it should come from
+            # user settings
+            if text:
+                text = 'say {{light magenta}}{}{{/}}'.format(text)
+            else:
+                text = 'say {light magenta}...{/}'
 
         server_msg = 'COMMAND {}'.format(text)
 
@@ -279,13 +284,6 @@ class GameMain(urwid.Frame):
         if key in self.hotkeys.get("quit"):
             quit_client(self)
         elif key in self.tabs.keys():
-            """
-            self.body.unfocus()
-            self.body = self.tabs.get(key)
-            self.body.focus()
-            self.focus_prompt()
-            self.refresh_tabs()
-            """
             self.switch_tab(self.tabs.get(key))
         elif key in self.hotkeys.get("scrolling").keys():
             if self.body == self.main_tab:
