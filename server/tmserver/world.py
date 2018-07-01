@@ -720,17 +720,22 @@ class GameWorld:
         cls.get_session(receiver_obj.user_account.id).handle_hears(sender_obj, msg)
 
     @classmethod
+    def object_state(cls, game_obj):
+        return {
+            'shortname': game_obj.shortname,
+            'data': game_obj.data,
+            'permissions': game_obj.perms.as_dict(),
+            'current_rev': game_obj.script_revision.id,
+            'code': game_obj.script_revision.code}
+
+    @classmethod
     def handle_revision(cls, owner_obj, shortname, code, current_rev):
-        result = {
-            'shortname': shortname,
-        }
+        result = None
         with get_db().atomic():
             # TODO this is going to create sadness; should be handled and user
             # gently told
             obj = GameObject.get(GameObject.shortname==shortname)
-
-            result['data'] = obj.data
-            result['permissions'] = obj.perms.as_dict()
+            result = cls.object_state(obj)
 
             error = None
             if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
@@ -741,8 +746,6 @@ class GameWorld:
                 error = 'No change to code'
 
             if error:
-                result['current_rev'] = obj.script_revision.id
-                result['code'] = obj.script_revision.code
                 raise RevisionException(error, payload=result)
 
             rev = ScriptRevision.create(
@@ -757,15 +760,16 @@ class GameWorld:
             obj.script_revision = rev
             obj.save()
 
-            result['current_rev'] = rev.id
-            result['code'] = rev.code
-            result['errors'] = []
+            witch_errors = []
 
             try:
                 obj.init_scripting()
             except WitchException as e:
                 # TODO i don't actually have a good reason for errors being a
                 # list yet
-                result['errors'].append(str(e))
+                witch_errors.append(str(e))
+
+            result = cls.object_state(obj)
+            result['errors'] = witch_errors
 
         return result
