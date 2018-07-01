@@ -385,31 +385,34 @@ class GameWorld:
         #      to have one active client at a time. i think that's an ok
         #      limitation for now, but we should actually enforce it.
 
-        # TODO this is going to create sadness; should be handled and user
-        #      gently told
-        obj = GameObject.get(GameObject.shortname==action_args)
+        obj = GameObject.get_or_none(GameObject.shortname==action_args)
+        if obj is None:
+            cls.user_hears(sender_obj, sender_obj, '{{red}}You do not see an object with the true name {}'.format(action_args))
+            return
 
         # TODO if we're switching users to the WITCH tab when they run /edit,
         # they might miss these errors. they can always switch back to the main
         # tab though if nothing appears in the WITCH tab.
         if not sender_obj.can_write(obj):
-            cls.user_hears('{{red}}You lack the authority to edit {}'.format(obj.name))
+            cls.user_hears(sender_obj, sender_obj, '{{red}}You lack the authority to edit {}'.format(obj.name))
+            return
 
         if Editing.select().where(Editing.game_obj==obj).count() > 0:
-            cls.user_hears('{{red}}That object is already being edited')
+            cls.user_hears(sender_obj, sender_obj, '{red}That object is already being edited')
+            return
 
         # TODO we still aren't cleanly handling disconnects. Part of the
         # cleanup for a disconnect is clearing out any related entries in the
         # Editing table. It should probably be cleared out on server start,
         # too, now that I think about it.
         with get_db().atomic():
-            Editing.delete(Editing.user_account==sender_obj.user_account)
-            Editing.delete(Editing.game_obj==obj)
+            Editing.delete().where(Editing.user_account==sender_obj.user_account).execute()
+            Editing.delete().where(Editing.game_obj==obj).execute()
             Editing.create(
                 user_account=sender_obj.user_account,
                 game_obj=obj)
 
-        cls.send_object(o.user_account, obj)
+        cls.send_object_state(sender_obj.user_account, obj)
 
     @classmethod
     def send_object_state(cls, user_account, game_obj):

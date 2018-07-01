@@ -8,7 +8,7 @@ import websockets
 
 from ..core import GameServer
 from ..migrations import reset_db
-from ..models import UserAccount, Script, GameObject, ScriptRevision
+from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing
 from ..world import GameWorld
 
 @pytest.fixture(autouse=True)
@@ -793,4 +793,85 @@ async def test_revision(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == "A fresh cigar says, \"i'm cancer\""
 
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_edit(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
+    await setup_user(snoozy_client, 'snoozy')
+
+    # create obj for vil
+    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
+
+    # create obj for snoozy
+    await snoozy_client.send('COMMAND create item "A stick" Seems to be maple.')
+    msg = await snoozy_client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await snoozy_client.recv()
+    assert msg.startswith('STATE')
+    msg = await snoozy_client.recv()
+    assert msg == 'You breathed light into a whole new item. Its true name is snoozy/a-stick'
+
+    # obj not found
+    await client.send('COMMAND edit vilmibm/fart')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg =='{red}You do not see an object with the true name vilmibm/fart'
+
+    # perm denied
+    await client.send('COMMAND edit snoozy/a-stick')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg =='{red}You lack the authority to edit A stick'
+
+    # success
+    await client.send('COMMAND edit vilmibm/a-fresh-cigar')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('OBJECT')
+    cigar = GameObject.get(GameObject.shortname=='vilmibm/a-fresh-cigar')
+    payload = json.loads(msg.split(' ', maxsplit=1)[1])
+    assert payload == dict(
+        shortname=cigar.shortname,
+        data=cigar.data,
+        permissions=cigar.perms.as_dict(),
+        code=cigar.script_revision.code,
+        current_rev=cigar.script_revision.id)
+
+    # TODO already being edited
+    await client.send('COMMAND edit vilmibm/a-fresh-cigar')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg == '{red}That object is already being edited'
+
+    assert 1 == Editing.select().where(Editing.user_account==vil).count()
+    assert 1 == Editing.select().where(Editing.game_obj==cigar).count()
+
+    # success on snoozy's obj, ensuring we clear out first lock
+    stick = GameObject.get(GameObject.shortname=='snoozy/a-stick')
+    stick.set_perm('write', 'world')
+    await client.send('COMMAND edit snoozy/a-stick')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('OBJECT')
+    assert 'a-stick' in msg
+
+    assert 1 == Editing.select().where(Editing.user_account==vil).count()
+    assert 0 == Editing.select().where(Editing.game_obj==cigar).count()
+    assert 1 == Editing.select().where(Editing.game_obj==stick).count()
+
+    await snoozy_client.close()
     await client.close()
