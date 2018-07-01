@@ -724,16 +724,6 @@ class GameWorld:
         result = {
             'shortname': shortname,
         }
-        # if an error prevents us from saving anything, we want to just return
-        # the current state to the user but also communicate what happened. for
-        # now i'm thinking that results in two things being sent to the client:
-        # the REVISION payload for the unchanged object and an REVERROR message
-        # with the relevant exception that can be handled specially by the
-        # client.
-        #
-        # if we are clear to save and do but then there's a WitchException, we
-        # want to include that error in the payload we send as REVISION so it
-        # can be shown in the EDIT pane.
         with get_db().atomic():
             # TODO this is going to create sadness; should be handled and user
             # gently told
