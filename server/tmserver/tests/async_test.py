@@ -843,6 +843,7 @@ async def test_edit(event_loop, mock_logger, client):
     cigar = GameObject.get(GameObject.shortname=='vilmibm/a-fresh-cigar')
     payload = json.loads(msg.split(' ', maxsplit=1)[1])
     assert payload == dict(
+        edit=True,
         shortname=cigar.shortname,
         data=cigar.data,
         permissions=cigar.perms.as_dict(),

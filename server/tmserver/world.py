@@ -412,13 +412,15 @@ class GameWorld:
                 user_account=sender_obj.user_account,
                 game_obj=obj)
 
-        cls.send_object_state(sender_obj.user_account, obj)
+        cls.send_object_state(sender_obj.user_account, obj, edit=True)
 
     @classmethod
-    def send_object_state(cls, user_account, game_obj):
+    def send_object_state(cls, user_account, game_obj, edit=False):
         if user_account.id in cls._sessions:
-            cls.get_session(user_account.id).send_object_state(
-                cls.object_state(game_obj))
+            state = cls.object_state(game_obj)
+            if edit:
+                state['edit'] = True
+            cls.get_session(user_account.id).send_object_state(state)
 
     @classmethod
     def handle_create(cls, sender_obj, action_args):

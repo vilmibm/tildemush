@@ -55,8 +55,7 @@ class UserSession:
     def send_object_state(self, object_state):
         asyncio.ensure_future(
             self.client_send('OBJECT {}'.format(json.dumps(object_state))),
-            loop=self.loop
-        )
+            loop=self.loop)
 
     async def client_send(self, message):
         await self.websocket.send(message)

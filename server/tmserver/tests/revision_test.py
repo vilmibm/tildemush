@@ -207,6 +207,7 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
 
         assert expected == result
 
+
 class GameObjectRevisionUpdateTest(TildemushTestCase):
     def setUp(self):
         super().setUp()
