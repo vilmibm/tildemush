@@ -6,7 +6,7 @@ import urwid
 
 from .config import Config
 from . import ui
-from .ui import Screen, Form, FormField, menu, menu_button, sub_menu, ColorText
+from .ui import Screen, Form, FormField, menu, menu_button, sub_menu, ColorText, ExternalEditor
 
 def quit_client(screen):
     # TODO: quit command isn't getting caught by the server for some
@@ -113,9 +113,10 @@ class GamePrompt(urwid.Edit):
 
 
 class GameMain(urwid.Frame):
-    def __init__(self, client_state, loop):
+    def __init__(self, client_state, loop, ui_loop):
         self.client_state = client_state
         self.loop = loop
+        self.ui_loop = ui_loop
         self.state = {"user":{
                     "description": "a shadow",
                     "display_name": "nothing"},
@@ -156,8 +157,8 @@ class GameMain(urwid.Frame):
                     selected=True), self.main_prompt)
 
         # witch view stuff
-        self.witch_prompt = urwid.Edit()
-        self.witch_view= urwid.Filler(ColorText("witch editor in progress", align='center'), valign='middle')
+        self.witch_view = urwid.Filler(ColorText("/edit an object in the game view", align='center'), valign='middle')
+        self.witch_prompt = self.witch_view
         self.witch_tab = ui.GameTab(self.witch_view,
                 ui.TabHeader("F2 WITCH"), self.witch_prompt)
 
@@ -201,6 +202,8 @@ class GameMain(urwid.Frame):
             pass
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
+        elif server_msg.startswith('OBJECT'):
+            self.launch_witch(json.loads(server_msg[7:]))
         else:
             spacer = self.game_walker.pop()
             self.game_walker.append(ColorText(server_msg))
@@ -209,18 +212,40 @@ class GameMain(urwid.Frame):
 
         self.focus_prompt()
 
+    def launch_witch(self, data):
+        with open("witch.hy", "w") as f:
+            f.write(data["code"])
+        self.witch_tab.blank = self.witch_tab.original_widget
+        self.witch_tab.mount(ExternalEditor("witch.hy", self.ui_loop, lambda id:self.close_witch(data, id)))
+        self.switch_tab(self.tabs.get("f2"))
+
+    def close_witch(self, data, file):
+        with open(file, "r") as f:
+            code = f.read()
+        revision_payload = dict(
+            shortname=data["shortname"],
+            code=code,
+            current_rev=data["current_rev"])
+        os.remove(file)
+
+        self.witch_tab.original_widget = self.witch_tab.blank    
+        self.switch_tab(self.tabs.get("f1"))
+
+        payload = 'REVISION {}'.format(json.dumps(revision_payload))
+        asyncio.ensure_future(self.client_state.send(payload), loop=self.loop)
+
     def focus_prompt(self):
         self.focus_position = 'body'
         self.prompt = self.body.prompt
 
     def keypress(self, size, key):
-        if key == 'enter':
-            if self.prompt == self.main_tab.prompt:
-                self.handle_game_input(self.prompt.get_edit_text())
-            else:
-                self.prompt.edit_text = ''
+        if key == 'enter' and self.prompt == self.main_tab.prompt:
+            self.handle_game_input(self.prompt.get_edit_text())
         else:
-            self.prompt.keypress((size[0],), key)
+            try:
+                self.prompt.keypress((size[0],), key)
+            except ValueError:
+                pass
             self.handle_keypress(size, key)
 
     def handle_game_input(self, text):
@@ -235,6 +260,9 @@ class GameMain(urwid.Frame):
 
         if text.startswith('/quit'):
             quit_client(self)
+        elif text.startswith('/edit'):
+            #TODO check for active witch editor
+            text = text[1:]
         elif text.startswith('/'):
             text = text[1:]
         else:
@@ -274,6 +302,13 @@ class GameMain(urwid.Frame):
             self.input_index = min(len(self.input_history) - 1, self.input_index + 1)
 
         self.prompt.edit_text = self.input_history[self.input_index]
+
+    def switch_tab(self, new_tab):
+        self.body.unfocus()
+        self.body = new_tab
+        self.body.focus()
+        self.focus_prompt()
+        self.refresh_tabs()
 
     def refresh_tabs(self):
         headers = []
