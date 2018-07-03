@@ -246,11 +246,10 @@ class ColorText(urwid.Text):
 
 
 class ExternalEditor(urwid.Terminal):
-    def __init__(self, id, loop, callback):
+    def __init__(self, path, loop, callback):
         self.terminated = False
-        self.path = id
+        self.path = path
         self.callback = callback
-        #os.environ.update({"LANG": "POSIX"})
         command = ["bash", "-c", "{} {}; echo Press any key to kill this window...".format(
             os.environ["EDITOR"], self.path)]
         super(ExternalEditor, self).__init__(command, os.environ, loop, "ctrl z")

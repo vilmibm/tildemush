@@ -2,6 +2,7 @@ import os, time
 import asyncio
 import json
 import websockets
+from tempfile import NamedTemporaryFile
 import urwid
 
 from .config import Config
@@ -203,7 +204,9 @@ class GameMain(urwid.Frame):
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
         elif server_msg.startswith('OBJECT'):
-            self.launch_witch(json.loads(server_msg[7:]))
+            object_state = json.loads(server_msg[7:])
+            if object_state.get('edit'):
+                self.launch_witch(object_state)
         else:
             spacer = self.game_walker.pop()
             self.game_walker.append(ColorText(server_msg))
@@ -213,22 +216,23 @@ class GameMain(urwid.Frame):
         self.focus_prompt()
 
     def launch_witch(self, data):
-        with open("witch.hy", "w") as f:
-            f.write(data["code"])
+        tf = NamedTemporaryFile(delete=False, mode='w')
+        tf.write(data["code"])
+        tf.close()
         self.witch_tab.blank = self.witch_tab.original_widget
-        self.witch_tab.mount(ExternalEditor("witch.hy", self.ui_loop, lambda id:self.close_witch(data, id)))
+        self.witch_tab.mount(ExternalEditor(tf.name, self.ui_loop, lambda path: self.close_witch(data, path)))
         self.switch_tab(self.tabs.get("f2"))
 
-    def close_witch(self, data, file):
-        with open(file, "r") as f:
+    def close_witch(self, data, filepath):
+        with open(filepath, "r") as f:
             code = f.read()
         revision_payload = dict(
             shortname=data["shortname"],
             code=code,
             current_rev=data["current_rev"])
-        os.remove(file)
+        os.remove(filepath)
 
-        self.witch_tab.original_widget = self.witch_tab.blank    
+        self.witch_tab.original_widget = self.witch_tab.blank
         self.switch_tab(self.tabs.get("f1"))
 
         payload = 'REVISION {}'.format(json.dumps(revision_payload))
