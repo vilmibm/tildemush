@@ -37,6 +37,12 @@ palettes = [
     ('/', 'white', ''),
     ('reset', 'white', '')]
 
+KEY_ESCAPE_MAP = {
+    key: urwid.vterm.ESC + sequence
+      for sequence, key in urwid.escape.input_sequences
+      if len(key) > 1
+}
+
 
 class Form(urwid.Pile):
     def __init__(self, fields, submit):
@@ -209,6 +215,11 @@ class GameTab(urwid.WidgetPlaceholder):
         self.in_focus = False
         self.tab_header = TabHeader(self.tab_header.label, self.tab_header.position, False)
 
+    def mount(self, widget):
+        self.original_widget = urwid.LineBox(widget, tlcorner='│', trcorner='│', tline='')
+        self.prompt = widget
+
+
 
 class ColorText(urwid.Text):
     """
@@ -232,6 +243,62 @@ class ColorText(urwid.Text):
                 text += token[0]
         res.append((theme, text))
         super().__init__(res, align, wrap, layout)
+
+
+class ExternalEditor(urwid.Terminal):
+    def __init__(self, id, loop, callback):
+        self.terminated = False
+        self.path = id
+        self.callback = callback
+        #os.environ.update({"LANG": "POSIX"})
+        command = ["bash", "-c", "{} {}; echo Press any key to kill this window...".format(
+            os.environ["EDITOR"], self.path)]
+        super(ExternalEditor, self).__init__(command, os.environ, loop, "ctrl z")
+        urwid.connect_signal(self, "closed", self.exterminate)
+
+    def exterminate(self, *_):
+        if self.callback:
+            self.callback(self.path)
+
+    def keypress(self, size, key):
+        """
+        The majority of the things the parent keypress method will do is
+        either erroneous or disruptive to my own usage. I've plucked out
+        the necessary bits and, most importantly, have changed from
+        ASCII encoding to utf8 when writing to the child process.
+        """
+
+        #print("("+key+")")
+        if self.terminated:
+            return
+
+        self.term.scroll_buffer(reset=True)
+        keyl = key.lower()
+
+        if keyl == "ctrl z":
+            return os.killpg(os.getpgid(os.getpid()), 19)
+
+        single_char = len(key) == 6
+        if key.startswith("ctrl ") and single_char:
+            if key[-1].islower():
+                key = chr(ord(key[-1]) - ord("a") + 1)
+            else:
+                key = chr(ord(key[-1]) - ord("A") + 1)
+
+        elif key.startswith("meta ") and single_char:
+            key = urwid.vterm.ESC + key[-1]
+
+        elif key in urwid.vterm.KEY_TRANSLATIONS:
+            key = urwid.vterm.KEY_TRANSLATIONS[key]
+        
+        elif key in KEY_ESCAPE_MAP:
+            key = KEY_ESCAPE_MAP[key]
+
+
+        if self.term_modes.lfnl and key == "\x0d":
+            key += "\x0a"
+
+        os.write(self.master, key.encode("utf8"))
 
 
 class UI:

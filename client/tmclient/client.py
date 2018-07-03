@@ -54,7 +54,7 @@ class Client:
         response = await self.connection.recv()
         if response == 'LOGIN OK':
             self.authenticated = True
-            self.ui.base = GameMain(self, self.loop)
+            self.ui.base = GameMain(self, self.loop, self.ui.loop)
         else:
             self.ui.base.message(response, 'error')
 
