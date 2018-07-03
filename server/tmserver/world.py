@@ -83,16 +83,13 @@ class GameWorld:
             },
             'room': {
                 'name': room.name,
+                'shortname': room.shortname,
                 'description': room.description,
-                # TODO include shortname and current script rev
-                'contains': [dict(name=o.name, description=o.description)
-                             for o in room.contains
-                             if o.name != player_obj.name],
+                'contains': [dict(name=o.name, description=o.description, shortname=o.shortname)
+                             for o in room.contains],
                 'exits': exit_payload,
             },
             'inventory': cls.contains_tree(player_obj),
-            'scripts': [s.name for s
-                        in Script.select(Script.name).where(Script.author==user_account)],
         }
 
     @classmethod
@@ -108,9 +105,9 @@ class GameWorld:
 
         out = []
         for o in obj.contains:
-            # TODO include shortname and current script rev
             out.append({
                 'name': o.name,
+                'shortname': o.shortname,
                 'description': o.description,
                 'contains': cls.contains_tree(o)
             })

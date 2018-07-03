@@ -256,43 +256,43 @@ async def test_client_state(event_loop, mock_logger, client):
     god = UserAccount.get(UserAccount.username=='god')
 
     room = GameObject.create_scripted_object(
-        god, 'ten-forward', 'room', dict(
+        god, 'god/ten-forward', 'room', dict(
             name='ten forward',
             description='the bar lounge of the starship enterprise.'))
     quadchess = GameObject.create_scripted_object(
-        god, 'quadchess', 'item', dict(
+        god, 'god/quadchess', 'item', dict(
             name='quadchess',
             description='a chess game with four decks'))
     chess_piece = GameObject.create_scripted_object(
-        god, 'chess-piece', 'item', dict(
+        god, 'god/chess-piece', 'item', dict(
             name='chess piece',
             description='a chess piece. Looks like a bishop.'))
     drink = GameObject.create_scripted_object(
-        god, 'weird-drink', 'item', dict(
+        god, 'god/weird-drink', 'item', dict(
             name='weird drink',
             description='an in-house invention of Guinan. It is purple and fizzes ominously.'))
     tricorder = GameObject.create_scripted_object(
-        god, 'tricorder', 'item', dict(
+        god, 'god/tricorder', 'item', dict(
             name='tricorder',
             description='looks like someone left their tricorder here.'))
     medical_app = GameObject.create_scripted_object(
-        god, 'medical-program', 'item', dict(
+        god, 'god/medical-program', 'item', dict(
             name='medical program',
             description='you can use this to scan or call up data about a patient.'))
     patient_file = GameObject.create_scripted_object(
-        god, 'patient-file', 'item', dict(
+        god, 'god/patient-file', 'item', dict(
             name='patient file',
             description='a scan of Lt Barclay'))
     phase_analyzer_app = GameObject.create_scripted_object(
-        god, 'phase-analyzer-program', 'item', dict(
+        god, 'god/phase-analyzer-program', 'item', dict(
             name='phase analyzer program',
             description='you can use this to scan for phase shift anomalies'))
     music_app = GameObject.create_scripted_object(
-        god, 'media-app', 'item', dict(
+        god, 'god/media-app', 'item', dict(
             name='media app',
             description='this program turns your tricorder into a jukebox'))
     klingon_opera = GameObject.create_scripted_object(
-        god, 'klingon-opera-music', 'item', dict(
+        god, 'god/klingon-opera-music', 'item', dict(
             name='klingon opera music',
             description='a recording of a klingon opera'))
     GameWorld.put_into(room, quadchess)
@@ -306,11 +306,11 @@ async def test_client_state(event_loop, mock_logger, client):
     GameWorld.put_into(music_app, klingon_opera)
 
     GameObject.create_scripted_object(
-        god, 'jeffries-tube-god', 'room', dict(
+        god, 'god/jeffries-tube', 'room', dict(
             name='Jeffries Tube',
             description='A cramped little space used for maintenance.'))
     GameObject.create_scripted_object(
-        god, 'replicator-room-god', 'room', dict(
+        god, 'god/replicator-room', 'room', dict(
             name='Replicator Room',
             description="Little more than a closet, you can use this room to interact with the replicator in case you don't want to make an order a the bar."))
 
@@ -318,11 +318,11 @@ async def test_client_state(event_loop, mock_logger, client):
     GameWorld.create_exit(
         god.player_obj,
         'Sliding Door',
-        'east replicator-room-god An automatic, shiny sliding door')
+        'east god/replicator-room An automatic, shiny sliding door')
     GameWorld.create_exit(
         god.player_obj,
         'Hatch',
-        'below jeffries-tube-god A small hatch, just big enough for a medium sized humanoid.')
+        'below god/jeffries-tube A small hatch, just big enough for a medium sized humanoid.')
     GameWorld.remove_from(room, god.player_obj)
 
     await client.send('LOGIN vilmibm:foobarbazquux')
@@ -343,16 +343,24 @@ async def test_client_state(event_loop, mock_logger, client):
         },
         'room': {
             'name': 'ten forward',
+            'shortname': 'god/ten-forward',
             'description': 'the bar lounge of the starship enterprise.',
             'contains': [
                 {'name': 'quadchess',
+                 'shortname': 'god/quadchess',
                  'description': 'a chess game with four decks'},
                 {'name': 'weird drink',
+                 'shortname': 'god/weird-drink',
                  'description': 'an in-house invention of Guinan. It is purple and fizzes ominously.'},
                 {'name': 'Sliding Door',
+                 'shortname': 'god/sliding-door',
                  'description': 'An automatic, shiny sliding door'},
                 {'name': 'Hatch',
-                 'description': 'A small hatch, just big enough for a medium sized humanoid.'}
+                 'shortname': 'god/hatch',
+                 'description': 'A small hatch, just big enough for a medium sized humanoid.'},
+                {'name': 'vilmibm',
+                 'shortname': 'vilmibm',
+                 'description': 'a gaseous cloud'}
             ],
             'exits': {
                 'east': {
@@ -364,25 +372,29 @@ async def test_client_state(event_loop, mock_logger, client):
         },
         'inventory': [
             {'name':'tricorder',
+             'shortname': 'god/tricorder',
              'description': 'looks like someone left their tricorder here.',
              'contains': [
                  {'name': 'medical program',
+                  'shortname': 'god/medical-program',
                   'description': 'you can use this to scan or call up data about a patient.',
                   'contains': [{'name': 'patient file',
+                                'shortname': 'god/patient-file',
                                 'description': 'a scan of Lt Barclay',
                                 'contains': []}]},
                  {'name': 'phase analyzer program',
+                  'shortname': 'god/phase-analyzer-program',
                   'description': 'you can use this to scan for phase shift anomalies',
                   'contains': []},
                  {'name': 'media app',
+                  'shortname': 'god/media-app',
                   'description': 'this program turns your tricorder into a jukebox',
                   'contains': [
                       {'name': 'klingon opera music',
+                       'shortname': 'god/klingon-opera-music',
                        'description': 'a recording of a klingon opera',
                        'contains': []}]}]}
-        ],
-        'scripts': ['vilmibm-sanctum', 'vilmibm']
-    }
+        ]}
     await client.close()
 
 @pytest.mark.asyncio
