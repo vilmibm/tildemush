@@ -850,7 +850,7 @@ async def test_edit(event_loop, mock_logger, client):
         code=cigar.script_revision.code,
         current_rev=cigar.script_revision.id)
 
-    # TODO already being edited
+    # already being edited
     await client.send('COMMAND edit vilmibm/a-fresh-cigar')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
