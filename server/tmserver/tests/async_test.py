@@ -837,14 +837,14 @@ async def test_edit(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
-    assert msg =='{red}You do not see an object with the true name vilmibm/fart'
+    assert msg =='{red}You do not see an object with the true name vilmibm/fart{/}'
 
     # perm denied
     await client.send('COMMAND edit snoozy/a-stick')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
-    assert msg =='{red}You lack the authority to edit A stick'
+    assert msg =='{red}You lack the authority to edit A stick{/}'
 
     # success
     await client.send('COMMAND edit vilmibm/a-fresh-cigar')
@@ -867,7 +867,7 @@ async def test_edit(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
-    assert msg == '{red}That object is already being edited'
+    assert msg == '{red}That object is already being edited{/}'
 
     assert 1 == Editing.select().where(Editing.user_account==vil).count()
     assert 1 == Editing.select().where(Editing.game_obj==cigar).count()

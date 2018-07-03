@@ -384,18 +384,18 @@ class GameWorld:
 
         obj = GameObject.get_or_none(GameObject.shortname==action_args)
         if obj is None:
-            cls.user_hears(sender_obj, sender_obj, '{{red}}You do not see an object with the true name {}'.format(action_args))
+            cls.user_hears(sender_obj, sender_obj, '{{red}}You do not see an object with the true name {}{{/}}'.format(action_args))
             return
 
         # TODO if we're switching users to the WITCH tab when they run /edit,
         # they might miss these errors. they can always switch back to the main
         # tab though if nothing appears in the WITCH tab.
         if not sender_obj.can_write(obj):
-            cls.user_hears(sender_obj, sender_obj, '{{red}}You lack the authority to edit {}'.format(obj.name))
+            cls.user_hears(sender_obj, sender_obj, '{{red}}You lack the authority to edit {}{{/}}'.format(obj.name))
             return
 
         if Editing.select().where(Editing.game_obj==obj).count() > 0:
-            cls.user_hears(sender_obj, sender_obj, '{red}That object is already being edited')
+            cls.user_hears(sender_obj, sender_obj, '{red}That object is already being edited{/}')
             return
 
         # TODO we still aren't cleanly handling disconnects. Part of the
