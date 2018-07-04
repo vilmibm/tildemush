@@ -51,6 +51,7 @@ mkdir -p "$PGDATA/sockets"
 echo "unix_socket_directories = 'sockets'" >> "$PGDATA/postgresql.conf"
 echo "listen_addresses = ''" >> "$PGDATA/postgresql.conf"
 
+pg_ctl init
 pg_ctl start
 createdb postgres_test
 ```
