@@ -271,14 +271,7 @@ class GameMain(urwid.Frame):
             quit_client(self)
         elif text.startswith('/edit'):
             #TODO check for active witch editor
-            obj_name = text.split("/edit ")[1]
-            if not self.valid_edit_object(obj_name):
-                self.add_game_message("ERROR: Couldn't find anything with that true name :(")
-                self.add_game_message("Available objects: {}".format(", ".join(self.scope)))
-                self.prompt.edit_text = ''
-                return
-            else:
-                text = text[1:]
+            text = text[1:]
         elif text.startswith('/'):
             text = text[1:]
         else:
@@ -334,9 +327,6 @@ class GameMain(urwid.Frame):
         self.tab_headers = urwid.Columns(headers)
         self.header = self.tab_headers
 
-    def valid_edit_object(self, obj_name):
-        return obj_name in self.scope
-
     def update_state(self, raw_state):
         self.state = json.loads(raw_state)
         self.scope.clear()
@@ -347,7 +337,7 @@ class GameMain(urwid.Frame):
         self.here_text.contents.clear()
         self.user_text.contents.clear()
         self.minimap_grid.contents.clear()
-        
+
         # TODO: this is kind of hardcoded for the current three-widget
         # here_info(), two-widget user_info(), three-widget generate_minimap()
 
