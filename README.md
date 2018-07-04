@@ -20,9 +20,6 @@
 * `cd server && pip install -e ".[testing]" && cd ..`
 * `cd client && pip install --process-dependency-links -e ".[testing]" && cd ..`
 * setup `postgres` (see below)
-* `createuser tildemush -W` (will prompt for password, use `tildemush`)
-* `createdb tildemush -O tildemush`
-* `createdb tildemush_test -O tildemush`
 
 ### postgres setup (Arch linux)
 
@@ -32,6 +29,31 @@
 * `initdb --locale $LANG -E UTF8 -D '/var/lib/postgres/data'`
 * `sudo systemctl enable postgresql` - configure postgres service to start on boot
 * `sudo systemctl start postgresql.service` - start postgres service
+* `createuser tildemush -W` (will prompt for password, use `tildemush`)
+* `createdb tildemush -O tildemush`
+* `createdb tildemush_test -O tildemush`
+
+### postgres setup (without sudo)
+
+See [running a little postgres database without sudo](a_little_postgres.md).
+
+Or, quickstart:
+
+```
+export PATH=/usr/lib/postgresql/10/bin/:"$PATH"
+
+export PGDATA="$PWD/pgdata"
+export PGHOST="$PGDATA/sockets"
+export PGDATABASE="postgres"
+export PGUSER="$USER"
+
+mkdir -p "$PGDATA/sockets"
+echo "unix_socket_directories = 'sockets'" >> "$PGDATA/postgresql.conf"
+echo "listen_addresses = ''" >> "$PGDATA/postgresql.conf"
+
+pg_ctl start
+createdb postgres_test
+```
 
 ## running
 
