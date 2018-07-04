@@ -260,23 +260,24 @@ class WitchView(GameTab):
                 "status": "WITCH STATUS: <unknown>"
                 }
 
-        self.witch_editor_filler = ColorText(self.info.get("edit area"), align='center')
-        self.witch_editor = urwid.Filler(self.witch_editor_filler)
-        self.witch_editor_box = SpookyBox(self.witch_editor)
-        self.witch_status = ColorText(self.info.get("status"))
-        self.witch_data = urwid.Filler(ColorText(self.info.get("data")))
-        self.witch_perms = urwid.Filler(ColorText(self.info.get("perms")))
-        self.witch_body = urwid.Pile([
+        self.editor_filler = ColorText(self.info.get("edit area"), align='center')
+        self.editor = urwid.Filler(self.editor_filler)
+        self.editor_box = SpookyBox(self.editor)
+        self.status = ColorText(self.info.get("status"))
+        self.data = urwid.Filler(ColorText(self.info.get("data")))
+        self.perms = urwid.Filler(ColorText(self.info.get("perms")))
+        self.body = urwid.Pile([
                 urwid.Columns([
-                    self.witch_data,
-                    self.witch_perms
+                    self.data,
+                    self.perms
                 ]),
-                self.witch_editor_box
+                self.editor_box
             ])
-        self.witch_prompt = self.witch_editor
-        self.witch_view = urwid.Frame(body=self.witch_body, footer=self.witch_status)
-        self.witch_view.focus_position = 'body'
-        super().__init__(self.witch_view, TabHeader("F2 WITCH"), self.witch_prompt)
+        self.prompt = self.editor
+        self.view = urwid.Frame(body=self.body, footer=self.status)
+        self.view.focus_position = 'body'
+        super().__init__(self.view, TabHeader("F2 WITCH"), self.prompt)
+
 
 
 class ExternalEditor(urwid.Terminal):
