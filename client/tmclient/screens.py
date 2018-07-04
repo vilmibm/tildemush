@@ -214,7 +214,6 @@ class GameMain(urwid.Frame):
         tf = NamedTemporaryFile(delete=False, mode='w')
         tf.write(data["code"])
         tf.close()
-        #self.witch_tab.editor.blank = self.witch_tab.editor.original_widget
         self.witch_tab.editor.original_widget = urwid.BoxAdapter(
                 ExternalEditor(tf.name, self.ui_loop,
                     lambda path: self.close_witch(data, path)),
@@ -272,16 +271,14 @@ class GameMain(urwid.Frame):
             quit_client(self)
         elif text.startswith('/edit'):
             #TODO check for active witch editor
-            text = text[1:]
-            '''
-            # TODO: object select validation
             obj_name = text.split("/edit ")[1]
-            if self.valid_edit_object(obj_name):
+            if not self.valid_edit_object(obj_name):
+                self.add_game_message("ERROR: Couldn't find anything with that true name :(")
+                self.add_game_message("Available objects: {}".format(", ".join(self.scope)))
                 self.prompt.edit_text = ''
-                self.switch_tab(self.tabs.get("f2"))
+                return
             else:
-                self.add_game_message("ERROR: Object not available here :(")
-            '''
+                text = text[1:]
         elif text.startswith('/'):
             text = text[1:]
         else:
@@ -344,9 +341,9 @@ class GameMain(urwid.Frame):
         self.state = json.loads(raw_state)
         self.scope.clear()
         for o in self.state.get("room").get("contains"):
-            self.scope.append(o.get("name"))
+            self.scope.append(o.get("shortname"))
         for o in self.state.get("inventory"):
-            self.scope.append(o.get("name"))
+            self.scope.append(o.get("shortname"))
         self.here_text.contents.clear()
         self.user_text.contents.clear()
         self.minimap_grid.contents.clear()
