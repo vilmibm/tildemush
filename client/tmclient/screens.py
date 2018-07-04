@@ -159,6 +159,7 @@ class GameMain(urwid.Frame):
                     selected=True), self.main_prompt)
 
         # witch view stuff
+        """
         self.witch_editor_filler = ColorText("NO OBJECT LOADED! /edit an object in the game view to work on it here", align='center')
         self.witch_editor = urwid.Filler(self.witch_editor_filler)
         self.witch_editor_box = ui.SpookyBox(self.witch_editor)
@@ -177,6 +178,9 @@ class GameMain(urwid.Frame):
         self.witch_view.focus_position = 'body'
         self.witch_tab = ui.GameTab(self.witch_view,
                 ui.TabHeader("F2 WITCH"), self.witch_prompt)
+        """
+
+        self.witch_tab = ui.WitchView({})
 
         # worldmap view stuff
         self.worldmap_prompt = urwid.Edit()
@@ -231,9 +235,9 @@ class GameMain(urwid.Frame):
         tf = NamedTemporaryFile(delete=False, mode='w')
         tf.write(data["code"])
         tf.close()
-        self.witch_editor.blank = self.witch_editor.original_widget
-        self.witch_editor.original_widget = urwid.BoxAdapter(ExternalEditor(tf.name, self.ui_loop, lambda path: self.close_witch(data, path)), 10)
-        self.witch_prompt = self.witch_editor.base_widget
+        #self.witch_editor.blank = self.witch_editor.original_widget
+        self.witch_editor = urwid.BoxAdapter(ExternalEditor(tf.name, self.ui_loop, lambda path: self.close_witch(data, path)), 10)
+        self.witch_prompt = self.witch_editor.original_widget
         self.switch_tab(self.tabs.get("f2"))
 
     def close_witch(self, data, filepath):
@@ -245,7 +249,7 @@ class GameMain(urwid.Frame):
             current_rev=data["current_rev"])
         os.remove(filepath)
 
-        self.witch_editor.original_widget = self.witch_editor.blank
+        self.witch_editor.original_widget = urwid.Filler(self.witch_editor_filler)
         self.switch_tab(self.tabs.get("f1"))
 
         payload = 'REVISION {}'.format(json.dumps(revision_payload))

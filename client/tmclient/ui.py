@@ -250,6 +250,34 @@ class ColorText(urwid.Text):
         res.append((theme, text))
         super().__init__(res, align, wrap, layout)
 
+class WitchView(GameTab):
+
+    def __init__(self, object_data):
+        self.info = {
+                "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here",
+                "data": "Current Object: <None>",
+                "perms": "Permissions: <unknown>",
+                "status": "WITCH STATUS: <unknown>"
+                }
+
+        self.witch_editor_filler = ColorText(self.info.get("edit area"), align='center')
+        self.witch_editor = urwid.Filler(self.witch_editor_filler)
+        self.witch_editor_box = SpookyBox(self.witch_editor)
+        self.witch_status = ColorText(self.info.get("status"))
+        self.witch_data = urwid.Filler(ColorText(self.info.get("data")))
+        self.witch_perms = urwid.Filler(ColorText(self.info.get("perms")))
+        self.witch_body = urwid.Pile([
+                urwid.Columns([
+                    self.witch_data,
+                    self.witch_perms
+                ]),
+                self.witch_editor_box
+            ])
+        self.witch_prompt = self.witch_editor
+        self.witch_view = urwid.Frame(body=self.witch_body, footer=self.witch_status)
+        self.witch_view.focus_position = 'body'
+        super().__init__(self.witch_view, TabHeader("F2 WITCH"), self.witch_prompt)
+
 
 class ExternalEditor(urwid.Terminal):
     def __init__(self, path, loop, callback):
