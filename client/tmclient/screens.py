@@ -275,12 +275,11 @@ class GameMain(urwid.Frame):
         elif text.startswith('/'):
             text = text[1:]
         else:
-            # TODO: text color is hardcoded here, but it should come from
-            # user settings
+            chat_color = self.client_state.config.get('chat_color') or 'light magenta'
             if text:
-                text = 'say {{light magenta}}{}{{/}}'.format(text)
+                text = 'say {'+chat_color+'}'+text+'{/}'
             else:
-                text = 'say {light magenta}...{/}'
+                text = 'say {'+chat_color+'}...{/}'
 
         server_msg = 'COMMAND {}'.format(text)
 
