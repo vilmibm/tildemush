@@ -5,7 +5,7 @@ from slugify import slugify
 from .config import get_db
 from .errors import RevisionException, WitchException, ClientException
 from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing
-from .util import strip_color_codes, split_args
+from .util import strip_color_codes, split_args, ARG_RE
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
 OBJECT_NOT_FOUND = 'You look in vain for {}.'
@@ -22,6 +22,7 @@ REVERSE_DIRS = {
     'west': 'east',
     'above': 'below',
     'below': 'above'}
+SPECIAL_HANDLING = {'say'} # TODO i thought there were others but for now it's just say. might not need a set in the end.
 
 
 class GameWorld:
@@ -125,24 +126,24 @@ class GameWorld:
             cls.handle_announce(sender_obj, action_args)
 
         # chatting
-        if action == 'whisper':
+        elif action == 'whisper':
             cls.handle_whisper(sender_obj, action_args)
 
-        if action == 'look':
+        elif action == 'look':
             cls.handle_look(sender_obj, action_args)
 
         # scripting
-        if action == 'create':
+        elif action == 'create':
             cls.handle_create(sender_obj, action_args)
 
-        if action == 'edit':
+        elif action == 'edit':
             cls.handle_edit(sender_obj, action_args)
             return
 
         # TODO teleport, either 'home' or 'foyer'
 
         # movement
-        if action == 'move':
+        elif action == 'move':
             # TODO
             # an unintentional side effect of the exits/rooms implementation
             # was exposing a /move command. this lets any user teleport to any
@@ -155,20 +156,39 @@ class GameWorld:
             #   places you aren't allowed to be in in handle_move
             cls.handle_move(sender_obj, action_args)
             return
-        if action == 'go':
+        elif action == 'go':
             cls.handle_go(sender_obj, action_args)
             return
 
         # inventory commands
-        if action == 'get':
+        elif action == 'get':
             cls.handle_get(sender_obj, action_args)
-        if action == 'drop':
+        elif action == 'drop':
             cls.handle_drop(sender_obj, action_args)
-        if action == 'put':
+        elif action == 'put':
             cls.handle_put(sender_obj, action_args)
-        if action == 'remove':
+        elif action == 'remove':
             cls.handle_remove(sender_obj, action_args)
+        elif action in SPECIAL_HANDLING:
+            # TODO this is utterly filthy, but some commands definitely never
+            # need transitive parsing (ie say and contain) but aren't special
+            # cased in this if/else chain. we have this artificial check just
+            # to avoid falling into the transitive branch. i hate it.
+            pass
+        else:
+            # it's not a pre-defined action. we now want to see if it's
+            # targeted at some object.
+            args = split_args(action_args)
+            if len(args) > 0:
+                target_search_str = args[0]
+                target = cls.resolve_obj(cls.area_of_effect(sender_obj), target_search_str)
+                without_target = ARG_RE.sub('', action_args, count=1).rstrip().lstrip()
+                if target:
+                    target.handle_action(cls, sender_obj, action, without_target)
+                    return
 
+        # if we make it here it means we've encountered a command that objects
+        # in the area should all "hear"
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
             o.handle_action(cls, sender_obj, action, action_args)
