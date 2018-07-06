@@ -126,6 +126,7 @@ class GameMain(urwid.Frame):
                         "description": "a liminal space. type /look to open your eyes.",
                         "contains":[]}
                     }
+        self.scope = []
         self.hotkeys = self.load_hotkeys()
         self.input_history = [""]
         self.input_index = 0
@@ -158,10 +159,7 @@ class GameMain(urwid.Frame):
                     selected=True), self.main_prompt)
 
         # witch view stuff
-        self.witch_view = urwid.Filler(ColorText("/edit an object in the game view", align='center'), valign='middle')
-        self.witch_prompt = self.witch_view
-        self.witch_tab = ui.GameTab(self.witch_view,
-                ui.TabHeader("F2 WITCH"), self.witch_prompt)
+        self.witch_tab = ui.WitchView({})
 
         # worldmap view stuff
         self.worldmap_prompt = urwid.Edit()
@@ -208,10 +206,7 @@ class GameMain(urwid.Frame):
             if object_state.get('edit'):
                 self.launch_witch(object_state)
         else:
-            spacer = self.game_walker.pop()
-            self.game_walker.append(ColorText(server_msg))
-            self.game_walker.append(spacer)
-            self.game_walker.set_focus(len(self.game_walker)-1)
+            self.add_game_message(server_msg)
 
         self.focus_prompt()
 
@@ -219,8 +214,12 @@ class GameMain(urwid.Frame):
         tf = NamedTemporaryFile(delete=False, mode='w')
         tf.write(data["code"])
         tf.close()
-        self.witch_tab.blank = self.witch_tab.original_widget
-        self.witch_tab.mount(ExternalEditor(tf.name, self.ui_loop, lambda path: self.close_witch(data, path)))
+        self.witch_tab.editor.original_widget = urwid.BoxAdapter(
+                ExternalEditor(tf.name, self.ui_loop,
+                    lambda path: self.close_witch(data, path)),
+                self.ui_loop.screen_size[1] // 2
+            )
+        self.witch_tab.prompt = self.witch_tab.editor.original_widget
         self.switch_tab(self.tabs.get("f2"))
 
     def close_witch(self, data, filepath):
@@ -232,7 +231,7 @@ class GameMain(urwid.Frame):
             current_rev=data["current_rev"])
         os.remove(filepath)
 
-        self.witch_tab.original_widget = self.witch_tab.blank
+        self.witch_tab.editor.original_widget  = self.witch_tab.editor_filler
         self.switch_tab(self.tabs.get("f1"))
 
         payload = 'REVISION {}'.format(json.dumps(revision_payload))
@@ -252,6 +251,12 @@ class GameMain(urwid.Frame):
                 pass
             self.handle_keypress(size, key)
 
+    def add_game_message(self, msg):
+        spacer = self.game_walker.pop()
+        self.game_walker.append(ColorText(msg))
+        self.game_walker.append(spacer)
+        self.game_walker.set_focus(len(self.game_walker)-1)
+
     def handle_game_input(self, text):
         # TODO handle any validation of text
         blank = self.input_history.pop()
@@ -270,7 +275,12 @@ class GameMain(urwid.Frame):
         elif text.startswith('/'):
             text = text[1:]
         else:
-            text = 'say {}'.format(text)
+            # TODO: text color is hardcoded here, but it should come from
+            # user settings
+            if text:
+                text = 'say {{light magenta}}{}{{/}}'.format(text)
+            else:
+                text = 'say {light magenta}...{/}'
 
         server_msg = 'COMMAND {}'.format(text)
 
@@ -284,11 +294,7 @@ class GameMain(urwid.Frame):
         if key in self.hotkeys.get("quit"):
             quit_client(self)
         elif key in self.tabs.keys():
-            self.body.unfocus()
-            self.body = self.tabs.get(key)
-            self.body.focus()
-            self.focus_prompt()
-            self.refresh_tabs()
+            self.switch_tab(self.tabs.get(key))
         elif key in self.hotkeys.get("scrolling").keys():
             if self.body == self.main_tab:
                 self.game_text.keypress(size, key)
@@ -323,6 +329,11 @@ class GameMain(urwid.Frame):
 
     def update_state(self, raw_state):
         self.state = json.loads(raw_state)
+        self.scope.clear()
+        for o in self.state.get("room").get("contains"):
+            self.scope.append(o.get("shortname"))
+        for o in self.state.get("inventory"):
+            self.scope.append(o.get("shortname"))
         self.here_text.contents.clear()
         self.user_text.contents.clear()
         self.minimap_grid.contents.clear()
@@ -358,7 +369,7 @@ class GameMain(urwid.Frame):
         room = self.state.get("room", {})
         info = "[{}]".format(room.get("name"))
         contents = []
-        if len(room.get("contains", [])) < 2:
+        if len(room.get("contains", [])) < 1:
             contents.append("no one but yourself")
         else:
             for o in room.get("contains"):
@@ -442,9 +453,9 @@ class GameMain(urwid.Frame):
 
         map_grid = [
                 urwid.Columns([
-                    urwid.Text(" "),
+                    map_nodes.get("above"),
                     map_nodes.get("north"),
-                    map_nodes.get("above")
+                    urwid.Text(" ")
                     ]),
                 urwid.Columns([
                     map_nodes.get("west"),
@@ -452,9 +463,9 @@ class GameMain(urwid.Frame):
                     map_nodes.get("east")
                     ]),
                 urwid.Columns([
-                    map_nodes.get("below"),
+                    urwid.Text(" "),
                     map_nodes.get("south"),
-                    urwid.Text(" ")
+                    map_nodes.get("below")
                     ])
                 ]
 

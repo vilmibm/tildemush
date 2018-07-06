@@ -95,6 +95,12 @@ class DashedBox(urwid.LineBox):
                 rline='╎', bline='╌', brcorner='┘'
                 )
 
+class SpookyBox(urwid.LineBox):
+    def __init__(self, box_item):
+        super().__init__(box_item,
+                tline='~', bline='~', lline='┆', rline='┆', tlcorner='o',
+                trcorner='o', blcorner='o', brcorner='o')
+
 class TabHeader(urwid.LineBox):
     """
     Stylizations for tab headers. Position can be 'first', 'last', or none for
@@ -243,6 +249,35 @@ class ColorText(urwid.Text):
                 text += token[0]
         res.append((theme, text))
         super().__init__(res, align, wrap, layout)
+
+class WitchView(GameTab):
+
+    def __init__(self, object_data):
+        self.info = {
+                "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here",
+                "data": "Current Object: <None>",
+                "perms": "Permissions: <unknown>",
+                "status": "WITCH STATUS: <unknown>"
+                }
+
+        self.editor_filler = ColorText(self.info.get("edit area"), align='center')
+        self.editor = urwid.Filler(self.editor_filler)
+        self.editor_box = SpookyBox(self.editor)
+        self.status = ColorText(self.info.get("status"))
+        self.data = urwid.Filler(ColorText(self.info.get("data")))
+        self.perms = urwid.Filler(ColorText(self.info.get("perms")))
+        self.body = urwid.Pile([
+                urwid.Columns([
+                    self.data,
+                    self.perms
+                ]),
+                self.editor_box
+            ])
+        self.prompt = self.editor
+        self.view = urwid.Frame(body=self.body, footer=self.status)
+        self.view.focus_position = 'body'
+        super().__init__(self.view, TabHeader("F2 WITCH"), self.prompt)
+
 
 
 class ExternalEditor(urwid.Terminal):
