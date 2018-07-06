@@ -18,6 +18,12 @@ palettes = [
     # standard colors - only using foreground colors, eventually
     # we could probably do permutations of fg/bg combinations
     # the names come from http://urwid.org/manual/displayattributes.html
+    ('red', 'light red', ''),
+    ('green', 'light green', ''),
+    ('blue', 'light blue', ''),
+    ('magenta', 'light magenta', ''),
+    ('cyan', 'light cyan', ''),
+    ('gray', 'light gray', ''),
     ('dark red', 'dark red', ''),
     ('dark green', 'dark green', ''),
     ('brown', 'brown', ''),
@@ -240,7 +246,8 @@ class ColorText(urwid.Text):
         theme = ""
         for token in parts:
             if token[1] != '':
-                res.append((theme, text))
+                if text != '':
+                    res.append((theme, text))
                 theme = token[1][1:-1]
                 text = ''
             elif token[0] == "\{":
