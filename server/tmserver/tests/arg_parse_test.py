@@ -53,4 +53,3 @@ class ArgParseTest(TildemushUnitTestCase):
             ("hi there how'", ['hi', 'there', 'how']),
         ]
         for i in inputs: assert i[1] == split_args(i[0])
-

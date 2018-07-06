@@ -5,7 +5,7 @@ from slugify import slugify
 from .config import get_db
 from .errors import RevisionException, WitchException, ClientException
 from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing
-from .util import strip_color_codes
+from .util import strip_color_codes, split_args
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
 OBJECT_NOT_FOUND = 'You look in vain for {}.'
