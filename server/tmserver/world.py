@@ -174,6 +174,17 @@ class GameWorld:
             o.handle_action(cls, sender_obj, action, action_args)
 
     @classmethod
+    def resolve_obj(cls, scope, search_str, ignore=[]):
+        """Given a list of GameObjects as scope, a search string, and an
+        optional list of GameObjects to ignore, searches for the first object
+        in scope for which .fuzzy_match(search_str) is True."""
+        for obj in scope:
+            if obj in ignore:
+                continue
+            if obj.fuzzy_match(search_str):
+                return obj
+
+    @classmethod
     def all_active_objects(cls):
         """This method assumes that if an object is contained by something
         else, it's "active" in the game; in other words, we're assuming that a
