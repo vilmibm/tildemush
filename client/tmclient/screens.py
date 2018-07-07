@@ -317,14 +317,15 @@ class GameMain(urwid.Frame):
         rlwrap_map.get(key)()
 
     def rlwrap_up(self):
-        self.input_index = max(0, self.input_index - 1)
-        self.prompt.edit_text = self.input_history[self.input_index]
-        self.prompt.set_edit_pos(len(self.prompt.edit_text))
+        self.rlwrap_set(max(0, self.input_index - 1))
 
     def rlwrap_down(self):
-        self.input_index = min(len(self.input_history) - 1, self.input_index + 1)
+        self.rlwrap_set(min(len(self.input_history) - 1, self.input_index + 1))
+
+    def rlwrap_set(self, index):
+        self.input_index = index
         self.prompt.edit_text = self.input_history[self.input_index]
-        self.prompt.set_edit_pos(len(self.prompt.edit_text))
+        self.rlwrap_end()
 
     def rlwrap_start(self):
         self.prompt.set_edit_pos(0)
