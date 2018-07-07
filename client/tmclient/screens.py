@@ -301,16 +301,45 @@ class GameMain(urwid.Frame):
             asyncio.ensure_future(self.client_state.send(
                     "COMMAND {}".format(self.hotkeys.get("movement").get(key))
                 ), loop=self.loop)
-        elif key in self.hotkeys.get("input scroll").keys():
-            self.handle_input_scroll(self.hotkeys.get("input scroll").get(key))
+        elif key in self.hotkeys.get("rlwrap").keys():
+            #self.get("rlwrap").get("key")
+            self.handle_rlwrap(self.hotkeys.get("rlwrap").get(key))
 
-    def handle_input_scroll(self, key):
-        if key == "up":
-            self.input_index = max(0, self.input_index - 1)
-        else:
-            self.input_index = min(len(self.input_history) - 1, self.input_index + 1)
+    def handle_rlwrap(self, key):
+        rlwrap_map = {
+                "up": self.rlwrap_up,
+                "down": self.rlwrap_down,
+                "start": self.rlwrap_start,
+                "end": self.rlwrap_end,
+                "delete backwards": self.rlwrap_delete_backwards,
+                "delete forwards": self.rlwrap_delete_forwards
+                }
 
+        rlwrap_map.get(key)()
+
+    def rlwrap_up(self):
+        self.input_index = max(0, self.input_index - 1)
         self.prompt.edit_text = self.input_history[self.input_index]
+        self.prompt.set_edit_pos(len(self.prompt.edit_text))
+
+    def rlwrap_down(self):
+        self.input_index = min(len(self.input_history) - 1, self.input_index + 1)
+        self.prompt.edit_text = self.input_history[self.input_index]
+        self.prompt.set_edit_pos(len(self.prompt.edit_text))
+
+    def rlwrap_start(self):
+        self.prompt.set_edit_pos(0)
+
+    def rlwrap_end(self):
+        self.prompt.set_edit_pos(len(self.prompt.edit_text))
+
+    def rlwrap_delete_backwards(self):
+        self.prompt.edit_text = self.prompt.edit_text[self.prompt.edit_pos:]
+        self.rlwrap_start()
+
+    def rlwrap_delete_forwards(self):
+        self.prompt.edit_text = self.prompt.edit_text[0:self.prompt.edit_pos]
+        self.rlwrap_end()
 
     def switch_tab(self, new_tab):
         self.body.unfocus()
@@ -420,9 +449,13 @@ class GameMain(urwid.Frame):
                     "shift page up": "go above",
                     "shift page down": "go below",
                     },
-                "input scroll": {
+                "rlwrap": {
                     "up": "up",
-                    "down": "down"
+                    "down": "down",
+                    "ctrl a": "start",
+                    "ctrl e": "end",
+                    "ctrl u": "delete backwards",
+                    "ctrl k": "delete forwards"
                     }
                 }
 
