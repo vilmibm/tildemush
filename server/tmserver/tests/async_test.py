@@ -963,9 +963,8 @@ async def test_transitive_command(event_loop, mock_logger, client):
     await client.send('COMMAND touch contrivance')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg == 'cat says, "purr"'
-    msg = await client.recv()
-    assert msg == 'lemongrab says, "UNACCEPTABLE"'
+    msg1 = await client.recv()
+    msg2 = await client.recv()
+    assert {msg1, msg2} == {'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'}
 
     await client.close()
