@@ -5,9 +5,9 @@ from ..core import GameServer, UserSession
 from ..errors import ClientException, RevisionException
 from ..models import GameObject, UserAccount, ScriptRevision
 from ..world import GameWorld
-from .tm_test_case import TildemushTestCase
+from .tm_test_case import TildemushTestCase, TildemushUnitTestCase
 
-class GameServerRevisionHandlingTest(TildemushTestCase):
+class GameServerRevisionHandlingTest(TildemushUnitTestCase):
     def setUp(self):
         super().setUp()
         self.sess = Mock()
@@ -49,7 +49,7 @@ class GameServerRevisionHandlingTest(TildemushTestCase):
 
     # golden path test starting from core is in async_test
 
-class UserSessionRevisionHandlingTest(TildemushTestCase):
+class UserSessionRevisionHandlingTest(TildemushUnitTestCase):
     def test_revision_error(self):
         sess = UserSession(Mock(), GameWorld, Mock())
         sess.user_account = Mock()
@@ -62,7 +62,7 @@ class UserSessionRevisionHandlingTest(TildemushTestCase):
         assert payload == {'fun': 'times'}
         assert error == 'aw shit'
 
-    def test_chill(self):
+    def test_success(self):
         sess = UserSession(Mock(), GameWorld, Mock())
         sess.user_account = Mock()
         payload, error = (None, None)
