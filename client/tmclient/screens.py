@@ -174,8 +174,6 @@ class GameMain(urwid.Frame):
                     }
         self.scope = []
         self.hotkeys = self.load_hotkeys()
-        self.input_history = [""]
-        self.input_index = 0
 
         # game view stuff
         self.game_walker = urwid.SimpleFocusListWalker([
