@@ -110,7 +110,53 @@ class MainMenu(Screen):
 
 class GamePrompt(urwid.Edit):
     def __init__(self):
+        self.history = [""]
+        self.input_index = 0
         super().__init__(caption='> ', multiline=True)
+
+    def add_line(self, line):
+        blank = self.history.pop()
+        self.history.append(line)
+        self.history.append(blank)
+        self.input_index += 1
+
+    def handle_rlwrap(self, key):
+        rlwrap_map = {
+                "up": self.rlwrap_up,
+                "down": self.rlwrap_down,
+                "start": self.rlwrap_start,
+                "end": self.rlwrap_end,
+                "delete backwards": self.rlwrap_delete_backwards,
+                "delete forwards": self.rlwrap_delete_forwards
+                }
+
+        rlwrap_map.get(key)()
+
+    def rlwrap_up(self):
+        self.rlwrap_set(max(0, self.input_index - 1))
+
+    def rlwrap_down(self):
+        self.rlwrap_set(min(len(self.history) - 1, self.input_index + 1))
+
+    def rlwrap_set(self, index):
+        self.input_index = index
+        self.edit_text = self.history[self.input_index]
+        self.rlwrap_end()
+
+    def rlwrap_start(self):
+        self.set_edit_pos(0)
+
+    def rlwrap_end(self):
+        self.set_edit_pos(len(self.edit_text))
+
+    def rlwrap_delete_backwards(self):
+        self.edit_text = self.edit_text[self.edit_pos:]
+        self.rlwrap_start()
+
+    def rlwrap_delete_forwards(self):
+        self.edit_text = self.edit_text[0:self.edit_pos]
+        self.rlwrap_end()
+
 
 
 class GameMain(urwid.Frame):
@@ -259,10 +305,7 @@ class GameMain(urwid.Frame):
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
-        blank = self.input_history.pop()
-        self.input_history.append(text)
-        self.input_history.append(blank)
-        self.input_index += 1
+        self.prompt.add_line(text)
 
         if not self.client_state.listening:
             asyncio.ensure_future(self.client_state.start_listen_loop(), loop=self.loop)
@@ -302,51 +345,7 @@ class GameMain(urwid.Frame):
                     "COMMAND {}".format(self.hotkeys.get("movement").get(key))
                 ), loop=self.loop)
         elif key in self.hotkeys.get("rlwrap").keys() and isinstance(self.prompt, GamePrompt):
-            self.handle_rlwrap(self.hotkeys.get("rlwrap").get(key))
-
-    def handle_rlwrap(self, key):
-        rlwrap_map = {
-                "up": self.rlwrap_up,
-                "down": self.rlwrap_down,
-                "start": self.rlwrap_start,
-                "end": self.rlwrap_end,
-                "delete backwards": self.rlwrap_delete_backwards,
-                "delete forwards": self.rlwrap_delete_forwards
-                }
-
-        rlwrap_map.get(key)()
-
-    def rlwrap_up(self):
-        self.rlwrap_set(max(0, self.input_index - 1))
-
-    def rlwrap_down(self):
-        self.rlwrap_set(min(len(self.input_history) - 1, self.input_index + 1))
-
-    def rlwrap_set(self, index):
-        self.input_index = index
-        self.prompt.edit_text = self.input_history[self.input_index]
-        self.rlwrap_end()
-
-    def rlwrap_start(self):
-        self.prompt.set_edit_pos(0)
-
-    def rlwrap_end(self):
-        self.prompt.set_edit_pos(len(self.prompt.edit_text))
-
-    def rlwrap_delete_backwards(self):
-        self.prompt.edit_text = self.prompt.edit_text[self.prompt.edit_pos:]
-        self.rlwrap_start()
-
-    def rlwrap_delete_forwards(self):
-        self.prompt.edit_text = self.prompt.edit_text[0:self.prompt.edit_pos]
-        self.rlwrap_end()
-
-    def switch_tab(self, new_tab):
-        self.body.unfocus()
-        self.body = new_tab
-        self.body.focus()
-        self.focus_prompt()
-        self.refresh_tabs()
+            self.prompt.handle_rlwrap(self.hotkeys.get("rlwrap").get(key))
 
     def refresh_tabs(self):
         headers = []
