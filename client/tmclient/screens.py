@@ -301,8 +301,7 @@ class GameMain(urwid.Frame):
             asyncio.ensure_future(self.client_state.send(
                     "COMMAND {}".format(self.hotkeys.get("movement").get(key))
                 ), loop=self.loop)
-        elif key in self.hotkeys.get("rlwrap").keys():
-            #self.get("rlwrap").get("key")
+        elif key in self.hotkeys.get("rlwrap").keys() and isinstance(self.prompt, GamePrompt):
             self.handle_rlwrap(self.hotkeys.get("rlwrap").get(key))
 
     def handle_rlwrap(self, key):
