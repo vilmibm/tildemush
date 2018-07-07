@@ -347,6 +347,13 @@ class GameMain(urwid.Frame):
         elif key in self.hotkeys.get("rlwrap").keys() and isinstance(self.prompt, GamePrompt):
             self.prompt.handle_rlwrap(self.hotkeys.get("rlwrap").get(key))
 
+    def switch_tab(self, new_tab):
+        self.body.unfocus()
+        self.body = new_tab
+        self.body.focus()
+        self.focus_prompt()
+        self.refresh_tabs()
+
     def refresh_tabs(self):
         headers = []
         for tab in sorted(self.tabs.keys()):
