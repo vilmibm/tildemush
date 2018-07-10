@@ -37,26 +37,6 @@
 
 See [running a little postgres database without sudo](a_little_postgres.md).
 
-Or, quickstart:
-
-```
-export PATH=/usr/lib/postgresql/10/bin/:"$PATH"
-
-export PGDATA="$PWD/pgdata"
-export PGHOST="$PGDATA/sockets"
-export PGDATABASE="postgres"
-export PGUSER="$USER"
-
-pg_ctl init
-
-mkdir -p "$PGDATA/sockets"
-echo "unix_socket_directories = 'sockets'" >> "$PGDATA/postgresql.conf"
-echo "listen_addresses = ''" >> "$PGDATA/postgresql.conf"
-
-pg_ctl start
-createdb postgres_test
-```
-
 ## running
 
 * `tmserver --debug` to start the server
