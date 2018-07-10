@@ -307,15 +307,16 @@ class ColorText(urwid.Text):
 
 class WitchView(GameTab):
 
-    def __init__(self, object_data):
+    def __init__(self, object_data, scope):
         self.info = {
-                "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here",
+                "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here.",
                 "data": "Current Object: <None>",
                 "perms": "Permissions: <unknown>",
                 "status": "WITCH STATUS: <unknown>"
                 }
 
-        self.editor_filler = ColorText(self.info.get("edit area"), align='center')
+        self.editor_filler = urwid.Pile([ColorText(self.info.get("edit area"),
+            align='center'), self.scope_list(scope)])
         self.editor = urwid.Filler(self.editor_filler)
         self.editor_box = SpookyBox(self.editor)
         self.status = ColorText(self.info.get("status"))
@@ -332,6 +333,18 @@ class WitchView(GameTab):
         self.view = urwid.Frame(body=self.body, footer=self.status)
         self.view.focus_position = 'body'
         super().__init__(self.view, TabHeader("F2 WITCH"), self.prompt)
+
+    def refresh(self, state, scope):
+        self.editor_filler.contents.pop()
+        self.editor_filler.contents.append((
+            self.scope_list(scope), self.editor_filler.options()
+            ))
+
+    def scope_list(self, scope):
+        if len(scope) == 0:
+            scope = ["none"]
+
+        return ColorText("available objects: {}".format(", ".join(sorted(scope))))
 
 class WorldmapView(GameTab):
     def __init__(self):
