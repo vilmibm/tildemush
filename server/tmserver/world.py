@@ -377,6 +377,9 @@ class GameWorld:
         #      to have one active client at a time. i think that's an ok
         #      limitation for now, but we should actually enforce it.
 
+        # we use aoe here because we want to be able to target a current room.
+        # usually when resolving (like grabbing stuff) we def don't want to
+        # include the current room, just the stuff in it.
         obj = cls.resolve_obj(cls.area_of_effect(sender_obj), action_args)
 
         if obj is None:
