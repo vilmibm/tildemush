@@ -955,6 +955,14 @@ async def test_transitive_command(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg.startswith('OBJECT')
 
+    # ensure non-transitive works
+    await client.send('COMMAND touch')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg1 = await client.recv()
+    msg2 = await client.recv()
+    assert {msg1, msg2} == {'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'}
+
     # target found
     await client.send('COMMAND touch lemongrab')
     msg = await client.recv()
