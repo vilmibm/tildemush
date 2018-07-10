@@ -158,6 +158,7 @@ class GameMain(urwid.Frame):
             self.update_state(server_msg[6:])
         elif server_msg.startswith('OBJECT'):
             object_state = json.loads(server_msg[7:])
+            self.game_tab.add_message(server_msg)
             if object_state.get('edit'):
                 self.launch_witch(object_state)
         else:
@@ -175,6 +176,7 @@ class GameMain(urwid.Frame):
                 self.ui_loop.screen_size[1] // 2
             )
         self.witch_tab.prompt = self.witch_tab.editor.original_widget
+        self.witch_tab.refresh(data, self.scope)
         self.switch_tab(self.tabs.get("f2"))
 
     def close_witch(self, data, filepath):
@@ -190,6 +192,7 @@ class GameMain(urwid.Frame):
         self.switch_tab(self.tabs.get("f1"))
 
         payload = 'REVISION {}'.format(json.dumps(revision_payload))
+        self.witch_tab.refresh({}, self.scope)
         asyncio.ensure_future(self.client_state.send(payload), loop=self.loop)
 
     def focus_prompt(self):

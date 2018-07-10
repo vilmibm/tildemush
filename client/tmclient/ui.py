@@ -319,7 +319,7 @@ class WitchView(GameTab):
             align='center'), self.scope_list(scope)])
         self.editor = urwid.Filler(self.editor_filler)
         self.editor_box = SpookyBox(self.editor)
-        self.status = ColorText(self.info.get("status"))
+        self.status = urwid.Pile([ColorText(self.info.get("status"))])
         self.data = urwid.Filler(ColorText(self.info.get("data")))
         self.perms = urwid.Filler(ColorText(self.info.get("perms")))
         self.body = urwid.Pile([
@@ -334,17 +334,24 @@ class WitchView(GameTab):
         self.view.focus_position = 'body'
         super().__init__(self.view, TabHeader("F2 WITCH"), self.prompt)
 
-    def refresh(self, state, scope):
+    def refresh(self, object_data, scope):
         self.editor_filler.contents.pop()
         self.editor_filler.contents.append((
             self.scope_list(scope), self.editor_filler.options()
             ))
+        self.status.contents.pop()
+        self.status.contents.append((self.update_object(object_data),
+            self.status.options()))
 
     def scope_list(self, scope):
         if len(scope) == 0:
             scope = ["none"]
 
         return ColorText("available objects: {}".format(", ".join(sorted(scope))))
+
+    def update_object(self, object_data):
+        revision = object_data.get("current_rev", "<??>")
+        return ColorText("ver. {}".format(revision))
 
 class WorldmapView(GameTab):
     def __init__(self):
