@@ -1,3 +1,4 @@
+import itertools
 import re
 
 from slugify import slugify
@@ -194,15 +195,16 @@ class GameWorld:
             o.handle_action(cls, sender_obj, action, action_args)
 
     @classmethod
-    def resolve_obj(cls, scope, search_str, ignore=[]):
+    def resolve_obj(cls, scope, search_str, ignore=lambda o: False):
         """Given a list of GameObjects as scope, a search string, and an
         optional list of GameObjects to ignore, searches for the first object
         in scope for which .fuzzy_match(search_str) is True."""
         for obj in scope:
-            if obj in ignore:
+            if ignore(obj):
                 continue
             if obj.fuzzy_match(search_str):
                 return obj
+        return None
 
     @classmethod
     def all_active_objects(cls):
@@ -234,20 +236,15 @@ class GameWorld:
            /get a banana
            /get Banana
         """
-        # TODO eventually, generalize object resolution for various scopes. Consider player objects.
-        match_string = action_args
-        found = None
-        for obj in sender_obj.contained_by.contains:
-            if obj.is_player_obj:
-                continue
-            if obj.fuzzy_match(match_string):
-                found = obj
-                break
+        found = cls.resolve_obj(sender_obj.contained_by.contains,
+                                action_args, lambda o: o.is_player_obj)
 
         if found is None:
-            raise ClientException(OBJECT_NOT_FOUND.format(match_string))
+            # TODO do not use exception
+            raise ClientException(OBJECT_NOT_FOUND.format(action_args))
 
         if not sender_obj.can_carry(found):
+            # TODO do not use exception
             raise ClientException(OBJECT_DENIED.format(found.name))
 
         cls.put_into(sender_obj, found)
@@ -257,16 +254,10 @@ class GameWorld:
     def handle_drop(cls, sender_obj, action_args):
         """Matches an object in sender_obj.contains and moves it to
         sender_obj.contained_by"""
-
-        # TODO eventually, generalize object resolution for various scopes. Consider player objects.
-        match_string = action_args
-        found = None
-        for obj in sender_obj.contains:
-            if obj.fuzzy_match(match_string):
-                found = obj
-                break
+        found = cls.resolve_obj(sender_obj.contains, action_args)
 
         if found is None:
+            # TODO do not use exception
             raise ClientException('You look in vain for something called {}.'.format(obj_string))
 
         cls.put_into(sender_obj.contained_by, found)
@@ -294,19 +285,12 @@ class GameWorld:
             raise ClientException('Try /put some object in container object')
         target_obj_str, container_obj_str = match.groups()
 
-        target_obj = None
-        for obj in sender_obj.contains:
-            if obj.fuzzy_match(target_obj_str):
-                target_obj = obj
-                break
-
-        if target_obj is None:
-            for obj in sender_obj.contained_by.contains:
-                if obj.is_player_obj:
-                    continue
-                if obj.fuzzy_match(target_obj_str):
-                    target_obj = obj
-                    break
+        target_obj = cls.resolve_obj(
+            itertools.chain(
+                sender_obj.contains,
+                sender_obj.contained_by.contains),
+            target_obj_str, lambda o: o.is_player_obj
+            )
 
         if target_obj is None:
             raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
@@ -314,19 +298,12 @@ class GameWorld:
         if not sender_obj.can_carry(target_obj):
             raise ClientException(OBJECT_DENIED.format(target_obj.name))
 
-        container_obj = None
-        for obj in sender_obj.contains:
-            if obj.fuzzy_match(container_obj_str):
-                container_obj = obj
-                break
-
-        if container_obj is None:
-            for obj in sender_obj.contained_by.contains:
-                if obj.is_player_obj:
-                    continue
-                if obj.fuzzy_match(container_obj_str):
-                    container_obj = obj
-                    break
+        container_obj = cls.resolve_obj(
+            itertools.chain(
+                sender_obj.contains,
+                sender_obj.contained_by.contains),
+            container_obj_str, lambda o: o.is_player_obj
+        )
 
         if container_obj is None:
             raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
@@ -636,10 +613,10 @@ class GameWorld:
         if 0 == len(message):
             raise ClientException('try /whisper another_username some cool message')
         room = sender_obj.contained_by
-        target_obj = [o for o in room.contains if o.shortname == target_name]
-        if 0 == len(target_obj):
+        target_obj = cls.resolve_obj(room.contains, target_name)
+        if target_obj is None:
             raise ClientException('there is nothing named {} near you'.format(target_name))
-        target_obj[0].handle_action(cls, sender_obj, 'whisper', message)
+        target_obj.handle_action(cls, sender_obj, 'whisper', message)
 
     @classmethod
     def handle_look(cls, sender_obj, action_args):
