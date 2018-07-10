@@ -206,6 +206,54 @@ class Screen(urwid.WidgetPlaceholder):
         else:
             return super(Screen, self).keypress(size, key)
 
+class GamePrompt(urwid.Edit):
+    def __init__(self):
+        self.history = [""]
+        self.input_index = 0
+        super().__init__(caption='> ', multiline=True)
+
+    def add_line(self, line):
+        blank = self.history.pop()
+        self.history.append(line)
+        self.history.append(blank)
+        self.input_index += 1
+
+    def handle_rlwrap(self, key):
+        rlwrap_map = {
+                "up": self.rlwrap_up,
+                "down": self.rlwrap_down,
+                "start": self.rlwrap_start,
+                "end": self.rlwrap_end,
+                "delete backwards": self.rlwrap_delete_backwards,
+                "delete forwards": self.rlwrap_delete_forwards
+                }
+
+        rlwrap_map.get(key)()
+
+    def rlwrap_up(self):
+        self.rlwrap_set(max(0, self.input_index - 1))
+
+    def rlwrap_down(self):
+        self.rlwrap_set(min(len(self.history) - 1, self.input_index + 1))
+
+    def rlwrap_set(self, index):
+        self.input_index = index
+        self.edit_text = self.history[self.input_index]
+        self.rlwrap_end()
+
+    def rlwrap_start(self):
+        self.set_edit_pos(0)
+
+    def rlwrap_end(self):
+        self.set_edit_pos(len(self.edit_text))
+
+    def rlwrap_delete_backwards(self):
+        self.edit_text = self.edit_text[self.edit_pos:]
+        self.rlwrap_start()
+
+    def rlwrap_delete_forwards(self):
+        self.edit_text = self.edit_text[0:self.edit_pos]
+        self.rlwrap_end()
 
 class GameTab(urwid.WidgetPlaceholder):
     """
@@ -285,7 +333,151 @@ class WitchView(GameTab):
         self.view.focus_position = 'body'
         super().__init__(self.view, TabHeader("F2 WITCH"), self.prompt)
 
+class GameView(GameTab):
 
+    def __init__(self, state):
+        self.game_walker = urwid.SimpleFocusListWalker([
+            ColorText('{yellow}you have reconstituted into tildemush'),
+            ColorText("")
+            ])
+        self.game_area = urwid.ListBox(self.game_walker)
+        self.here_text = urwid.Pile(self.here_info(state))
+        self.user_text = urwid.Pile(self.user_info(state))
+        self.minimap_grid = urwid.Pile(self.generate_minimap(state))
+        self.body = urwid.Columns([
+            self.game_area,
+            urwid.Pile([
+                DashedBox(urwid.Filler(self.here_text, valign='top')),
+                DashedBox(urwid.Filler(self.minimap_grid, valign='middle')),
+                DashedBox(urwid.Filler(self.user_text, valign='top'))
+            ])
+        ])
+        self.banner = ColorText('====welcome 2 tildemush, u are jacked in====')
+        self.prompt = GamePrompt()
+        self.view = urwid.Frame(header=self.banner,
+                body=self.body, footer=self.prompt)
+        self.view.focus_position = 'footer'
+
+        super().__init__(self.view,
+                TabHeader("F1 MAIN", position='first',
+                    selected=True), self.prompt)
+
+    def add_message(self, msg):
+        spacer = self.game_walker.pop()
+        self.game_walker.append(ColorText(msg))
+        self.game_walker.append(spacer)
+        self.game_walker.set_focus(len(self.game_walker)-1)
+
+    def refresh(self, state):
+
+        self.here_text.contents.clear()
+        self.user_text.contents.clear()
+        self.minimap_grid.contents.clear()
+
+        # TODO: this is kind of hardcoded for the current three-widget
+        # here_info(), two-widget user_info(), three-widget generate_minimap()
+
+        self.here_text.contents.extend(list(
+            zip(self.here_info(state),
+                [self.here_text.options(),
+                    self.here_text.options(),
+                    self.here_text.options()]
+                )
+            ))
+
+        self.user_text.contents.extend(list(
+            zip(self.user_info(state),
+                [self.user_text.options(),
+                    self.user_text.options()]
+                )
+            ))
+
+        self.minimap_grid.contents.extend(list(
+            zip(self.generate_minimap(state),
+                [self.minimap_grid.options(),
+                    self.minimap_grid.options(),
+                    self.minimap_grid.options()]
+                )
+            ))
+
+    def here_info(self, state):
+        room = state.get("room", {})
+        info = "[{}]".format(room.get("name"))
+        contents = []
+        if len(room.get("contains", [])) < 1:
+            contents.append("no one but yourself")
+        else:
+            for o in room.get("contains"):
+                contents.append(o.get("name"))
+
+        lines = [
+                ColorText("[{}]".format(room.get("name")), align='center'),
+                ColorText("{}\n".format(room.get("description"))),
+                ColorText("You see here ({pop}): {contents}\n".format(
+                    pop=len(contents), contents=', '.join(contents)))
+                ]
+
+        return lines
+
+    def user_info(self, state):
+        user = state.get("user", {})
+        inventory = []
+
+        for item in state.get("inventory", []):
+            inventory.append(item.get("name"))
+
+        lines = [
+                ColorText("<{desc} named {name}>\n".format(
+                desc=user.get("description"),
+                name=user.get("display_name")), align='center'),
+                ColorText("Inventory ({count}): {inv}".format(
+                    count=len(inventory),
+                    inv=", ".join(inventory)))
+                ]
+
+        return lines
+
+    def generate_minimap(self, state):
+        """Generates a minimap for the cardinal exits of the current room."""
+        room = state.get("room", {})
+        exits = room.get("exits", {})
+        blank = urwid.LineBox(urwid.Text(" "),
+                tlcorner=' ', tline=' ', lline=' ', trcorner=' ', blcorner=' ',
+                rline=' ', bline=' ', brcorner=' '
+        )
+        map_nodes = {
+                "north": blank,
+                "east": blank,
+                "south": blank,
+                "west": blank,
+                "above": blank,
+                "below": blank,
+                }
+
+        for direction in exits.keys():
+            target = exits.get(direction)
+            node = urwid.LineBox(urwid.Text(target.get("room_name", "(somewhere)"), align='center'))
+            map_nodes.update({direction: node})
+
+        map_grid = [
+                urwid.Columns([
+                    map_nodes.get("above"),
+                    map_nodes.get("north"),
+                    urwid.Text(" ")
+                    ]),
+                urwid.Columns([
+                    map_nodes.get("west"),
+                    urwid.LineBox(urwid.Text(room.get("name", "somewhere"), align='center')),
+                    map_nodes.get("east")
+                    ]),
+                urwid.Columns([
+                    urwid.Text(" "),
+                    map_nodes.get("south"),
+                    map_nodes.get("below")
+                    ])
+                ]
+
+        return map_grid
 
 class ExternalEditor(urwid.Terminal):
     def __init__(self, path, loop, callback):

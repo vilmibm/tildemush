@@ -107,64 +107,12 @@ class MainMenu(Screen):
 
         await self.client.register(register_data['username'], register_data['password'])
 
-
-class GamePrompt(urwid.Edit):
-    def __init__(self):
-        self.history = [""]
-        self.input_index = 0
-        super().__init__(caption='> ', multiline=True)
-
-    def add_line(self, line):
-        blank = self.history.pop()
-        self.history.append(line)
-        self.history.append(blank)
-        self.input_index += 1
-
-    def handle_rlwrap(self, key):
-        rlwrap_map = {
-                "up": self.rlwrap_up,
-                "down": self.rlwrap_down,
-                "start": self.rlwrap_start,
-                "end": self.rlwrap_end,
-                "delete backwards": self.rlwrap_delete_backwards,
-                "delete forwards": self.rlwrap_delete_forwards
-                }
-
-        rlwrap_map.get(key)()
-
-    def rlwrap_up(self):
-        self.rlwrap_set(max(0, self.input_index - 1))
-
-    def rlwrap_down(self):
-        self.rlwrap_set(min(len(self.history) - 1, self.input_index + 1))
-
-    def rlwrap_set(self, index):
-        self.input_index = index
-        self.edit_text = self.history[self.input_index]
-        self.rlwrap_end()
-
-    def rlwrap_start(self):
-        self.set_edit_pos(0)
-
-    def rlwrap_end(self):
-        self.set_edit_pos(len(self.edit_text))
-
-    def rlwrap_delete_backwards(self):
-        self.edit_text = self.edit_text[self.edit_pos:]
-        self.rlwrap_start()
-
-    def rlwrap_delete_forwards(self):
-        self.edit_text = self.edit_text[0:self.edit_pos]
-        self.rlwrap_end()
-
-
-
 class GameMain(urwid.Frame):
     def __init__(self, client_state, loop, ui_loop):
         self.client_state = client_state
         self.loop = loop
         self.ui_loop = ui_loop
-        self.state = {"user":{
+        self.game_state = {"user":{
                     "description": "a shadow",
                     "display_name": "nothing"},
                     "room": {
@@ -175,34 +123,7 @@ class GameMain(urwid.Frame):
         self.scope = []
         self.hotkeys = self.load_hotkeys()
 
-        # game view stuff
-        self.game_walker = urwid.SimpleFocusListWalker([
-            ColorText('{yellow}you have reconstituted into tildemush'),
-            ColorText("")
-            ])
-        self.game_text = urwid.ListBox(self.game_walker)
-        self.here_text = urwid.Pile(self.here_info())
-        self.user_text = urwid.Pile(self.user_info())
-        self.minimap_grid = urwid.Pile(self.generate_minimap())
-        self.main_body = urwid.Columns([
-            self.game_text,
-            urwid.Pile([
-                ui.DashedBox(urwid.Filler(self.here_text, valign='top')),
-                ui.DashedBox(urwid.Filler(self.minimap_grid, valign='middle')),
-                ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
-            ])
-        ])
-        self.main_banner = ColorText('====welcome 2 tildemush, u are jacked in====')
-        self.main_prompt = GamePrompt()
-        self.main_view = urwid.Frame(header=self.main_banner,
-                body=self.main_body, footer=self.main_prompt)
-        self.main_view.focus_position = 'footer'
-
-        self.main_tab = ui.GameTab(self.main_view,
-                ui.TabHeader("F1 MAIN", position='first',
-                    selected=True), self.main_prompt)
-
-        # witch view stuff
+        self.game_tab = ui.GameView(self.game_state)
         self.witch_tab = ui.WitchView({})
 
         # worldmap view stuff
@@ -219,13 +140,13 @@ class GameMain(urwid.Frame):
 
         # quit placeholder
         self.quit_prompt = urwid.Edit()
-        self.quit_view = self.main_view
+        self.quit_view = ColorText("quit")
         self.quit_tab = ui.GameTab(self.quit_view,
                 ui.TabHeader("F9 QUIT", position='last'), self.quit_prompt)
 
         # set starting conditions
         self.tabs = {
-                "f1": self.main_tab,
+                "f1": self.game_tab,
                 "f2": self.witch_tab,
                 "f3": self.worldmap_tab,
                 "f4": self.settings_tab,
@@ -234,10 +155,10 @@ class GameMain(urwid.Frame):
         self.tab_headers = urwid.Columns([])
         self.header = self.tab_headers
         self.refresh_tabs()
-        self.prompt = self.main_prompt
+        self.prompt = self.game_tab.prompt
         self.statusbar = ColorText("{dark green}connection okay!", align='right')
         self.client_state.set_on_recv(self.on_server_message)
-        super().__init__(header=self.header, body=self.main_tab, footer=self.statusbar)
+        super().__init__(header=self.header, body=self.game_tab, footer=self.statusbar)
         self.focus_prompt()
 
     async def on_server_message(self, server_msg):
@@ -250,7 +171,7 @@ class GameMain(urwid.Frame):
             if object_state.get('edit'):
                 self.launch_witch(object_state)
         else:
-            self.add_game_message(server_msg)
+            self.game_tab.add_message(server_msg)
 
         self.focus_prompt()
 
@@ -286,7 +207,7 @@ class GameMain(urwid.Frame):
         self.prompt = self.body.prompt
 
     def keypress(self, size, key):
-        if key == 'enter' and self.prompt == self.main_tab.prompt:
+        if key == 'enter' and self.prompt == self.game_tab.prompt:
             self.handle_game_input(self.prompt.get_edit_text())
         else:
             try:
@@ -295,11 +216,6 @@ class GameMain(urwid.Frame):
                 pass
             self.handle_keypress(size, key)
 
-    def add_game_message(self, msg):
-        spacer = self.game_walker.pop()
-        self.game_walker.append(ColorText(msg))
-        self.game_walker.append(spacer)
-        self.game_walker.set_focus(len(self.game_walker)-1)
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
@@ -336,13 +252,13 @@ class GameMain(urwid.Frame):
         elif key in self.tabs.keys():
             self.switch_tab(self.tabs.get(key))
         elif key in self.hotkeys.get("scrolling").keys():
-            if self.body == self.main_tab:
+            if self.body == self.game_tab:
                 self.game_text.keypress(size, key)
         elif key in self.hotkeys.get("movement").keys():
             asyncio.ensure_future(self.client_state.send(
                     "COMMAND {}".format(self.hotkeys.get("movement").get(key))
                 ), loop=self.loop)
-        elif key in self.hotkeys.get("rlwrap").keys() and isinstance(self.prompt, GamePrompt):
+        elif key in self.hotkeys.get("rlwrap").keys() and isinstance(self.prompt, ui.GamePrompt):
             self.prompt.handle_rlwrap(self.hotkeys.get("rlwrap").get(key))
 
     def switch_tab(self, new_tab):
@@ -360,79 +276,14 @@ class GameMain(urwid.Frame):
         self.header = self.tab_headers
 
     def update_state(self, raw_state):
-        self.state = json.loads(raw_state)
+        self.game_state = json.loads(raw_state)
         self.scope.clear()
-        for o in self.state.get("room").get("contains"):
+        for o in self.game_state.get("room").get("contains"):
             self.scope.append(o.get("shortname"))
-        for o in self.state.get("inventory"):
+        for o in self.game_state.get("inventory"):
             self.scope.append(o.get("shortname"))
-        self.here_text.contents.clear()
-        self.user_text.contents.clear()
-        self.minimap_grid.contents.clear()
 
-        # TODO: this is kind of hardcoded for the current three-widget
-        # here_info(), two-widget user_info(), three-widget generate_minimap()
-
-        self.here_text.contents.extend(list(
-            zip(self.here_info(),
-                [self.here_text.options(),
-                    self.here_text.options(),
-                    self.here_text.options()]
-                )
-            ))
-
-        self.user_text.contents.extend(list(
-            zip(self.user_info(),
-                [self.user_text.options(),
-                    self.user_text.options()]
-                )
-            ))
-
-        self.minimap_grid.contents.extend(list(
-            zip(self.generate_minimap(),
-                [self.minimap_grid.options(),
-                    self.minimap_grid.options(),
-                    self.minimap_grid.options()]
-                )
-            ))
-
-
-    def here_info(self):
-        room = self.state.get("room", {})
-        info = "[{}]".format(room.get("name"))
-        contents = []
-        if len(room.get("contains", [])) < 1:
-            contents.append("no one but yourself")
-        else:
-            for o in room.get("contains"):
-                contents.append(o.get("name"))
-
-        lines = [
-                ColorText("[{}]".format(room.get("name")), align='center'),
-                ColorText("{}\n".format(room.get("description"))),
-                ColorText("You see here ({pop}): {contents}\n".format(
-                    pop=len(contents), contents=', '.join(contents)))
-                ]
-
-        return lines
-
-    def user_info(self):
-        user = self.state.get("user", {})
-        inventory = []
-
-        for item in self.state.get("inventory", []):
-            inventory.append(item.get("name"))
-
-        lines = [
-                ColorText("<{desc} named {name}>\n".format(
-                desc=user.get("description"),
-                name=user.get("display_name")), align='center'),
-                ColorText("Inventory ({count}): {inv}".format(
-                    count=len(inventory),
-                    inv=", ".join(inventory)))
-                ]
-
-        return lines
+        self.game_tab.refresh(self.game_state)
 
     def load_hotkeys(self):
         # TODO: defaults are listed here, but this should also eventually
@@ -464,45 +315,3 @@ class GameMain(urwid.Frame):
                 }
 
         return hotkeys
-
-    def generate_minimap(self):
-        """Generates a minimap for the cardinal exits of the current room."""
-        room = self.state.get("room", {})
-        exits = room.get("exits", {})
-        blank = urwid.LineBox(urwid.Text(" "),
-                tlcorner=' ', tline=' ', lline=' ', trcorner=' ', blcorner=' ',
-                rline=' ', bline=' ', brcorner=' '
-        )
-        map_nodes = {
-                "north": blank,
-                "east": blank,
-                "south": blank,
-                "west": blank,
-                "above": blank,
-                "below": blank,
-                }
-
-        for direction in exits.keys():
-            target = exits.get(direction)
-            node = urwid.LineBox(urwid.Text(target.get("room_name", "(somewhere)"), align='center'))
-            map_nodes.update({direction: node})
-
-        map_grid = [
-                urwid.Columns([
-                    map_nodes.get("above"),
-                    map_nodes.get("north"),
-                    urwid.Text(" ")
-                    ]),
-                urwid.Columns([
-                    map_nodes.get("west"),
-                    urwid.LineBox(urwid.Text(room.get("name", "somewhere"), align='center')),
-                    map_nodes.get("east")
-                    ]),
-                urwid.Columns([
-                    urwid.Text(" "),
-                    map_nodes.get("south"),
-                    map_nodes.get("below")
-                    ])
-                ]
-
-        return map_grid
