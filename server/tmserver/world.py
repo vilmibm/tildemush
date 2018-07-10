@@ -254,6 +254,9 @@ class GameWorld:
     def handle_drop(cls, sender_obj, action_args):
         """Matches an object in sender_obj.contains and moves it to
         sender_obj.contained_by"""
+
+        # TODO this doesn't seem to trigger a state update?
+
         found = cls.resolve_obj(sender_obj.contains, action_args)
 
         if found is None:
@@ -279,7 +282,6 @@ class GameWorld:
         they're grabbing it from the room they're in (instead of their
         inventory).
         """
-        # TODO generalize this...in more ways than one...please...
         match = PUT_ARGS_RE.fullmatch(action_args)
         if match is None:
             raise ClientException('Try /put some object in container object')
@@ -289,8 +291,7 @@ class GameWorld:
             itertools.chain(
                 sender_obj.contains,
                 sender_obj.contained_by.contains),
-            target_obj_str, lambda o: o.is_player_obj
-            )
+            target_obj_str, lambda o: o.is_player_obj)
 
         if target_obj is None:
             raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
@@ -302,8 +303,7 @@ class GameWorld:
             itertools.chain(
                 sender_obj.contains,
                 sender_obj.contained_by.contains),
-            container_obj_str, lambda o: o.is_player_obj
-        )
+            container_obj_str, lambda o: o.is_player_obj)
 
         if container_obj is None:
             raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
@@ -333,25 +333,16 @@ class GameWorld:
         If the player doesn't have execute permission on the container, the
         attempt fails. They also need carry permission for the first object.
         """
-        # TODO generalize this...in more ways than one...please...
         match = REMOVE_ARGS_RE.fullmatch(action_args)
         if match is None:
             raise ClientException('Try /remove some object from container object')
         target_obj_str, container_obj_str = match.groups()
 
-        container_obj = None
-        for obj in sender_obj.contains:
-            if obj.fuzzy_match(container_obj_str):
-                container_obj = obj
-                break
-
-        if container_obj is None:
-            for obj in sender_obj.contained_by.contains:
-                if obj.is_player_obj:
-                    continue
-                if obj.fuzzy_match(container_obj_str):
-                    container_obj = obj
-                    break
+        container_obj = cls.resolve_obj(
+            itertools.chain(
+                sender_obj.contains,
+                sender_obj.contained_by.contains),
+            container_obj_str, lambda o: o.is_player_obj)
 
         if container_obj is None:
             raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
@@ -361,11 +352,7 @@ class GameWorld:
                 'You try as hard as you can, but you are unable to pry open {}'.format(
                     container_obj))
 
-        target_obj = None
-        for obj in container_obj.contains:
-            if obj.fuzzy_match(target_obj_str):
-                target_obj = obj
-                break
+        target_obj = cls.resolve_obj(container_obj.contains, target_obj_str)
 
         if target_obj is None:
             raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
@@ -390,9 +377,10 @@ class GameWorld:
         #      to have one active client at a time. i think that's an ok
         #      limitation for now, but we should actually enforce it.
 
-        obj = GameObject.get_or_none(GameObject.shortname==action_args)
+        obj = cls.resolve_obj(cls.area_of_effect(sender_obj), action_args)
+
         if obj is None:
-            cls.user_hears(sender_obj, sender_obj, '{{red}}You do not see an object with the true name {}{{/}}'.format(action_args))
+            cls.user_hears(sender_obj, sender_obj, '{{red}}You do not see an object called {}{{/}}'.format(action_args))
             return
 
         # TODO if we're switching users to the WITCH tab when they run /edit,

@@ -831,23 +831,28 @@ async def test_edit(event_loop, mock_logger, client):
     assert msg.startswith('STATE')
     msg = await snoozy_client.recv()
     assert msg == 'You breathed light into a whole new item. Its true name is snoozy/a-stick'
+    await snoozy_client.send('COMMAND drop stick')
+    msg = await snoozy_client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await snoozy_client.recv()
+    assert msg == 'You drop A stick.'
 
     # obj not found
-    await client.send('COMMAND edit vilmibm/fart')
+    await client.send('COMMAND edit fart')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
-    assert msg =='{red}You do not see an object with the true name vilmibm/fart{/}'
+    assert msg =='{red}You do not see an object called fart{/}'
 
     # perm denied
-    await client.send('COMMAND edit snoozy/a-stick')
+    await client.send('COMMAND edit stick')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
     assert msg =='{red}You lack the authority to edit A stick{/}'
 
     # success
-    await client.send('COMMAND edit vilmibm/a-fresh-cigar')
+    await client.send('COMMAND edit cigar')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
@@ -863,7 +868,7 @@ async def test_edit(event_loop, mock_logger, client):
         current_rev=cigar.script_revision.id)
 
     # already being edited
-    await client.send('COMMAND edit vilmibm/a-fresh-cigar')
+    await client.send('COMMAND edit cigar')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
