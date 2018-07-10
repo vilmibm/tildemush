@@ -2,12 +2,12 @@ from os import environ
 
 from playhouse.postgres_ext import PostgresqlExtDatabase
 
-DB_HOST = 'localhost'
-DB_PORT = 5432
-DB_UN = 'tildemush'
-DB_PW = 'tildemush'
-DB_NAME = 'tildemush'
-TEST_DB_NAME = 'tildemush_test'
+DB_HOST = environ.get('PGHOST', 'localhost')
+DB_PORT = environ.get('PGPORT', 5432)
+DB_UN = environ.get('PGUSER', 'tildemush')
+DB_PW = environ.get('PGPASSWORD', 'tildemush')
+DB_NAME = environ.get('PGDATABASE', 'tildemush')
+TEST_DB_NAME = DB_NAME + '_test'
 
 env = environ.get('TILDEMUSH_ENV', 'live')
 
