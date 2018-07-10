@@ -333,6 +333,18 @@ class WitchView(GameTab):
         self.view.focus_position = 'body'
         super().__init__(self.view, TabHeader("F2 WITCH"), self.prompt)
 
+class WorldmapView(GameTab):
+    def __init__(self):
+        self.prompt = urwid.Edit()
+        self.view = urwid.Filler(ColorText("worldmap coming soon", align='center'), valign='middle')
+        super().__init__(self.view, TabHeader("F3 WORLDMAP"), self.prompt)
+
+class SettingsView(GameTab):
+    def __init__(self):
+        self.prompt = urwid.Edit()
+        self.view = urwid.Filler(ColorText("settings menu under construction", align='center'), valign='middle')
+        super().__init__(self.view, TabHeader("F4 SETTINGS"), self.prompt)
+
 class GameView(GameTab):
 
     def __init__(self, state):

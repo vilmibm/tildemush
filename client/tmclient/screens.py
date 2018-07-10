@@ -125,18 +125,8 @@ class GameMain(urwid.Frame):
 
         self.game_tab = ui.GameView(self.game_state)
         self.witch_tab = ui.WitchView({})
-
-        # worldmap view stuff
-        self.worldmap_prompt = urwid.Edit()
-        self.worldmap_view = urwid.Filler(ColorText("worldmap coming soon", align='center'), valign='middle')
-        self.worldmap_tab = ui.GameTab(self.worldmap_view,
-                ui.TabHeader("F3 WORLDMAP"), self.worldmap_prompt)
-
-        # settings view stuff
-        self.settings_prompt = urwid.Edit()
-        self.settings_view = urwid.Filler(ColorText("settings menu under construction", align='center'), valign='middle')
-        self.settings_tab = ui.GameTab(self.settings_view,
-                ui.TabHeader("F4 SETTINGS"), self.settings_prompt)
+        self.worldmap_tab = ui.WorldmapView()
+        self.settings_tab = ui.SettingsView()
 
         # quit placeholder
         self.quit_prompt = urwid.Edit()
