@@ -831,23 +831,28 @@ async def test_edit(event_loop, mock_logger, client):
     assert msg.startswith('STATE')
     msg = await snoozy_client.recv()
     assert msg == 'You breathed light into a whole new item. Its true name is snoozy/a-stick'
+    await snoozy_client.send('COMMAND drop stick')
+    msg = await snoozy_client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await snoozy_client.recv()
+    assert msg == 'You drop A stick.'
 
     # obj not found
-    await client.send('COMMAND edit vilmibm/fart')
+    await client.send('COMMAND edit fart')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
-    assert msg =='{red}You do not see an object with the true name vilmibm/fart{/}'
+    assert msg =='{red}You do not see an object called fart{/}'
 
     # perm denied
-    await client.send('COMMAND edit snoozy/a-stick')
+    await client.send('COMMAND edit stick')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
     assert msg =='{red}You lack the authority to edit A stick{/}'
 
     # success
-    await client.send('COMMAND edit vilmibm/a-fresh-cigar')
+    await client.send('COMMAND edit cigar')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
@@ -863,7 +868,7 @@ async def test_edit(event_loop, mock_logger, client):
         current_rev=cigar.script_revision.id)
 
     # already being edited
-    await client.send('COMMAND edit vilmibm/a-fresh-cigar')
+    await client.send('COMMAND edit cigar')
     msg = await client.recv()
     assert msg == 'COMMAND OK'
     msg = await client.recv()
@@ -889,5 +894,90 @@ async def test_edit(event_loop, mock_logger, client):
     await snoozy_client.close()
     await client.close()
 
-
 # TODO witch exception when saving revision
+
+@pytest.mark.asyncio
+async def test_transitive_command(event_loop, mock_logger, client):
+    await setup_user(client, 'vilmibm')
+    vil = UserAccount.get(UserAccount.username=='vilmibm')
+
+    ### create an object to send transitive commands to
+    await client.send('COMMAND create item "lemongrab" a high strung lemon man')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/lemongrab'
+
+    lemongrab = GameObject.get(GameObject.shortname=='vilmibm/lemongrab')
+
+    new_code = """
+    (witch "lemongrab"
+      (has {"name" "lemongrab"
+            "description" "a high strung lemon man"})
+      (hears "touch"
+        (says "UNACCEPTABLE")))""".rstrip().lstrip()
+
+    revision_payload = dict(
+        shortname='vilmibm/lemongrab',
+        code=new_code,
+        current_rev=lemongrab.script_revision.id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)))
+    msg = await client.recv()
+    assert msg.startswith('OBJECT')
+
+    ### create an object for accepting whatever commands
+    await client.send('COMMAND create item "cat" it is a cat')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg.startswith('STATE')
+    msg = await client.recv()
+    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/cat'
+
+    cat = GameObject.get(GameObject.shortname=='vilmibm/cat')
+
+    new_code = """
+    (witch "cat"
+      (has {"name" "cat"
+            "description" "it is a cat"})
+      (hears "touch"
+        (says "purr")))""".rstrip().lstrip()
+
+    revision_payload = dict(
+        shortname='vilmibm/cat',
+        code=new_code,
+        current_rev=cat.script_revision.id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)))
+    msg = await client.recv()
+    assert msg.startswith('OBJECT')
+
+    # ensure non-transitive works
+    await client.send('COMMAND touch')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg1 = await client.recv()
+    msg2 = await client.recv()
+    assert {msg1, msg2} == {'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'}
+
+    # target found
+    await client.send('COMMAND touch lemongrab')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg = await client.recv()
+    assert msg == 'lemongrab says, "UNACCEPTABLE"'
+
+    # TODO support for transitive-only commands
+
+    # target not found
+    await client.send('COMMAND touch contrivance')
+    msg = await client.recv()
+    assert msg == 'COMMAND OK'
+    msg1 = await client.recv()
+    msg2 = await client.recv()
+    assert {msg1, msg2} == {'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'}
+
+    await client.close()
