@@ -309,19 +309,18 @@ class WitchView(GameTab):
 
     def __init__(self, object_data, scope):
         self.scope = scope
-        ## TODO: display items in scope when not editing anything
-
         self.info = {
-                "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here",
+                "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here.",
                 "data": "Current Object: <None>",
                 "perms": "Permissions: <unknown>",
                 "status": "WITCH STATUS: <unknown>"
                 }
 
-        self.editor_filler = ColorText(self.info.get("edit area"), align='center')
+        self.editor_filler = urwid.Pile([ColorText(self.info.get("edit area"),
+            align='center'), self.scope_list(scope)])
         self.editor = urwid.Filler(self.editor_filler)
         self.editor_box = SpookyBox(self.editor)
-        self.status = ColorText(self.info.get("status"))
+        self.status = urwid.Pile([ColorText(self.info.get("status"))])
         self.data = urwid.Filler(ColorText(self.info.get("data")))
         self.perms = urwid.Filler(ColorText(self.info.get("perms")))
         self.body = urwid.Pile([
@@ -336,9 +335,24 @@ class WitchView(GameTab):
         self.view.focus_position = 'body'
         super().__init__(self.view, TabHeader("F2 WITCH"), self.prompt)
 
-    def refresh(self, data, new_scope):
-        self.scope = new_scope
-        ## TODO: update display of items in scope
+    def refresh(self, object_data, scope):
+        self.editor_filler.contents.pop()
+        self.editor_filler.contents.append((
+            self.scope_list(scope), self.editor_filler.options()
+            ))
+        self.status.contents.pop()
+        self.status.contents.append((self.update_object(object_data),
+            self.status.options()))
+
+    def scope_list(self, scope):
+        if len(scope) == 0:
+            scope = ["none"]
+
+        return ColorText("available objects: {}".format(", ".join(sorted(scope))))
+
+    def update_object(self, object_data):
+        revision = object_data.get("current_rev", "<??>")
+        return ColorText("ver. {}".format(revision))
 
 class WorldmapView(GameTab):
     def __init__(self):
