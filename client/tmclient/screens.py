@@ -108,11 +108,12 @@ class MainMenu(Screen):
         await self.client.register(register_data['username'], register_data['password'])
 
 class GameMain(urwid.Frame):
-    def __init__(self, client_state, loop, ui_loop):
+    def __init__(self, client_state, loop, ui_loop, config):
         self.client_state = client_state
         self.loop = loop
         self.ui_loop = ui_loop
-        self.game_state = {"user":{
+        self.config = config
+        self.game_state = {"USER":{
                     "description": "a shadow",
                     "display_name": "nothing"},
                     "room": {
@@ -124,7 +125,7 @@ class GameMain(urwid.Frame):
         self.hotkeys = self.load_hotkeys()
 
         self.game_tab = ui.GameView(self.game_state)
-        self.witch_tab = ui.WitchView({})
+        self.witch_tab = ui.WitchView({}, self.scope)
         self.worldmap_tab = ui.WorldmapView()
         self.settings_tab = ui.SettingsView()
 
@@ -175,6 +176,7 @@ class GameMain(urwid.Frame):
                 self.ui_loop.screen_size[1] // 2
             )
         self.witch_tab.prompt = self.witch_tab.editor.original_widget
+        self.witch_tab.refresh(data, self.scope)
         self.switch_tab(self.tabs.get("f2"))
 
     def close_witch(self, data, filepath):
@@ -190,6 +192,7 @@ class GameMain(urwid.Frame):
         self.switch_tab(self.tabs.get("f1"))
 
         payload = 'REVISION {}'.format(json.dumps(revision_payload))
+        self.witch_tab.refresh({}, self.scope)
         asyncio.ensure_future(self.client_state.send(payload), loop=self.loop)
 
     def focus_prompt(self):
@@ -274,11 +277,10 @@ class GameMain(urwid.Frame):
             self.scope.append(o.get("shortname"))
 
         self.game_tab.refresh(self.game_state)
+        self.witch_tab.refresh(self.game_state, self.scope)
 
     def load_hotkeys(self):
-        # TODO: defaults are listed here, but this should also eventually
-        # load user's custom keybindings/overrides
-        hotkeys = {
+        defaults = {
                 "scrolling": {
                     "page up": "up",
                     "page down": "down",
@@ -304,4 +306,7 @@ class GameMain(urwid.Frame):
                     }
                 }
 
+        hotkeys = {}
+        for group in defaults:
+            hotkeys.update({group: self.config.get(group, defaults.get(group))})
         return hotkeys

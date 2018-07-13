@@ -307,7 +307,10 @@ class ColorText(urwid.Text):
 
 class WitchView(GameTab):
 
-    def __init__(self, object_data):
+    def __init__(self, object_data, scope):
+        self.scope = scope
+        ## TODO: display items in scope when not editing anything
+
         self.info = {
                 "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here",
                 "data": "Current Object: <None>",
@@ -332,6 +335,10 @@ class WitchView(GameTab):
         self.view = urwid.Frame(body=self.body, footer=self.status)
         self.view.focus_position = 'body'
         super().__init__(self.view, TabHeader("F2 WITCH"), self.prompt)
+
+    def refresh(self, data, new_scope):
+        self.scope = new_scope
+        ## TODO: update display of items in scope
 
 class WorldmapView(GameTab):
     def __init__(self):
