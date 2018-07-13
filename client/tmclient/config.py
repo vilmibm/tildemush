@@ -36,7 +36,7 @@ class Config:
         self.read()
 
     def get(self, key, default=None):
-        return self._data.get(key, defaulT)
+        return self._data.get(key, default)
 
     def set(self, key, value):
         self._data[key] = value
