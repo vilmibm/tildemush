@@ -6,7 +6,7 @@ import re
 import websockets as ws
 
 from .errors import ClientException, UserValidationError, RevisionException
-from .models import UserAccount, GameObject
+from .models import UserAccount
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
 REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
@@ -34,9 +34,6 @@ class UserSession:
     def associate(self, user_account):
         self.user_account = user_account
         self.game_world.register_session(user_account, self)
-        foyer = GameObject.select().where(GameObject.shortname=='foyer')[0]
-        self.game_world.put_into(foyer, user_account.player_obj)
-        # TODO thread through disconnect handling to dematerialize player objects
 
     def handle_hears(self, sender_obj, message):
         # TODO delete sender_obj argument i think?
@@ -81,6 +78,12 @@ class UserSession:
 
         return return_payload, revision_exception
 
+    def handle_disconnect(self):
+        if not self.associated:
+            return
+        player_obj = self.user_account.player_obj
+        self.game_world.unregister_session(self.user_account, self)
+
     def __str__(self):
         s = 'UserSession<{}>'.format(None)
         if self.associated:
@@ -95,6 +98,10 @@ class ConnectionMap:
 
     def add(self, websocket, user_session):
         self.connections[websocket] = user_session
+
+    def remove(self, websocket):
+        if websocket in self.connections:
+            del self.connections[websocket]
 
     def get_session(self, websocket):
         return self.connections.get(websocket)
@@ -116,8 +123,13 @@ class GameServer:
         user_session = UserSession(self.loop, self.game_world, websocket)
         self.logger.info('Registering user context {}'.format(user_session))
         self.connections.add(websocket, user_session)
-        async for message in websocket:
-            await self.handle_message(user_session, message)
+        try:
+            async for message in websocket:
+                await self.handle_message(user_session, message)
+        except ws.exceptions.ConnectionClosed:
+            self.logger.info('Client disconnect {}'.format(user_session))
+            user_session.handle_disconnect()
+            self.connections.remove(websocket)
 
     async def handle_message(self, user_session, message):
         self.logger.info("Handling message '{}' for {}".format(

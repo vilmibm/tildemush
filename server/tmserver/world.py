@@ -5,7 +5,7 @@ from slugify import slugify
 
 from .config import get_db
 from .errors import RevisionException, WitchException, ClientException
-from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing
+from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing, LastSeen
 from .util import strip_color_codes, split_args, ARG_RE
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -36,8 +36,37 @@ class GameWorld:
 
     @classmethod
     def register_session(cls, user_account, user_session):
-        # TODO check for this key already existing
+        if user_account.id in cls._sessions:
+            raise ClientException('User {} already logged in.'.format(user_account))
+
         cls._sessions[user_account.id] = user_session
+
+        player_obj = user_account.player_obj
+        ls = LastSeen.get_or_none(user_account=user_account)
+        room = None
+        if ls is None:
+            room = GameObject.get(GameObject.shortname=='foyer')
+        else:
+            room = ls.room
+        self.game_world.put_into(room, player_obj)
+        LastSeen.delete().where(user_account=user)
+        affected = (o for o in room.contains if o.is_player_obj and o != player_obj)
+        for o in affected:
+            cls.user_hears(o, player_obj, '{} fades in.'.format(player_obj.name))
+
+    def unregister_session(cls, user_account, user_session):
+        if user_account.id in self._sessions:
+            del cls._sessions[user_account.id]
+
+        player_obj = user_account.player_obj
+        room = player_obj.contained_by
+        if room is not None:
+            self.game_world.remove_from(player_obj.contained_by, player_obj)
+            affected = (o for o in room.contains if o.is_player_obj)
+            for o in affected:
+                cls.user_hears(o, player_obj, '{} fades out.'.format(player_obj.name))
+
+            LastSeen.create(user_account=user_account, room=room)
 
     @classmethod
     def get_session(cls, user_account_id):

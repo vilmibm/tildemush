@@ -338,10 +338,15 @@ class Editing(BaseModel):
     user_account = pw.ForeignKeyField(UserAccount)
     game_obj = pw.ForeignKeyField(GameObject)
 
+
 class Contains(BaseModel):
     outer_obj = pw.ForeignKeyField(GameObject)
     inner_obj = pw.ForeignKeyField(GameObject)
 
+
+class LastSeen(BaseModel):
+    user_account = pw.ForeignKeyField(UserAccount)
+    room = pw.ForeignKeyField(GameObject)
 
 class Log(BaseModel):
     env = pw.CharField()
@@ -349,4 +354,4 @@ class Log(BaseModel):
     raw = pw.CharField()
 
 
-MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission, Editing]
+MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission, Editing, LastSeen]

@@ -10,10 +10,6 @@ from . import ui
 from .ui import Screen, Form, FormField, menu, menu_button, sub_menu, ColorText, ExternalEditor
 
 def quit_client(screen):
-    # TODO: quit command isn't getting caught by the server for some
-    # reason?
-    asyncio.ensure_future(screen.client_state.send('COMMAND QUIT'), loop=screen.loop)
-
     raise urwid.ExitMainLoop()
 
 class Splash(Screen):
