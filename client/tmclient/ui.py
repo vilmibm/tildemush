@@ -307,8 +307,9 @@ class ColorText(urwid.Text):
 
 class WitchView(GameTab):
 
-    def __init__(self, object_data, scope):
+    def __init__(self, object_data, scope, config):
         self.scope = scope
+        self.config = config
         self.info = {
                 "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here.",
                 "data": "Current Object: <None>",
@@ -355,20 +356,23 @@ class WitchView(GameTab):
         return ColorText("ver. {}".format(revision))
 
 class WorldmapView(GameTab):
-    def __init__(self):
+    def __init__(self, config):
         self.prompt = urwid.Edit()
+        self.config = config
         self.view = urwid.Filler(ColorText("worldmap coming soon", align='center'), valign='middle')
         super().__init__(self.view, TabHeader("F3 WORLDMAP"), self.prompt)
 
 class SettingsView(GameTab):
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         self.prompt = urwid.Edit()
         self.view = urwid.Filler(ColorText("settings menu under construction", align='center'), valign='middle')
         super().__init__(self.view, TabHeader("F4 SETTINGS"), self.prompt)
 
 class GameView(GameTab):
 
-    def __init__(self, state):
+    def __init__(self, state, config):
+        self.config = config
         self.game_walker = urwid.SimpleFocusListWalker([
             ColorText('{yellow}you have reconstituted into tildemush'),
             ColorText("")
@@ -377,14 +381,14 @@ class GameView(GameTab):
         self.here_text = urwid.Pile(self.here_info(state))
         self.user_text = urwid.Pile(self.user_info(state))
         self.minimap_grid = urwid.Pile(self.generate_minimap(state))
-        self.body = urwid.Columns([
-            self.game_area,
-            urwid.Pile([
-                DashedBox(urwid.Filler(self.here_text, valign='top')),
-                DashedBox(urwid.Filler(self.minimap_grid, valign='middle')),
-                DashedBox(urwid.Filler(self.user_text, valign='top'))
-            ])
-        ])
+        self.panel_layout = config.get("panel_layout",
+                ["here", "minimap", "user"])
+
+        self.body = urwid.Columns([self.game_area])
+        if len(self.panel_layout) > 0:
+            self.body.contents.append((urwid.Pile(
+                self.generate_panel_display(self.panel_layout)),
+                self.body.options()))
         self.banner = ColorText('====welcome 2 tildemush, u are jacked in====')
         self.prompt = GamePrompt()
         self.view = urwid.Frame(header=self.banner,
@@ -511,6 +515,18 @@ class GameView(GameTab):
                 ]
 
         return map_grid
+
+    def generate_panel_display(self, layout):
+        panels = {
+                "here": DashedBox(urwid.Filler(self.here_text, valign='top')),
+                "minimap": DashedBox(urwid.Filler(self.minimap_grid, valign='middle')),
+                "user": DashedBox(urwid.Filler(self.user_text, valign='top'))
+                }
+
+        panel_display = []
+        for panel in layout:
+            panel_display.append(panels.get(panel))
+        return panel_display
 
 class ExternalEditor(urwid.Terminal):
     def __init__(self, path, loop, callback):

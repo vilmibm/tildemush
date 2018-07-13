@@ -124,10 +124,10 @@ class GameMain(urwid.Frame):
         self.scope = []
         self.hotkeys = self.load_hotkeys()
 
-        self.game_tab = ui.GameView(self.game_state)
-        self.witch_tab = ui.WitchView({}, self.scope)
-        self.worldmap_tab = ui.WorldmapView()
-        self.settings_tab = ui.SettingsView()
+        self.game_tab = ui.GameView(self.game_state, self.config)
+        self.witch_tab = ui.WitchView({}, self.scope, self.config)
+        self.worldmap_tab = ui.WorldmapView(self.config)
+        self.settings_tab = ui.SettingsView(self.config)
 
         # quit placeholder
         self.quit_prompt = urwid.Edit()
