@@ -48,8 +48,8 @@ class GameWorld:
             room = GameObject.get(GameObject.shortname=='foyer')
         else:
             room = ls.room
-        self.game_world.put_into(room, player_obj)
-        LastSeen.delete().where(user_account=user)
+        cls.put_into(room, player_obj)
+        LastSeen.delete().where(LastSeen.user_account==user_account)
         affected = (o for o in room.contains if o.is_player_obj and o != player_obj)
         for o in affected:
             cls.user_hears(o, player_obj, '{} fades in.'.format(player_obj.name))
@@ -61,7 +61,7 @@ class GameWorld:
         player_obj = user_account.player_obj
         room = player_obj.contained_by
         if room is not None:
-            self.game_world.remove_from(player_obj.contained_by, player_obj)
+            cls.game_world.remove_from(player_obj.contained_by, player_obj)
             affected = (o for o in room.contains if o.is_player_obj)
             for o in affected:
                 cls.user_hears(o, player_obj, '{} fades out.'.format(player_obj.name))

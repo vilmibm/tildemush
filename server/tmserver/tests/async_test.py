@@ -128,6 +128,8 @@ async def test_announce(event_loop, mock_logger, client):
     await setup_user(client, 'vilmibm', god=True)
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     await setup_user(snoozy_client, 'snoozy')
+    msg = await client.recv()
+    assert msg.startswith('snoozy fades')
     await client.send('COMMAND announce HELLO EVERYONE')
     vil_msg = await client.recv()
     assert vil_msg == 'COMMAND OK'
@@ -202,6 +204,8 @@ async def test_whisper(event_loop, mock_logger, client):
     await setup_user(client, 'vilmibm')
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     await setup_user(snoozy_client, 'snoozy')
+    msg = await client.recv()
+    assert msg.startswith('snoozy fades')
     await client.send('COMMAND whisper snoozy hey here is a conspiracy')
     vil_msg = await client.recv()
     assert vil_msg == 'COMMAND OK'
@@ -813,6 +817,8 @@ async def test_edit(event_loop, mock_logger, client):
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     await setup_user(snoozy_client, 'snoozy')
+    msg = await client.recv()
+    assert msg.startswith('snoozy fades')
 
     # create obj for vil
     await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
@@ -981,3 +987,14 @@ async def test_transitive_command(event_loop, mock_logger, client):
     assert {msg1, msg2} == {'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'}
 
     await client.close()
+
+@pytest.mark.asyncio
+async def test_session_start(event_loop, mock_logger, client):
+    # TODO
+    await client.close()
+
+@pytest.mark.asyncio
+async def test_session_end(event_loop, mock_logger, client):
+    # TODO
+    await client.close()
+
