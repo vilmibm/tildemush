@@ -516,6 +516,10 @@ class GameWorld:
         if not match:
             raise ClientException('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
         direction, target_room_name, description = match.groups()
+        if direction == 'up':
+            direction =  'above'
+        if direction == 'down':
+            direction = 'below'
         if direction not in DIRECTIONS:
             raise ClientException('Try one of these directions: {}'.format(DIRECTIONS))
 
@@ -684,6 +688,11 @@ class GameWorld:
         # writable" mode for stuff.
 
         direction = action_args
+
+        if direction == 'up':
+            direction =  'above'
+        if direction == 'down':
+            direction = 'below'
         current_room = sender_obj.contained_by
         exits = current_room.get_data('exits', {})
         if direction not in exits:
