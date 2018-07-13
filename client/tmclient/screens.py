@@ -225,7 +225,7 @@ class GameMain(urwid.Frame):
         elif text.startswith('/'):
             text = text[1:]
         else:
-            chat_color = self.client_state.config.get('chat_color') or 'light magenta'
+            chat_color = self.config.get('chat_color', 'light magenta')
             if text:
                 text = 'say {'+chat_color+'}'+text+'{/}'
             else:
@@ -270,14 +270,16 @@ class GameMain(urwid.Frame):
 
     def update_state(self, raw_state):
         self.game_state = json.loads(raw_state)
+        self.update_scope()
+        self.game_tab.refresh(self.game_state)
+        self.witch_tab.refresh(self.game_state, self.scope)
+
+    def update_scope(self):
         self.scope.clear()
         for o in self.game_state.get("room").get("contains"):
             self.scope.append(o.get("shortname"))
         for o in self.game_state.get("inventory"):
             self.scope.append(o.get("shortname"))
-
-        self.game_tab.refresh(self.game_state)
-        self.witch_tab.refresh(self.game_state, self.scope)
 
     def load_hotkeys(self):
         defaults = {

@@ -542,7 +542,7 @@ class ExternalEditor(urwid.Terminal):
 
         elif key in urwid.vterm.KEY_TRANSLATIONS:
             key = urwid.vterm.KEY_TRANSLATIONS[key]
-        
+
         elif key in KEY_ESCAPE_MAP:
             key = KEY_ESCAPE_MAP[key]
 
