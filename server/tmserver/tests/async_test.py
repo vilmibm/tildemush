@@ -35,8 +35,11 @@ def start_server(event_loop, mock_logger):
 async def client(event_loop):
     client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     yield client
-    # TODO this is getting called after the server is closed :( if we can fix
-    # the ordering, the client.close()s can come out of the test functions
+    # TODO why is this called twice? i don't know. i wish i could figure it
+    # out. i wish someone could tell me. if it's called only once all the tests
+    # pass but there are obnoxious warnings about tasks being destroyed while
+    # in a pending state.
+    await client.close()
     await client.close()
 
 @pytest.mark.asyncio
@@ -44,28 +47,24 @@ async def test_garbage(event_loop, mock_logger, client):
     await client.send('GARBAGE')
     msg = await client.recv()
     assert msg == 'ERROR: message not understood'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_ping(event_loop, mock_logger, client):
     await client.send('PING')
     msg = await client.recv()
     assert msg == 'PONG'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_registration_success(event_loop, mock_logger, client):
     await client.send('REGISTER vilmibm:foobarbazquux')
     msg = await client.recv()
     assert msg == 'REGISTER OK'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_registration_error(event_loop, mock_logger, client):
     await client.send('REGISTER vilmibm:foo')
     msg = await client.recv()
     assert msg == 'ERROR: password too short'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_login_success(event_loop, mock_logger, client):
@@ -74,7 +73,6 @@ async def test_login_success(event_loop, mock_logger, client):
     await client.send('LOGIN vilmibm:foobarbazquux')
     msg = await client.recv()
     assert msg == 'LOGIN OK'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_login_error(event_loop, mock_logger, client):
@@ -83,7 +81,6 @@ async def test_login_error(event_loop, mock_logger, client):
     await client.send('LOGIN evilmibm:foobarbazquux')
     msg = await client.recv()
     assert msg == 'ERROR: no such user'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_game_command(event_loop, mock_logger, client):
@@ -97,7 +94,6 @@ async def test_game_command(event_loop, mock_logger, client):
     assert msg == 'COMMAND OK'
     msg = await client.recv()
     assert msg == 'vilmibm says, "hello"'
-    await client.close()
 
 async def setup_user(client, username, god=False):
     await client.send('REGISTER {}:foobarbazquux'.format(username))
@@ -121,7 +117,6 @@ async def test_announce_forbidden(event_loop, mock_logger, client):
     await client.send('COMMAND announce HELLO EVERYONE')
     msg = await client.recv()
     assert msg == 'ERROR: you are not powerful enough to do that.'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_announce(event_loop, mock_logger, client):
@@ -136,7 +131,6 @@ async def test_announce(event_loop, mock_logger, client):
     snoozy_msg = await snoozy_client.recv()
     assert snoozy_msg == "The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE"
     await snoozy_client.close()
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_witch_script(event_loop, mock_logger, client):
@@ -170,7 +164,6 @@ async def test_witch_script(event_loop, mock_logger, client):
     await client.recv()
     msg = await client.recv()
     assert msg == 'snoozy says, "neigh neigh neigh i am horse"'
-    await client.close()
 
 
 # TODO lookup if i can do a websocket client as context manager, i think i can?
@@ -181,7 +174,6 @@ async def test_whisper_no_args(event_loop, mock_logger, client):
     await client.send('COMMAND whisper')
     msg = await client.recv()
     assert msg == 'ERROR: try /whisper another_username some cool message'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_whisper_no_msg(event_loop, mock_logger, client):
@@ -189,7 +181,6 @@ async def test_whisper_no_msg(event_loop, mock_logger, client):
     await client.send('COMMAND whisper snoozy')
     msg = await client.recv()
     assert msg == 'ERROR: try /whisper another_username some cool message'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_whisper_bad_target(event_loop, mock_logger, client):
@@ -197,7 +188,6 @@ async def test_whisper_bad_target(event_loop, mock_logger, client):
     await client.send('COMMAND whisper snoozy hey what are the haps')
     msg = await client.recv()
     assert msg == 'ERROR: there is nothing named snoozy near you'
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_whisper(event_loop, mock_logger, client):
@@ -212,7 +202,6 @@ async def test_whisper(event_loop, mock_logger, client):
     snoozy_msg = await snoozy_client.recv()
     assert snoozy_msg == "vilmibm whispers so only you can hear: hey here is a conspiracy"
     await snoozy_client.close()
-    await client.close()
 
 
 @pytest.mark.asyncio
@@ -247,7 +236,6 @@ async def test_look(event_loop, mock_logger, client):
             'You see a cigar, a fancy cigar ready for lighting',
             'You see a smartphone',
             'You see snoozy, a gaseous cloud'}
-    await client.close()
     await snoozy_client.close()
 
 
@@ -399,7 +387,6 @@ async def test_client_state(event_loop, mock_logger, client):
                        'description': 'a recording of a klingon opera',
                        'contains': []}]}]}
         ]}
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_create_item(event_loop, mock_logger, client):
@@ -437,7 +424,6 @@ async def test_create_item(event_loop, mock_logger, client):
     assert 'An untouched black and mild with a wood tip' == cigar.get_data('description')
     assert 'An untouched black and mild with a wood tip' == dupe.get_data('description')
 
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_create_room(event_loop, mock_logger, client):
@@ -466,7 +452,6 @@ async def test_create_room(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg.startswith('You materialize')
 
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_create_oneway_exit(event_loop, mock_logger, client):
@@ -495,7 +480,6 @@ async def test_create_oneway_exit(event_loop, mock_logger, client):
     foyer = GameObject.get(GameObject.shortname=='foyer')
     assert vil.player_obj in foyer.contains
 
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_create_twoway_exit_between_owned_rooms(event_loop, mock_logger, client):
@@ -546,7 +530,6 @@ async def test_create_twoway_exit_between_owned_rooms(event_loop, mock_logger, c
     assert vil.player_obj not in cube.contains
     assert vil.player_obj in sanctum.contains
 
-    await client.close()
 
 # TODO the following inventory tests should really be in their own file. in general
 # this file has become a giant monster and needs serious help; either with
@@ -580,7 +563,6 @@ async def test_handle_get(event_loop, mock_logger, client):
     vil_obj = GameObject.get(GameObject.shortname=='vilmibm')
     assert 'A fresh cigar' in [o.name for o in vil_obj.contains]
 
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_handle_get_denied(event_loop, mock_logger, client):
@@ -601,7 +583,6 @@ async def test_handle_get_denied(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'ERROR: You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'
 
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_handle_drop(event_loop, mock_logger, client):
@@ -636,7 +617,6 @@ async def test_handle_drop(event_loop, mock_logger, client):
     vil_obj = GameObject.get(GameObject.shortname=='vilmibm')
     assert 'a phaser' not in [o.name for o in vil_obj.contains]
 
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_handle_put(event_loop, mock_logger, client):
@@ -667,7 +647,6 @@ async def test_handle_put(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'You put a phaser in Fancy Space Chest'
 
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_handle_remove(event_loop, mock_logger, client):
@@ -698,7 +677,6 @@ async def test_handle_remove(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == 'You remove a phaser from Fancy Space Chest and carry it with you.'
 
-    await client.close()
 
 
 @pytest.mark.asyncio
@@ -745,7 +723,6 @@ async def test_create_twoway_exit_via_world_perms(event_loop, mock_logger, clien
     assert vil.player_obj not in cube.contains
     assert vil.player_obj in foyer.contains
 
-    await client.close()
 
 
 @pytest.mark.asyncio
@@ -809,7 +786,6 @@ async def test_revision(event_loop, mock_logger, client):
     msg = await client.recv()
     assert msg == "A fresh cigar says, \"i'm cancer\""
 
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_edit(event_loop, mock_logger, client):
@@ -898,7 +874,6 @@ async def test_edit(event_loop, mock_logger, client):
     assert 1 == Editing.select().where(Editing.game_obj==stick).count()
 
     await snoozy_client.close()
-    await client.close()
 
 # TODO witch exception when saving revision
 
@@ -986,15 +961,14 @@ async def test_transitive_command(event_loop, mock_logger, client):
     msg2 = await client.recv()
     assert {msg1, msg2} == {'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'}
 
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_session_start(event_loop, mock_logger, client):
     # TODO
-    await client.close()
+    pass
 
 @pytest.mark.asyncio
 async def test_session_end(event_loop, mock_logger, client):
     # TODO
-    await client.close()
+    pass
 
