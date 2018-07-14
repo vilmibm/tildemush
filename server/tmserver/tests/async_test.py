@@ -11,21 +11,14 @@ from ..migrations import reset_db
 from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing
 from ..world import GameWorld
 
+
 @pytest.fixture(autouse=True)
-def state():
+def state(event_loop):
     if os.environ.get('TILDEMUSH_ENV') != 'test':
         pytest.exit('Run tildemush tests with TILDEMUSH_ENV=test')
-
     reset_db()
     GameWorld.reset()
-
-@pytest.fixture
-def mock_logger():
-    yield mock.Mock()
-
-@pytest.fixture(autouse=True)
-def start_server(event_loop, mock_logger):
-    gs = GameServer(GameWorld, loop=event_loop, logger=mock_logger, port=5555)
+    gs = GameServer(GameWorld, loop=event_loop, logger=mock.Mock(), port=5555)
     server_future = gs._get_ws_server()
     asyncio.ensure_future(server_future, loop=event_loop)
     yield
@@ -43,31 +36,31 @@ async def client(event_loop):
     await client.close()
 
 @pytest.mark.asyncio
-async def test_garbage(event_loop, mock_logger, client):
+async def test_garbage(event_loop, client):
     await client.send('GARBAGE')
     msg = await client.recv()
     assert msg == 'ERROR: message not understood'
 
 @pytest.mark.asyncio
-async def test_ping(event_loop, mock_logger, client):
+async def test_ping(event_loop, client):
     await client.send('PING')
     msg = await client.recv()
     assert msg == 'PONG'
 
 @pytest.mark.asyncio
-async def test_registration_success(event_loop, mock_logger, client):
+async def test_registration_success(event_loop, client):
     await client.send('REGISTER vilmibm:foobarbazquux')
     msg = await client.recv()
     assert msg == 'REGISTER OK'
 
 @pytest.mark.asyncio
-async def test_registration_error(event_loop, mock_logger, client):
+async def test_registration_error(event_loop, client):
     await client.send('REGISTER vilmibm:foo')
     msg = await client.recv()
     assert msg == 'ERROR: password too short'
 
 @pytest.mark.asyncio
-async def test_login_success(event_loop, mock_logger, client):
+async def test_login_success(event_loop, client):
     await client.send('REGISTER vilmibm:foobarbazquux')
     await client.recv()
     await client.send('LOGIN vilmibm:foobarbazquux')
@@ -75,7 +68,7 @@ async def test_login_success(event_loop, mock_logger, client):
     assert msg == 'LOGIN OK'
 
 @pytest.mark.asyncio
-async def test_login_error(event_loop, mock_logger, client):
+async def test_login_error(event_loop, client):
     await client.send('REGISTER vilmibm:foobarbazquux')
     await client.recv()
     await client.send('LOGIN evilmibm:foobarbazquux')
@@ -83,7 +76,7 @@ async def test_login_error(event_loop, mock_logger, client):
     assert msg == 'ERROR: no such user'
 
 @pytest.mark.asyncio
-async def test_game_command(event_loop, mock_logger, client):
+async def test_game_command(event_loop, client):
     await client.send('REGISTER vilmibm:foobarbazquux')
     await client.recv()
     await client.send('LOGIN vilmibm:foobarbazquux')
@@ -112,14 +105,14 @@ async def setup_user(client, username, god=False):
 
 
 @pytest.mark.asyncio
-async def test_announce_forbidden(event_loop, mock_logger, client):
+async def test_announce_forbidden(event_loop, client):
     await setup_user(client, 'vilmibm')
     await client.send('COMMAND announce HELLO EVERYONE')
     msg = await client.recv()
     assert msg == 'ERROR: you are not powerful enough to do that.'
 
 @pytest.mark.asyncio
-async def test_announce(event_loop, mock_logger, client):
+async def test_announce(event_loop, client):
     await setup_user(client, 'vilmibm', god=True)
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     await setup_user(snoozy_client, 'snoozy')
@@ -133,7 +126,7 @@ async def test_announce(event_loop, mock_logger, client):
     await snoozy_client.close()
 
 @pytest.mark.asyncio
-async def test_witch_script(event_loop, mock_logger, client):
+async def test_witch_script(event_loop, client):
     await setup_user(client, 'vilmibm', god=True)
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     horse_script = Script.create(
@@ -169,28 +162,28 @@ async def test_witch_script(event_loop, mock_logger, client):
 # TODO lookup if i can do a websocket client as context manager, i think i can?
 
 @pytest.mark.asyncio
-async def test_whisper_no_args(event_loop, mock_logger, client):
+async def test_whisper_no_args(event_loop, client):
     await setup_user(client, 'vilmibm')
     await client.send('COMMAND whisper')
     msg = await client.recv()
     assert msg == 'ERROR: try /whisper another_username some cool message'
 
 @pytest.mark.asyncio
-async def test_whisper_no_msg(event_loop, mock_logger, client):
+async def test_whisper_no_msg(event_loop, client):
     await setup_user(client, 'vilmibm')
     await client.send('COMMAND whisper snoozy')
     msg = await client.recv()
     assert msg == 'ERROR: try /whisper another_username some cool message'
 
 @pytest.mark.asyncio
-async def test_whisper_bad_target(event_loop, mock_logger, client):
+async def test_whisper_bad_target(event_loop, client):
     await setup_user(client, 'vilmibm')
     await client.send('COMMAND whisper snoozy hey what are the haps')
     msg = await client.recv()
     assert msg == 'ERROR: there is nothing named snoozy near you'
 
 @pytest.mark.asyncio
-async def test_whisper(event_loop, mock_logger, client):
+async def test_whisper(event_loop, client):
     await setup_user(client, 'vilmibm')
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
     await setup_user(snoozy_client, 'snoozy')
@@ -205,7 +198,7 @@ async def test_whisper(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_look(event_loop, mock_logger, client):
+async def test_look(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
@@ -240,7 +233,7 @@ async def test_look(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_client_state(event_loop, mock_logger, client):
+async def test_client_state(event_loop, client):
     await client.send('REGISTER vilmibm:foobarbazquux')
     await client.recv()
 
@@ -389,7 +382,7 @@ async def test_client_state(event_loop, mock_logger, client):
         ]}
 
 @pytest.mark.asyncio
-async def test_create_item(event_loop, mock_logger, client):
+async def test_create_item(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
@@ -426,7 +419,7 @@ async def test_create_item(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_create_room(event_loop, mock_logger, client):
+async def test_create_room(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.')
@@ -454,7 +447,7 @@ async def test_create_room(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_create_oneway_exit(event_loop, mock_logger, client):
+async def test_create_oneway_exit(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     sanctum = GameObject.get(
@@ -482,7 +475,7 @@ async def test_create_oneway_exit(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_create_twoway_exit_between_owned_rooms(event_loop, mock_logger, client):
+async def test_create_twoway_exit_between_owned_rooms(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     sanctum = GameObject.get(
@@ -537,7 +530,7 @@ async def test_create_twoway_exit_between_owned_rooms(event_loop, mock_logger, c
 # redundancy
 
 @pytest.mark.asyncio
-async def test_handle_get(event_loop, mock_logger, client):
+async def test_handle_get(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     foyer = GameObject.get(GameObject.shortname == 'foyer')
@@ -565,7 +558,7 @@ async def test_handle_get(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_handle_get_denied(event_loop, mock_logger, client):
+async def test_handle_get_denied(event_loop, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
@@ -585,7 +578,7 @@ async def test_handle_get_denied(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_handle_drop(event_loop, mock_logger, client):
+async def test_handle_drop(event_loop, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
@@ -619,7 +612,7 @@ async def test_handle_drop(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_handle_put(event_loop, mock_logger, client):
+async def test_handle_put(event_loop, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
@@ -649,7 +642,7 @@ async def test_handle_put(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_handle_remove(event_loop, mock_logger, client):
+async def test_handle_remove(event_loop, client):
     god = UserAccount.get(UserAccount.username=='god')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     phaser = GameObject.create_scripted_object(
@@ -680,7 +673,7 @@ async def test_handle_remove(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_create_twoway_exit_via_world_perms(event_loop, mock_logger, client):
+async def test_create_twoway_exit_via_world_perms(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     foyer = GameObject.get(GameObject.shortname=='foyer')
@@ -726,7 +719,7 @@ async def test_create_twoway_exit_via_world_perms(event_loop, mock_logger, clien
 
 
 @pytest.mark.asyncio
-async def test_revision(event_loop, mock_logger, client):
+async def test_revision(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
 
@@ -788,7 +781,7 @@ async def test_revision(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_edit(event_loop, mock_logger, client):
+async def test_edit(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
@@ -878,7 +871,7 @@ async def test_edit(event_loop, mock_logger, client):
 # TODO witch exception when saving revision
 
 @pytest.mark.asyncio
-async def test_transitive_command(event_loop, mock_logger, client):
+async def test_transitive_command(event_loop, client):
     await setup_user(client, 'vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
 
@@ -963,12 +956,11 @@ async def test_transitive_command(event_loop, mock_logger, client):
 
 
 @pytest.mark.asyncio
-async def test_session_start(event_loop, mock_logger, client):
+async def test_session_start(event_loop, client):
     # TODO
     pass
 
 @pytest.mark.asyncio
-async def test_session_end(event_loop, mock_logger, client):
+async def test_session_end(event_loop, client):
     # TODO
     pass
-
