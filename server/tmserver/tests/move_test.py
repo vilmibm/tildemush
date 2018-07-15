@@ -4,6 +4,7 @@ from ..models import UserAccount, GameObject, Contains
 from ..world import GameWorld
 
 from .tm_test_case import TildemushTestCase
+
 class MoveTest(TildemushTestCase):
     def setUp(self):
         super().setUp()
