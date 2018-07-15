@@ -32,7 +32,7 @@ class MoveTest(TildemushTestCase):
         GameWorld.put_into(self.pond, self.frog)
 
         # can't go to non existing exit
-        GameWorld.handle_move(player_obj, 'north')
+        GameWorld.handle_go(player_obj, 'north')
         assert self.pond == player_obj.contained_by
 
         # can move to object
