@@ -516,6 +516,7 @@ class GameWorld:
         if not match:
             raise ClientException('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
         direction, target_room_name, description = match.groups()
+        direction = cls.process_direction(direction)
         if direction not in DIRECTIONS:
             raise ClientException('Try one of these directions: {}'.format(DIRECTIONS))
 
@@ -683,7 +684,7 @@ class GameWorld:
         # this is either redundant or additive if we also implement a "world
         # writable" mode for stuff.
 
-        direction = action_args
+        direction = cls.process_direction(action_args)
         current_room = sender_obj.contained_by
         exits = current_room.get_data('exits', {})
         if direction not in exits:
@@ -702,6 +703,28 @@ class GameWorld:
             return
 
         exit_obj.handle_action(cls, sender_obj, 'touch', '')
+
+    @classmethod
+    def process_direction(cls, input_direction):
+        """
+        Given a direction, checks through a list of aliases and returns the true
+        direction.
+        """
+
+        dir_map = {
+                'north': ['north', 'n'],
+                'south': ['south', 's'],
+                'east': ['east', 'e'],
+                'west': ['west', 'w'],
+                'above': ['above', 'a', 'up', 'u'],
+                'below': ['below', 'b', 'down', 'd']
+                }
+
+        for direction in dir_map:
+            if input_direction in dir_map.get(direction):
+                return direction
+
+        return input_direction
 
     @classmethod
     def area_of_effect(cls, sender_obj):
