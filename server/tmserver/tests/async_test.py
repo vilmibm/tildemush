@@ -773,16 +773,13 @@ async def test_create_twoway_exit_via_world_perms(client):
 
 @pytest.mark.asyncio
 async def test_revision(client):
-    await setup_user(client, 'vilmibm')
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    vil = await client.setup_user('vilmibm')
 
-    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
+    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
+        'COMMAND OK',
+        'STATE',
+        'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
+    ])
 
     cigar = GameObject.get(GameObject.shortname=='vilmibm/a-fresh-cigar')
 
@@ -804,8 +801,7 @@ async def test_revision(client):
 
     await client.send('REVISION {}'.format(json.dumps(revision_payload)))
 
-    msg = await client.recv()
-    assert msg.startswith('OBJECT')
+    msg = await client.assert_recv('OBJECT')
     payload = json.loads(msg.split(' ', maxsplit=1)[1])
 
     latest_rev = cigar.latest_script_rev
@@ -825,12 +821,7 @@ async def test_revision(client):
         code=new_code,
         current_rev=latest_rev.id)
 
-    await client.send('COMMAND smoke')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-
-    msg = await client.recv()
-    assert msg == "A fresh cigar says, \"i'm cancer\""
+    await client.send('COMMAND smoke', ['COMMAND OK',  "A fresh cigar says, \"i'm cancer\""])
 
 
 @pytest.mark.asyncio
