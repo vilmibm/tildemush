@@ -11,6 +11,65 @@ from ..migrations import reset_db
 from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing
 from ..world import GameWorld
 
+class TestClient:
+    def __init__(self, event_loop):
+        self.loop = event_loop
+
+    async def __aenter__(self):
+        self.c = await websockets.connect('ws://localhost:5555', loop=self.loop)
+        return self
+
+    async def __aexit__(self, et, e, tb):
+        await self.c.close()
+        await self.c.close()
+
+    async def send(self, string, expected_msgs=[]):
+        await self.c.send(string)
+        if len(expected_msgs) > 0:
+            await self.assert_next(*expected_msgs)
+
+    async def recv(self):
+        return await self.c.recv()
+
+    async def assert_next(self, *expected_msgs):
+        for expected_msg in expected_msgs:
+            msg = await self.recv()
+            assert msg.startswith(expected_msg)
+
+    async def assert_set(self, expected_set):
+        recvd = set()
+        for _ in expected_set:
+            recvd.add(await self.recv())
+        assert recvd == expected_set
+
+    async def setup_user(self, username, god=False):
+        await self.send('REGISTER {}:foobarbazquux'.format(username))
+        await self.recv()
+
+        ua = UserAccount.get(UserAccount.username==username)
+        if god:
+            ua.is_god = True
+            ua.save()
+
+        await self.send('LOGIN {}:foobarbazquux'.format(username))
+        # once for LOGIN OK
+        await self.recv()
+        # once for the client state update
+        await self.recv()
+
+        return ua
+
+# TODO the tests are kind of a mess, i'm changing as i'm designing. going to
+# step back and do TestClient up front and then see if i run into issues. I
+# think I have enough PoC down.
+
+
+
+@pytest.fixture
+async def client(event_loop):
+    async with TestClient(event_loop) as c:
+        yield c
+
 
 @pytest.fixture(autouse=True)
 def state(event_loop):
@@ -23,17 +82,6 @@ def state(event_loop):
     asyncio.ensure_future(server_future, loop=event_loop)
     yield
     server_future.ws_server.server.close()
-
-@pytest.fixture
-async def client(event_loop):
-    client = await websockets.connect('ws://localhost:5555', loop=event_loop)
-    yield client
-    # TODO why is this called twice? i don't know. i wish i could figure it
-    # out. i wish someone could tell me. if it's called only once all the tests
-    # pass but there are obnoxious warnings about tasks being destroyed while
-    # in a pending state.
-    await client.close()
-    await client.close()
 
 @pytest.mark.asyncio
 async def test_garbage(client):
@@ -872,17 +920,14 @@ async def test_edit(client):
 
 @pytest.mark.asyncio
 async def test_transitive_command(client):
-    await setup_user(client, 'vilmibm')
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    vil = await client.setup_user('vilmibm')
 
     ### create an object to send transitive commands to
-    await client.send('COMMAND create item "lemongrab" a high strung lemon man')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/lemongrab'
+    await client.send('COMMAND create item "lemongrab" a high strung lemon man', [
+        'COMMAND OK',
+        'STATE',
+        'You breathed light into a whole new item. Its true name is vilmibm/lemongrab'])
+
 
     lemongrab = GameObject.get(GameObject.shortname=='vilmibm/lemongrab')
 
@@ -898,18 +943,13 @@ async def test_transitive_command(client):
         code=new_code,
         current_rev=lemongrab.script_revision.id)
 
-    await client.send('REVISION {}'.format(json.dumps(revision_payload)))
-    msg = await client.recv()
-    assert msg.startswith('OBJECT')
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
 
     ### create an object for accepting whatever commands
-    await client.send('COMMAND create item "cat" it is a cat')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/cat'
+    await client.send('COMMAND create item "cat" it is a cat', [
+        'COMMAND OK',
+        'STATE',
+        'You breathed light into a whole new item. Its true name is vilmibm/cat'])
 
     cat = GameObject.get(GameObject.shortname=='vilmibm/cat')
 
