@@ -36,6 +36,11 @@ class TestClient:
             msg = await self.recv()
             assert msg.startswith(expected_msg)
 
+    async def assert_recv(self, expected_msg):
+        msg = await self.recv()
+        assert msg.startswith(expected_msg)
+        return msg
+
     async def assert_set(self, expected_set):
         recvd = set()
         for _ in expected_set:
@@ -829,92 +834,75 @@ async def test_revision(client):
 
 
 @pytest.mark.asyncio
-async def test_edit(client):
-    await setup_user(client, 'vilmibm')
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
-    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
-    await setup_user(snoozy_client, 'snoozy')
-    msg = await client.recv()
-    assert msg.startswith('snoozy fades')
+async def test_edit(event_loop):
+    async with TestClient(event_loop) as vclient, TestClient(event_loop) as sclient:
+        vil = await vclient.setup_user('vilmibm')
+        snoozy = await sclient.setup_user('snoozy')
 
-    # create obj for vil
-    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
+        await vclient.assert_next('snoozy fades')
 
-    # create obj for snoozy
-    await snoozy_client.send('COMMAND create item "A stick" Seems to be maple.')
-    msg = await snoozy_client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await snoozy_client.recv()
-    assert msg.startswith('STATE')
-    msg = await snoozy_client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is snoozy/a-stick'
-    await snoozy_client.send('COMMAND drop stick')
-    msg = await snoozy_client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await snoozy_client.recv()
-    assert msg == 'You drop A stick.'
+        # create obj for vil
+        await vclient.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
+            'COMMAND OK',
+            'STATE',
+            'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
+        ])
 
-    # obj not found
-    await client.send('COMMAND edit fart')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg =='{red}You do not see an object called fart{/}'
+        # create obj for snoozy
+        await sclient.send('COMMAND create item "A stick" Seems to be maple.', [
+            'COMMAND OK',
+            'STATE',
+            'You breathed light into a whole new item. Its true name is snoozy/a-stick'
+        ])
+        await sclient.send('COMMAND drop stick', [
+            'COMMAND OK',
+            'You drop A stick.'
+        ])
 
-    # perm denied
-    await client.send('COMMAND edit stick')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg =='{red}You lack the authority to edit A stick{/}'
+        # obj not found
+        await vclient.send('COMMAND edit fart', [
+            'COMMAND OK',
+            '{red}You do not see an object called fart{/}'
+        ])
 
-    # success
-    await client.send('COMMAND edit cigar')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('OBJECT')
-    cigar = GameObject.get(GameObject.shortname=='vilmibm/a-fresh-cigar')
-    payload = json.loads(msg.split(' ', maxsplit=1)[1])
-    assert payload == dict(
-        edit=True,
-        shortname=cigar.shortname,
-        data=cigar.data,
-        permissions=cigar.perms.as_dict(),
-        code=cigar.script_revision.code,
-        current_rev=cigar.script_revision.id)
+        # perm denied
+        await vclient.send('COMMAND edit stick', [
+            'COMMAND OK',
+            '{red}You lack the authority to edit A stick{/}'
+        ])
 
-    # already being edited
-    await client.send('COMMAND edit cigar')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg == '{red}That object is already being edited{/}'
+        # success
+        await vclient.send('COMMAND edit cigar', ['COMMAND OK'])
+        msg = await vclient.assert_recv('OBJECT')
+        cigar = GameObject.get(GameObject.shortname=='vilmibm/a-fresh-cigar')
+        payload = json.loads(msg.split(' ', maxsplit=1)[1])
+        assert payload == dict(
+            edit=True,
+            shortname=cigar.shortname,
+            data=cigar.data,
+            permissions=cigar.perms.as_dict(),
+            code=cigar.script_revision.code,
+            current_rev=cigar.script_revision.id)
 
-    assert 1 == Editing.select().where(Editing.user_account==vil).count()
-    assert 1 == Editing.select().where(Editing.game_obj==cigar).count()
+        # already being edited
+        await vclient.send('COMMAND edit cigar', [
+            'COMMAND OK',
+            '{red}That object is already being edited{/}'
+        ])
 
-    # success on snoozy's obj, ensuring we clear out first lock
-    stick = GameObject.get(GameObject.shortname=='snoozy/a-stick')
-    stick.set_perm('write', 'world')
-    await client.send('COMMAND edit snoozy/a-stick')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('OBJECT')
-    assert 'a-stick' in msg
+        assert 1 == Editing.select().where(Editing.user_account==vil).count()
+        assert 1 == Editing.select().where(Editing.game_obj==cigar).count()
 
-    assert 1 == Editing.select().where(Editing.user_account==vil).count()
-    assert 0 == Editing.select().where(Editing.game_obj==cigar).count()
-    assert 1 == Editing.select().where(Editing.game_obj==stick).count()
+        # success on snoozy's obj, ensuring we clear out first lock
+        stick = GameObject.get(GameObject.shortname=='snoozy/a-stick')
+        stick.set_perm('write', 'world')
+        await vclient.send('COMMAND edit snoozy/a-stick', ['COMMAND OK'])
+        msg = await vclient.assert_recv('OBJECT')
+        assert 'a-stick' in msg
 
-    await snoozy_client.close()
+        assert 1 == Editing.select().where(Editing.user_account==vil).count()
+        assert 0 == Editing.select().where(Editing.game_obj==cigar).count()
+        assert 1 == Editing.select().where(Editing.game_obj==stick).count()
 
 # TODO witch exception when saving revision
 
@@ -965,42 +953,28 @@ async def test_transitive_command(client):
         code=new_code,
         current_rev=cat.script_revision.id)
 
-    await client.send('REVISION {}'.format(json.dumps(revision_payload)))
-    msg = await client.recv()
-    assert msg.startswith('OBJECT')
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
 
     # ensure non-transitive works
-    await client.send('COMMAND touch')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg1 = await client.recv()
-    msg2 = await client.recv()
-    assert {msg1, msg2} == {'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'}
+    await client.send('COMMAND touch', ['COMMAND OK'])
+    await client.assert_set({'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'})
 
     # target found
-    await client.send('COMMAND touch lemongrab')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg == 'lemongrab says, "UNACCEPTABLE"'
+    await client.send('COMMAND touch lemongrab', ['COMMAND OK', 'lemongrab says, "UNACCEPTABLE"'])
 
     # TODO support for transitive-only commands
 
     # target not found
-    await client.send('COMMAND touch contrivance')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg1 = await client.recv()
-    msg2 = await client.recv()
-    assert {msg1, msg2} == {'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'}
+    await client.send('COMMAND touch contrivance', ['COMMAND OK'])
+    await client.assert_set({'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'})
 
 
 @pytest.mark.asyncio
-async def test_session_start(client):
+async def test_session_start(event_loop):
     # TODO
     pass
 
 @pytest.mark.asyncio
-async def test_session_end(client):
+async def test_session_end(event_loop):
     # TODO
     pass
