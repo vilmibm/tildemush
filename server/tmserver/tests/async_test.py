@@ -64,11 +64,6 @@ class TestClient:
 
         return ua
 
-# TODO the tests are kind of a mess, i'm changing as i'm designing. going to
-# step back and do TestClient up front and then see if i run into issues. I
-# think I have enough PoC down.
-
-
 
 @pytest.fixture
 async def client(event_loop):
@@ -88,114 +83,80 @@ def state(event_loop):
     yield
     server_future.ws_server.server.close()
 
+
 @pytest.mark.asyncio
 async def test_garbage(client):
-    await client.send('GARBAGE')
-    msg = await client.recv()
-    assert msg == 'ERROR: message not understood'
+    await client.send('GARBAGE', ['ERROR: message not understood'])
 
 @pytest.mark.asyncio
 async def test_ping(client):
-    await client.send('PING')
-    msg = await client.recv()
-    assert msg == 'PONG'
+    await client.send('PING', ['PONG'])
 
 @pytest.mark.asyncio
 async def test_registration_success(client):
-    await client.send('REGISTER vilmibm:foobarbazquux')
-    msg = await client.recv()
-    assert msg == 'REGISTER OK'
+    await client.send('REGISTER vilmibm:foobarbazquux', ['REGISTER OK'])
 
 @pytest.mark.asyncio
 async def test_registration_error(client):
-    await client.send('REGISTER vilmibm:foo')
-    msg = await client.recv()
-    assert msg == 'ERROR: password too short'
+    await client.send('REGISTER vilmibm:foo', ['ERROR: password too short'])
 
 @pytest.mark.asyncio
 async def test_login_success(client):
     await client.send('REGISTER vilmibm:foobarbazquux')
     await client.recv()
-    await client.send('LOGIN vilmibm:foobarbazquux')
-    msg = await client.recv()
-    assert msg == 'LOGIN OK'
+    await client.send('LOGIN vilmibm:foobarbazquux', ['LOGIN OK'])
+
 
 @pytest.mark.asyncio
 async def test_login_error(client):
     await client.send('REGISTER vilmibm:foobarbazquux')
     await client.recv()
-    await client.send('LOGIN evilmibm:foobarbazquux')
-    msg = await client.recv()
-    assert msg == 'ERROR: no such user'
+    await client.send('LOGIN evilmibm:foobarbazquux', [
+        'ERROR: no such user'])
+
 
 @pytest.mark.asyncio
 async def test_game_command(client):
-    await client.send('REGISTER vilmibm:foobarbazquux')
-    await client.recv()
-    await client.send('LOGIN vilmibm:foobarbazquux')
-    await client.recv()
-    await client.recv()
-    await client.send('COMMAND say hello')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg == 'vilmibm says, "hello"'
-
-async def setup_user(client, username, god=False):
-    await client.send('REGISTER {}:foobarbazquux'.format(username))
-    await client.recv()
-
-    if god:
-        ua = UserAccount.get(UserAccount.username==username)
-        ua.is_god = True
-        ua.save()
-
-    await client.send('LOGIN {}:foobarbazquux'.format(username))
-    # once for LOGIN OK
-    await client.recv()
-    # once for the client state update
-    await client.recv()
+    client.setup_user('vilmibm')
+    await client.send('COMMAND say hello', [
+        'COMMAND OK',
+        'vilmibm says, "hello"'])
 
 
 @pytest.mark.asyncio
 async def test_announce_forbidden(client):
-    await setup_user(client, 'vilmibm')
-    await client.send('COMMAND announce HELLO EVERYONE')
-    msg = await client.recv()
-    assert msg == 'ERROR: you are not powerful enough to do that.'
+    await client.setup_user('vilmibm')
+    await client.send('COMMAND announce HELLO EVERYONE', [
+         'ERROR: you are not powerful enough to do that.'])
 
 @pytest.mark.asyncio
-async def test_announce(client):
-    await setup_user(client, 'vilmibm', god=True)
-    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
-    await setup_user(snoozy_client, 'snoozy')
-    msg = await client.recv()
-    assert msg.startswith('snoozy fades')
-    await client.send('COMMAND announce HELLO EVERYONE')
-    vil_msg = await client.recv()
-    assert vil_msg == 'COMMAND OK'
-    snoozy_msg = await snoozy_client.recv()
-    assert snoozy_msg == "The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE"
-    await snoozy_client.close()
+async def test_announce(event_loop):
+    async with TestClient(event_loop) as vclient, TestClient(event_loop) as sclient:
+        await vclient.setup_user('vilmibm', god=True)
+        await sclient.setup_user('snoozy')
+        assert vclient.assert_next('snoozy fades')
+        await client.send('COMMAND announce HELLO EVERYONE', [
+            'COMMAND OK',
+            "The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE"])
+
 
 @pytest.mark.asyncio
 async def test_witch_script(client):
-    await setup_user(client, 'vilmibm', god=True)
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    vil = await client.setup_user('vilmibm', god=True)
     horse_script = Script.create(
         name='horse',
         author=vil)
     script_rev = ScriptRevision.create(
-        script=horse_script,
-        code='''
-            (witch "horse"
-              (has {"num-pets" 0
-                    "name" "snoozy"
-                    "description" "a horse"})
-              (hears "pet"
-                (set-data "num-pets" (+ 1 (get-data "num-pets")))
-                  (if (= 0 (% (get-data "num-pets") 5))
-                    (says "neigh neigh neigh i am horse"))))''')
+    script=horse_script,
+    code='''
+        (witch "horse"
+          (has {"num-pets" 0
+                "name" "snoozy"
+                "description" "a horse"})
+          (hears "pet"
+            (set-data "num-pets" (+ 1 (get-data "num-pets")))
+              (if (= 0 (% (get-data "num-pets") 5))
+                (says "neigh neigh neigh i am horse"))))''')
     snoozy = GameObject.create(
         author=vil,
         shortname='snoozy',
@@ -203,86 +164,71 @@ async def test_witch_script(client):
     foyer = GameObject.get(GameObject.shortname=='foyer')
     GameWorld.put_into(foyer, snoozy)
     for _ in range(0, 4):
-        await client.send('COMMAND pet')
-        msg = await client.recv()
-        assert msg == 'COMMAND OK'
-    await client.send('COMMAND pet')
-    await client.recv()
-    msg = await client.recv()
-    assert msg == 'snoozy says, "neigh neigh neigh i am horse"'
+        await client.send('COMMAND pet', ['COMMAND OK'])
+    await client.send('COMMAND pet', [
+        'COMMAND OK',  'snoozy says, "neigh neigh neigh i am horse"'])
 
-
-# TODO lookup if i can do a websocket client as context manager, i think i can?
 
 @pytest.mark.asyncio
 async def test_whisper_no_args(client):
-    await setup_user(client, 'vilmibm')
-    await client.send('COMMAND whisper')
-    msg = await client.recv()
-    assert msg == 'ERROR: try /whisper another_username some cool message'
+    await client.setup_user('vilmibm')
+    await client.send('COMMAND whisper', [
+         'ERROR: try /whisper another_username some cool message'])
+
 
 @pytest.mark.asyncio
 async def test_whisper_no_msg(client):
-    await setup_user(client, 'vilmibm')
-    await client.send('COMMAND whisper snoozy')
-    msg = await client.recv()
-    assert msg == 'ERROR: try /whisper another_username some cool message'
+    await client.setup_user('vilmibm')
+    await client.send('COMMAND whisper snoozy', [
+         'ERROR: try /whisper another_username some cool message'])
+
 
 @pytest.mark.asyncio
 async def test_whisper_bad_target(client):
-    await setup_user(client, 'vilmibm')
-    await client.send('COMMAND whisper snoozy hey what are the haps')
-    msg = await client.recv()
-    assert msg == 'ERROR: there is nothing named snoozy near you'
-
-@pytest.mark.asyncio
-async def test_whisper(client):
-    await setup_user(client, 'vilmibm')
-    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
-    await setup_user(snoozy_client, 'snoozy')
-    msg = await client.recv()
-    assert msg.startswith('snoozy fades')
-    await client.send('COMMAND whisper snoozy hey here is a conspiracy')
-    vil_msg = await client.recv()
-    assert vil_msg == 'COMMAND OK'
-    snoozy_msg = await snoozy_client.recv()
-    assert snoozy_msg == "vilmibm whispers so only you can hear: hey here is a conspiracy"
-    await snoozy_client.close()
+    await client.setup_user('vilmibm')
+    await client.send('COMMAND whisper snoozy hey what are the haps', [
+         'ERROR: there is nothing named snoozy near you'])
 
 
 @pytest.mark.asyncio
-async def test_look(client):
-    await setup_user(client, 'vilmibm')
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
-    snoozy_client = await websockets.connect('ws://localhost:5555', loop=event_loop)
-    await setup_user(snoozy_client, 'snoozy')
-    cigar = GameObject.create_scripted_object(
-        vil, 'cigar', 'item', {
-            'name': 'cigar',
-            'description': 'a fancy cigar ready for lighting'})
-    phone = GameObject.create_scripted_object(
-        vil, 'smartphone', 'item', dict(
-            name='smartphone',
-            description='the devil'))
-    app = GameObject.create_scripted_object(
-        vil, 'kwam', 'item', {
-            'name': 'Kwam',
-            'description': 'A smartphone application for KWAM'})
-    foyer = GameObject.get(GameObject.shortname=='foyer')
-    GameWorld.put_into(foyer, phone)
-    GameWorld.put_into(foyer, cigar)
-    GameWorld.put_into(phone, app)
+async def test_whisper(event_loop):
+    async with TestClient(event_loop) as vclient, TestClient(event_loop) as sclient:
+        await vclient.setup_user('vilmibm')
+        await sclient.setup_user('snoozy')
+        await vclient.assert_next('snoozy fades')
+        await vclient.send('COMMAND whisper snoozy hey here is a conspiracy', ['COMMAND OK',])
+        await sclient.assert_next("vilmibm whispers so only you can hear: hey here is a conspiracy")
 
-    await client.send('COMMAND look')
-    # we expect 4 messages: snoozy, room, phone, cigar. we *shouldn't* see app.
-    msgs = set()
-    for _ in range(0, 4):
-        msgs.add(await client.recv())
-    assert {'You are in the Foyer, {}'.format(foyer.description),
-            'You see a cigar, a fancy cigar ready for lighting',
-            'You see a smartphone',
-            'You see snoozy, a gaseous cloud'}
-    await snoozy_client.close()
+
+@pytest.mark.asyncio
+async def test_look(event_loop):
+    async with TestClient(event_loop) as vclient, TestClient(event_loop) as sclient:
+        vil = await vclient.setup_user('vilmibm')
+        await sclient.setup_user('snoozy')
+        await vclient.assert_next('snoozy fades in')
+        cigar = GameObject.create_scripted_object(
+            vil, 'cigar', 'item', {
+                'name': 'cigar',
+                'description': 'a fancy cigar ready for lighting'})
+        phone = GameObject.create_scripted_object(
+            vil, 'smartphone', 'item', dict(
+                name='smartphone',
+                description='the devil'))
+        app = GameObject.create_scripted_object(
+            vil, 'kwam', 'item', {
+                'name': 'Kwam',
+                'description': 'A smartphone application for KWAM'})
+        foyer = GameObject.get(GameObject.shortname=='foyer')
+        GameWorld.put_into(foyer, phone)
+        GameWorld.put_into(foyer, cigar)
+        GameWorld.put_into(phone, app)
+
+        await vclient.send('COMMAND look', ['COMMAND OK'])
+        await vclient.assert_set({'You see vilmibm, a gaseous cloud',
+                                  'You are in the Foyer, {}'.format(foyer.description),
+                                  'You see a cigar, a fancy cigar ready for lighting',
+                                  'You see a smartphone, the devil',
+                                  'You see snoozy, a gaseous cloud'})
 
 
 @pytest.mark.asyncio
@@ -369,8 +315,7 @@ async def test_client_state(client):
 
     GameWorld.put_into(room, vilmibm.player_obj)
 
-    data_msg = await client.recv()
-    assert data_msg.startswith('STATE ')
+    data_msg = await client.assert_recv('STATE')
     payload = json.loads(data_msg[len('STATE '):])
     assert payload == {
         'motd': 'welcome to tildemush',
