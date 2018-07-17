@@ -11,7 +11,7 @@ from ..migrations import reset_db
 from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing
 from ..world import GameWorld
 
-class TestClient:
+class Client:
     def __init__(self, event_loop):
         self.loop = event_loop
 
@@ -67,7 +67,7 @@ class TestClient:
 
 @pytest.fixture
 async def client(event_loop):
-    async with TestClient(event_loop) as c:
+    async with Client(event_loop) as c:
         yield c
 
 
@@ -117,7 +117,7 @@ async def test_login_error(client):
 
 @pytest.mark.asyncio
 async def test_game_command(client):
-    client.setup_user('vilmibm')
+    await client.setup_user('vilmibm')
     await client.send('COMMAND say hello', [
         'COMMAND OK',
         'vilmibm says, "hello"'])
@@ -131,13 +131,16 @@ async def test_announce_forbidden(client):
 
 @pytest.mark.asyncio
 async def test_announce(event_loop):
-    async with TestClient(event_loop) as vclient, TestClient(event_loop) as sclient:
+    async with Client(event_loop) as vclient, Client(event_loop) as sclient:
         await vclient.setup_user('vilmibm', god=True)
         await sclient.setup_user('snoozy')
-        assert vclient.assert_next('snoozy fades')
-        await client.send('COMMAND announce HELLO EVERYONE', [
+        await vclient.assert_next('snoozy fades')
+        await vclient.send('COMMAND announce HELLO EVERYONE', [
             'COMMAND OK',
             "The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE"])
+        await sclient.assert_next("The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE")
+
+        # TODO test in between rooms
 
 
 @pytest.mark.asyncio
@@ -192,7 +195,7 @@ async def test_whisper_bad_target(client):
 
 @pytest.mark.asyncio
 async def test_whisper(event_loop):
-    async with TestClient(event_loop) as vclient, TestClient(event_loop) as sclient:
+    async with Client(event_loop) as vclient, Client(event_loop) as sclient:
         await vclient.setup_user('vilmibm')
         await sclient.setup_user('snoozy')
         await vclient.assert_next('snoozy fades')
@@ -202,7 +205,7 @@ async def test_whisper(event_loop):
 
 @pytest.mark.asyncio
 async def test_look(event_loop):
-    async with TestClient(event_loop) as vclient, TestClient(event_loop) as sclient:
+    async with Client(event_loop) as vclient, Client(event_loop) as sclient:
         vil = await vclient.setup_user('vilmibm')
         await sclient.setup_user('snoozy')
         await vclient.assert_next('snoozy fades in')
@@ -703,7 +706,7 @@ async def test_revision(client):
 
 @pytest.mark.asyncio
 async def test_edit(event_loop):
-    async with TestClient(event_loop) as vclient, TestClient(event_loop) as sclient:
+    async with Client(event_loop) as vclient, Client(event_loop) as sclient:
         vil = await vclient.setup_user('vilmibm')
         snoozy = await sclient.setup_user('snoozy')
 
@@ -837,12 +840,12 @@ async def test_transitive_command(client):
     await client.assert_set({'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'})
 
 
-@pytest.mark.asyncio
-async def test_session_start(event_loop):
-    # TODO
-    pass
-
-@pytest.mark.asyncio
-async def test_session_end(event_loop):
-    # TODO
-    pass
+#@pytest.mark.asyncio
+#async def test_session_start(event_loop):
+#    # TODO
+#    pass
+#
+#@pytest.mark.asyncio
+#async def test_session_end(event_loop):
+#    # TODO
+#    pass
