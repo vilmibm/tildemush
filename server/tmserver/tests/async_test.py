@@ -436,28 +436,17 @@ async def test_client_state(client):
 
 @pytest.mark.asyncio
 async def test_create_item(client):
-    await setup_user(client, 'vilmibm')
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
-    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-
-    msg = await client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
+    vil = await client.setup_user('vilmibm')
+    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
+        'COMMAND OK',
+        'STATE',
+        'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'])
 
     # create a dupe
-    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-
-    msg = await client.recv()
-    assert msg == 'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar-3'
+    await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
+        'COMMAND OK',
+        'STATE',
+        'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar-3'])
 
     cigar = GameObject.get_or_none(GameObject.shortname=='vilmibm/a-fresh-cigar')
     dupe = GameObject.get_or_none(GameObject.shortname=='vilmibm/a-fresh-cigar-3')
@@ -473,55 +462,44 @@ async def test_create_item(client):
 
 @pytest.mark.asyncio
 async def test_create_room(client):
-    await setup_user(client, 'vilmibm')
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
-    await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('You breathed light into a whole new room')
+    vil = await client.setup_user('vilmibm')
+    await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.', [
+        'COMMAND OK',
+        'You breathed light into a whole new room'])
 
     sanctum = GameObject.get(
         GameObject.author==vil,
-        GameObject.is_sanctum==True
-    )
+        GameObject.is_sanctum==True)
+
     GameWorld.put_into(sanctum, vil.player_obj)
-    msg = await client.recv()
-    assert msg.startswith('STATE')
+
+    await client.assert_next('STATE')
+
     # TODO eventually when we have transitive commands, touch the actual right
     # thing. For now, only one thing should be touchable.
-    await client.send('COMMAND touch')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg.startswith('You materialize')
+    await client.send('COMMAND touch', [
+        'COMMAND OK',
+        'STATE',
+        'You materialize'])
 
 
 @pytest.mark.asyncio
 async def test_create_oneway_exit(client):
-    await setup_user(client, 'vilmibm')
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    vil = await client.setup_user('vilmibm')
     sanctum = GameObject.get(
         GameObject.author==vil,
-        GameObject.is_sanctum==True
-    )
+        GameObject.is_sanctum==True)
     GameWorld.put_into(sanctum, vil.player_obj)
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    await client.send('COMMAND create exit "Rusty Door" east foyer A rusted, metal door')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('You breathed light into a whole new exit')
-    await client.send('COMMAND go east')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg.startswith('You materialize')
+
+    await client.assert_next('STATE')
+
+    await client.send('COMMAND create exit "Rusty Door" east foyer A rusted, metal door', [
+        'COMMAND OK',
+        'You breathed light into a whole new exit'])
+    await client.send('COMMAND go east', [
+        'COMMAND OK',
+        'STATE',
+        'You materialize'])
 
     foyer = GameObject.get(GameObject.shortname=='foyer')
     assert vil.player_obj in foyer.contains
@@ -529,49 +507,37 @@ async def test_create_oneway_exit(client):
 
 @pytest.mark.asyncio
 async def test_create_twoway_exit_between_owned_rooms(client):
-    await setup_user(client, 'vilmibm')
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    vil = await client.setup_user('vilmibm')
     sanctum = GameObject.get(
         GameObject.author==vil,
-        GameObject.is_sanctum==True
-    )
-    GameWorld.put_into(sanctum, vil.player_obj)
-    msg = await client.recv()
-    assert msg.startswith('STATE')
+        GameObject.is_sanctum==True)
 
-    await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('You breathed light into a whole new room')
+    GameWorld.put_into(sanctum, vil.player_obj)
+    await client.assert_next('STATE')
+
+    await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.', [
+        'COMMAND OK',
+        'You breathed light into a whole new room'])
 
     cube = GameObject.get(GameObject.shortname.startswith('vilmibm/crystal-cube'))
 
     await client.send(
-        'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname))
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('You breathed light into a whole new exit')
+        'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname), [
+            'COMMAND OK',
+            'You breathed light into a whole new exit'])
 
-    await client.send('COMMAND go east')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg.startswith('You materialize')
+    await client.send('COMMAND go east', [
+        'COMMAND OK',
+        'STATE',
+        'You materialize'])
 
     assert vil.player_obj in cube.contains
     assert vil.player_obj not in sanctum.contains
 
-    await client.send('COMMAND go west')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg.startswith('You materialize')
+    await client.send('COMMAND go west', [
+        'COMMAND OK',
+        'STATE',
+        'You materialize'])
 
     assert vil.player_obj not in cube.contains
     assert vil.player_obj in sanctum.contains
@@ -584,8 +550,7 @@ async def test_create_twoway_exit_between_owned_rooms(client):
 
 @pytest.mark.asyncio
 async def test_handle_get(client):
-    await setup_user(client, 'vilmibm')
-    vil = UserAccount.get(UserAccount.username=='vilmibm')
+    vil = await client.setup_user('vilmibm')
     foyer = GameObject.get(GameObject.shortname == 'foyer')
 
     cigar = GameObject.create_scripted_object(
@@ -595,19 +560,13 @@ async def test_handle_get(client):
 
     GameWorld.put_into(foyer, cigar)
 
-    await client.send('COMMAND get cigar')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg.startswith('STATE')
+    await client.send('COMMAND get cigar', [
+        'COMMAND OK',
+        'STATE',
+        'STATE',
+        'You grab A fresh cigar'])
 
-    msg = await client.recv()
-    assert msg == 'You grab A fresh cigar.'
-
-    vil_obj = GameObject.get(GameObject.shortname=='vilmibm')
-    assert 'A fresh cigar' in [o.name for o in vil_obj.contains]
+    assert 'A fresh cigar' in [o.name for o in vil.player_obj.contains]
 
 
 @pytest.mark.asyncio
@@ -623,11 +582,10 @@ async def test_handle_get_denied(client):
 
     GameWorld.put_into(foyer, phaser)
 
-    await setup_user(client, 'vilmibm')
+    await client.setup_user('vilmibm')
 
-    await client.send('COMMAND get phaser')
-    msg = await client.recv()
-    assert msg == 'ERROR: You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'
+    await client.send('COMMAND get phaser', [
+        'ERROR: You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'])
 
 
 @pytest.mark.asyncio
@@ -641,27 +599,19 @@ async def test_handle_drop(client):
 
     GameWorld.put_into(foyer, phaser)
 
-    await setup_user(client, 'vilmibm')
+    vil = await client.setup_user('vilmibm')
 
-    await client.send('COMMAND get phaser')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg.startswith('STATE')
+    await client.send('COMMAND get phaser', [
+        'COMMAND OK',
+        'STATE',
+        'STATE',
+        'You grab a phaser.'])
 
-    msg = await client.recv()
-    assert msg == 'You grab a phaser.'
+    await client.send('COMMAND drop phaser', [
+        'COMMAND OK',
+        'You drop a phaser'])
 
-    await client.send('COMMAND drop phaser')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg == 'You drop a phaser.'
-
-    vil_obj = GameObject.get(GameObject.shortname=='vilmibm')
-    assert 'a phaser' not in [o.name for o in vil_obj.contains]
+    assert 'a phaser' not in [o.name for o in vil.player_obj.contains]
 
 
 @pytest.mark.asyncio
@@ -683,15 +633,12 @@ async def test_handle_put(client):
     GameWorld.put_into(foyer, phaser)
     GameWorld.put_into(foyer, space_chest)
 
-    await setup_user(client, 'vilmibm')
+    await client.setup_user('vilmibm')
 
-    await client.send('COMMAND put phaser in chest')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg == 'You put a phaser in Fancy Space Chest'
+    await client.send('COMMAND put phaser in chest', [
+        'COMMAND OK',
+        'STATE',
+        'You put a phaser in Fancy Space Chest'])
 
 
 @pytest.mark.asyncio
@@ -713,62 +660,47 @@ async def test_handle_remove(client):
     GameWorld.put_into(foyer, space_chest)
     GameWorld.put_into(space_chest, phaser)
 
-    await setup_user(client, 'vilmibm')
+    await client.setup_user('vilmibm')
 
-    await client.send('COMMAND remove phaser from chest')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg == 'You remove a phaser from Fancy Space Chest and carry it with you.'
-
+    await client.send('COMMAND remove phaser from chest', [
+        'COMMAND OK',
+        'STATE',
+        'You remove a phaser from Fancy Space Chest and carry it with you.'])
 
 
 @pytest.mark.asyncio
 async def test_create_twoway_exit_via_world_perms(client):
-    await setup_user(client, 'vilmibm')
+    vil = await client.setup_user('vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     foyer = GameObject.get(GameObject.shortname=='foyer')
     foyer.set_perm('write', 'world')
 
-    await client.send('COMMAND create room "Crystal Cube" a cube-shaped room made entirely of crystal.')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('You breathed light into a whole new room')
+    await client.send('COMMAND create room "Crystal Cube" a cube-shaped room made entirely of crystal.', [
+        'COMMAND OK',
+        'You breathed light into a whole new room'])
 
     cube = GameObject.get(GameObject.shortname.startswith('vilmibm/crystal-cube'))
 
     await client.send(
-        'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname))
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('You breathed light into a whole new exit')
+        'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname), [
+            'COMMAND OK',
+            'You breathed light into a whole new exit'])
 
-    await client.send('COMMAND go east')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg.startswith('You materialize')
+    await client.send('COMMAND go east', [
+        'COMMAND OK',
+        'STATE',
+        'You materialize'])
 
     assert vil.player_obj in cube.contains
     assert vil.player_obj not in foyer.contains
 
-    await client.send('COMMAND go west')
-    msg = await client.recv()
-    assert msg == 'COMMAND OK'
-    msg = await client.recv()
-    assert msg.startswith('STATE')
-    msg = await client.recv()
-    assert msg.startswith('You materialize')
+    await client.send('COMMAND go west', [
+        'COMMAND OK',
+        'STATE',
+        'You materialize'])
 
     assert vil.player_obj not in cube.contains
     assert vil.player_obj in foyer.contains
-
 
 
 @pytest.mark.asyncio
