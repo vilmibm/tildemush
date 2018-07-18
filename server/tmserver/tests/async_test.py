@@ -8,7 +8,7 @@ import websockets
 
 from ..core import GameServer
 from ..migrations import reset_db
-from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing
+from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing, LastSeen
 from ..world import GameWorld
 
 class Client:
@@ -47,6 +47,16 @@ class Client:
             recvd.add(await self.recv())
         assert recvd == expected_set
 
+    async def login(self, username, password='foobarbazquux'):
+        await self.send('LOGIN {}:foobarbazquux'.format(username))
+        # once for LOGIN OK
+        await self.recv()
+        # once for the client state update
+        await self.recv()
+
+    async def quit_game(self):
+        await self.send('QUIT')
+
     async def setup_user(self, username, god=False):
         await self.send('REGISTER {}:foobarbazquux'.format(username))
         await self.recv()
@@ -56,11 +66,7 @@ class Client:
             ua.is_god = True
             ua.save()
 
-        await self.send('LOGIN {}:foobarbazquux'.format(username))
-        # once for LOGIN OK
-        await self.recv()
-        # once for the client state update
-        await self.recv()
+        await self.login(username)
 
         return ua
 
@@ -840,12 +846,35 @@ async def test_transitive_command(client):
     await client.assert_set({'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'})
 
 
-#@pytest.mark.asyncio
-#async def test_session_start(event_loop):
-#    # TODO
-#    pass
-#
-#@pytest.mark.asyncio
-#async def test_session_end(event_loop):
-#    # TODO
-#    pass
+@pytest.mark.asyncio
+async def test_session_handling(event_loop):
+    cube = None
+    vil = None
+    endo = None
+
+    async with Client(event_loop) as eclient:
+        endo = await eclient.setup_user('endo')
+        async with Client(event_loop) as vclient:
+            vil = await vclient.setup_user('vilmibm')
+            await eclient.assert_next('vilmibm fades in')
+            assert LastSeen.get_or_none(LastSeen.user_account==vil) is None
+            assert vil.id in GameWorld._sessions
+            await vclient.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.', [
+                'COMMAND OK',
+                'You breathed light into a whole new room'])
+            cube = GameObject.get(GameObject.shortname.startswith('vilmibm/crystal-cube'))
+            GameWorld.put_into(cube, vil.player_obj)
+            GameWorld.put_into(cube, endo.player_obj)
+            await vclient.quit_game()
+
+        await eclient.assert_next('STATE', 'STATE', 'STATE', 'vilmibm fades out')
+        assert vil.player_obj not in cube.contains
+        assert vil not in GameWorld._sessions
+        ls = LastSeen.get_or_none(LastSeen.user_account==vil)
+        assert ls.room.name == cube.name
+
+        async with Client(event_loop) as vclient:
+            await vclient.login('vilmibm')
+            await eclient.assert_next('vilmibm fades in')
+            assert vil.player_obj in cube.contains
+            assert LastSeen.get_or_none(LastSeen.user_account==vil) is None

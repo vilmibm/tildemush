@@ -49,19 +49,20 @@ class GameWorld:
         else:
             room = ls.room
         cls.put_into(room, player_obj)
-        LastSeen.delete().where(LastSeen.user_account==user_account)
+        LastSeen.delete().where(LastSeen.user_account==user_account).execute()
         affected = (o for o in room.contains if o.is_player_obj and o != player_obj)
         for o in affected:
             cls.user_hears(o, player_obj, '{} fades in.'.format(player_obj.name))
 
-    def unregister_session(cls, user_account, user_session):
-        if user_account.id in self._sessions:
+    @classmethod
+    def unregister_session(cls, user_account):
+        if user_account.id in cls._sessions:
             del cls._sessions[user_account.id]
 
         player_obj = user_account.player_obj
         room = player_obj.contained_by
         if room is not None:
-            cls.game_world.remove_from(player_obj.contained_by, player_obj)
+            cls.remove_from(player_obj.contained_by, player_obj)
             affected = (o for o in room.contains if o.is_player_obj)
             for o in affected:
                 cls.user_hears(o, player_obj, '{} fades out.'.format(player_obj.name))
