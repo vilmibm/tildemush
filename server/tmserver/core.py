@@ -5,7 +5,7 @@ import re
 
 import websockets as ws
 
-from .errors import ClientException, UserValidationError, RevisionException
+from .errors import ClientException, UserValidationError, RevisionException, ClientQuit
 from .models import UserAccount
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
@@ -82,7 +82,7 @@ class UserSession:
         if not self.associated:
             return
         player_obj = self.user_account.player_obj
-        self.game_world.unregister_session(self.user_account, self)
+        self.game_world.unregister_session(self.user_account)
 
     def __str__(self):
         s = 'UserSession<{}>'.format(None)
@@ -126,7 +126,7 @@ class GameServer:
         try:
             async for message in websocket:
                 await self.handle_message(user_session, message)
-        except ws.exceptions.ConnectionClosed:
+        except (ws.exceptions.ConnectionClosed, ClientQuit):
             self.logger.info('Client disconnect {}'.format(user_session))
             user_session.handle_disconnect()
             self.connections.remove(websocket)
@@ -155,6 +155,9 @@ class GameServer:
                     # TODO consider something more specific than ERROR
                     await user_session.client_send('ERROR: {}'.format(revision_exception))
                 user_session.send_object_state(revision_result)
+            elif message.startswith('QUIT'):
+                self.logger.info('Client quit {}'.format(user_session))
+                raise ClientQuit()
             elif message.startswith('PING'):
                 await user_session.client_send('PONG')
             else:
