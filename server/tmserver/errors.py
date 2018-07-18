@@ -5,6 +5,7 @@ class RevisionException(Exception):
         self.payload = payload
 
 class ClientException(Exception): pass
+class ClientQuit(Exception): pass
 class WitchException(Exception): pass
 class UserValidationError(Exception):
     code = 8
