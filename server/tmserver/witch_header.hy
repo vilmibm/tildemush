@@ -16,7 +16,9 @@
          (fn [hp] `(.add-handler
                      ~se
                      ~(get hp 1)
-                     (fn [receiver sender action-args]
+                     (fn [receiver sender arg]
+                       (setv args (.get-split-args receiver arg))
+                       (setv from-me? (= receiver sender))
                        ~@(cut hp 2))) )
          actions)
      (ensure-obj-data ~(get data 1))

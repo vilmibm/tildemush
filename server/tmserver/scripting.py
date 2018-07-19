@@ -5,6 +5,7 @@ import hy
 
 from .config import get_db
 from .errors import ClientException, WitchException
+from .util import split_args
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 
@@ -180,6 +181,9 @@ class ScriptedObjectMixin:
 
     def tell_sender(self, sender_obj, action, args):
         self.game_world.dispatch_action(sender_obj, action, args)
+
+    def get_split_args(self, action_args):
+        return split_args(action_args)
 
     def _execute_script(self, witch_code):
         """Given a pile of script revision code, this function prepends the

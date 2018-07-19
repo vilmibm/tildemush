@@ -878,3 +878,62 @@ async def test_session_handling(event_loop):
             await eclient.assert_next('vilmibm fades in')
             assert vil.player_obj in cube.contains
             assert LastSeen.get_or_none(LastSeen.user_account==vil) is None
+
+@pytest.mark.asyncio
+async def test_witch_argument_string(client):
+    await client.setup_user('vilmibm')
+    echo_code = """
+    (witch "Cave Echo"
+      (has {"name" "Cave Echo"
+            "description" "A creepy echo from the back of this cave"})
+      (hears "say"
+        (unless from-me?
+          (says (+ arg " but spookily")))))
+    """.rstrip().lstrip()
+    await client.send('COMMAND create item "Cave Echo" A creepy echo from the back of this cave',
+                      ['COMMAND OK', 'STATE', 'You breathed'])
+    echo = GameObject.get(GameObject.shortname=='vilmibm/cave-echo')
+
+    revision_payload = dict(
+        shortname='vilmibm/cave-echo',
+        code=echo_code,
+        current_rev=echo.script_revision.id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
+    await client.send('COMMAND say hello there how are you')
+    await client.assert_set({'COMMAND OK',
+                             'vilmibm says, "hello there how are you"',
+                             'Cave Echo says, "hello there how are you but spookily"'})
+
+@pytest.mark.asyncio
+async def test_witch_arguments_split(client):
+    await client.setup_user('vilmibm')
+
+    vending_code = """
+    (witch "Vending Machine"
+      (has {"name" "Vending Machine"
+            "description" "A Japanese-style vending machine."})
+      (hears "give"
+        (if (= "yen" (get args 1))
+          (if (<= 100 (int (get args 0)))
+            (says "have a pocari sweat. enjoy.")
+            (says "need more yen"))
+          (says "i only take yen sorry"))))
+    """.lstrip().rstrip()
+
+    await client.send('COMMAND create item "Vending Machine" A Japanese-style vending machine',
+                      ['COMMAND OK', 'STATE', 'You breathed'])
+    vending_machine = GameObject.get(GameObject.shortname=='vilmibm/vending-machine')
+
+    revision_payload = dict(
+        shortname='vilmibm/vending-machine',
+        code=vending_code,
+        current_rev=vending_machine.script_revision.id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
+    await client.send('COMMAND give machine 100 dollars', ['COMMAND OK'])
+    await client.assert_next('Vending Machine says, "i only take yen sorry"')
+    await client.send('COMMAND give machine 99 yen', ['COMMAND OK'])
+    await client.assert_next('Vending Machine says, "need more yen"')
+    await client.send('COMMAND give machine 100 yen', ['COMMAND OK'])
+    await client.assert_next('Vending Machine says, "have a pocari sweat. enjoy."')
