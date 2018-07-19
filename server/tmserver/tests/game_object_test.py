@@ -213,13 +213,13 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         assert type(self.snoozy.engine.handler(GameWorld, 'pet')) == types.FunctionType
 
     def test_handler_works(self):
-        self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
+        self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
         assert self.snoozy.get_data('num-pets') == 1
-        self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
-        self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
-        self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
+        self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
+        self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
+        self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
         with mock.patch('tmserver.models.GameObject.say') as mock_say:
-            self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
+            self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
             mock_say.assert_called_once_with('neigh neigh neigh i am horse')
 
     def test_debug_handler(self):
@@ -237,5 +237,3 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         with mock.patch('tmserver.scripting.ScriptEngine.noop') as mock_noop:
             self.snoozy.handle_action(GameWorld, 'poke', self.vil, [])
             assert mock_noop.called
-
-
