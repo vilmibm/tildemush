@@ -1,4 +1,5 @@
 from datetime import datetime
+import itertools
 import re
 
 import bcrypt
@@ -207,12 +208,26 @@ class GameObject(BaseModel, ScriptedObjectMixin):
 
     @property
     def contained_by(self):
+        """Returns a generator of all the objects that contain the calling
+        object."""
+        return (c.outer_obj for c in Contains.select().where(Contains.inner_obj==self))
+
+    @property
+    def neighbors(self):
+        """Returns generator of the objects contained by this object's container."""
+        return itertools.chain(*[o.contains for o in self.contained_by])
+
+    @property
+    def room(self):
+        """Unlike contained_by, this method either returns the single thing
+        that contains the calling obj or raises."""
         model_set = list(Contains.select().where(Contains.inner_obj==self))
         if not model_set:
             return None
         if len(model_set) > 1:
-            raise ClientException("Bad state: contained by multiple things.")
+            raise ClientException("Bad state: room() called but obj contained by multiple things.")
         return model_set[0].outer_obj
+
 
     @property
     def user_account(self):

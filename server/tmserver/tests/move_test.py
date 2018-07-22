@@ -36,53 +36,53 @@ class MoveTest(TildemushTestCase):
 
         # can't go to non existing exit
         GameWorld.handle_go(player_obj, 'north')
-        assert self.pond == player_obj.contained_by
+        assert self.pond == player_obj.room
 
         # can move to object
         GameWorld.handle_move(player_obj, 'cabin')
-        assert self.cabin == player_obj.contained_by
+        assert self.cabin == player_obj.room
 
         # can't move into self
         GameWorld.handle_move(player_obj, 'selfsame')
-        assert self.cabin == player_obj.contained_by
+        assert self.cabin == player_obj.room
 
         # can move to existing exit
         GameWorld.create_exit(player_obj, 'ladder', 'above roof a ladder')
         GameWorld.create_exit(player_obj, 'bridge', 'east pond a bridge')
         GameWorld.create_exit(player_obj, 'path', 'south yard a path')
         GameWorld.handle_go(player_obj, 'above')
-        assert self.roof == player_obj.contained_by
+        assert self.roof == player_obj.room
 
         GameWorld.handle_go(player_obj, 'below')
-        assert self.cabin == player_obj.contained_by
+        assert self.cabin == player_obj.room
 
         # can move using aliases
         GameWorld.handle_go(player_obj, 'u')
-        assert self.roof == player_obj.contained_by
+        assert self.roof == player_obj.room
 
         GameWorld.handle_go(player_obj, 'd')
-        assert self.cabin == player_obj.contained_by
+        assert self.cabin == player_obj.room
 
         GameWorld.handle_go(player_obj, 'up')
-        assert self.roof == player_obj.contained_by
+        assert self.roof == player_obj.room
 
         GameWorld.handle_go(player_obj, 'down')
-        assert self.cabin == player_obj.contained_by
+        assert self.cabin == player_obj.room
 
         GameWorld.handle_go(player_obj, 'a')
-        assert self.roof == player_obj.contained_by
+        assert self.roof == player_obj.room
 
         GameWorld.handle_go(player_obj, 'b')
-        assert self.cabin == player_obj.contained_by
+        assert self.cabin == player_obj.room
 
         GameWorld.handle_go(player_obj, 'e')
-        assert self.pond == player_obj.contained_by
+        assert self.pond == player_obj.room
 
         GameWorld.handle_go(player_obj, 'w')
-        assert self.cabin == player_obj.contained_by
+        assert self.cabin == player_obj.room
 
         GameWorld.handle_go(player_obj, 's')
-        assert self.yard == player_obj.contained_by
+        assert self.yard == player_obj.room
 
         GameWorld.handle_go(player_obj, 'n')
-        assert self.cabin == player_obj.contained_by
+        assert self.cabin == player_obj.room

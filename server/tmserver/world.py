@@ -60,9 +60,9 @@ class GameWorld:
             del cls._sessions[user_account.id]
 
         player_obj = user_account.player_obj
-        room = player_obj.contained_by
+        room = player_obj.room
         if room is not None:
-            cls.remove_from(player_obj.contained_by, player_obj)
+            cls.remove_from(player_obj.room, player_obj)
             affected = (o for o in room.contains if o.is_player_obj)
             for o in affected:
                 cls.user_hears(o, player_obj, '{} fades out.'.format(player_obj.name))
@@ -82,7 +82,7 @@ class GameWorld:
         """Given a user account, returns a dictionary of information relevant
         to the game client."""
         player_obj = user_account.player_obj
-        room = player_obj.contained_by
+        room = player_obj.room
         exits = room.get_data('exits', {})
         exit_payload = {}
 
@@ -266,8 +266,7 @@ class GameWorld:
            /get a banana
            /get Banana
         """
-        found = cls.resolve_obj(sender_obj.contained_by.contains,
-                                action_args, lambda o: o.is_player_obj)
+        found = cls.resolve_obj(sender_obj.neighbors, action_args, lambda o: o.is_player_obj)
 
         if found is None:
             # TODO do not use exception
@@ -283,7 +282,7 @@ class GameWorld:
     @classmethod
     def handle_drop(cls, sender_obj, action_args):
         """Matches an object in sender_obj.contains and moves it to
-        sender_obj.contained_by"""
+        sender_obj's first contained by object."""
 
         # TODO this doesn't seem to trigger a state update?
 
@@ -293,7 +292,7 @@ class GameWorld:
             # TODO do not use exception
             raise ClientException('You look in vain for something called {}.'.format(obj_string))
 
-        cls.put_into(sender_obj.contained_by, found)
+        cls.put_into(list(sender_obj.contained_by)[0], found)
         cls.user_hears(sender_obj, sender_obj, 'You drop {}.'.format(found.name))
 
     @classmethod
@@ -318,9 +317,7 @@ class GameWorld:
         target_obj_str, container_obj_str = match.groups()
 
         target_obj = cls.resolve_obj(
-            itertools.chain(
-                sender_obj.contains,
-                sender_obj.contained_by.contains),
+            itertools.chain(sender_obj.contains, sender_obj.neighbors),
             target_obj_str, lambda o: o.is_player_obj)
 
         if target_obj is None:
@@ -330,9 +327,7 @@ class GameWorld:
             raise ClientException(OBJECT_DENIED.format(target_obj.name))
 
         container_obj = cls.resolve_obj(
-            itertools.chain(
-                sender_obj.contains,
-                sender_obj.contained_by.contains),
+            itertools.chain(sender_obj.contains, sender_obj.neighbors),
             container_obj_str, lambda o: o.is_player_obj)
 
         if container_obj is None:
@@ -369,9 +364,7 @@ class GameWorld:
         target_obj_str, container_obj_str = match.groups()
 
         container_obj = cls.resolve_obj(
-            itertools.chain(
-                sender_obj.contains,
-                sender_obj.contained_by.contains),
+            itertools.chain(sender_obj.contains, sender_obj.neighbors),
             container_obj_str, lambda o: o.is_player_obj)
 
         if container_obj is None:
@@ -539,9 +532,56 @@ class GameWorld:
 
         return room
 
+    # EXIT REFACTOR
+
+    # The current implementation relies on state in both room and exit objects.
+    # If an exit is moved or destroyed, the corresponding state has to be
+    # managed on the room. This trade-off was made so that a room could govern
+    # exits-per-direction.
+    #
+    # Another confusing aspect of the current implementation is how you end up
+    # creating two almost identical exits -- one in each connected room. What
+    # if an exit could be contained by two rooms at once?
+    #
+    # A new approach should:
+    # - Enforce one exit per cardinal direction
+    # - Allow an exit to be moved and still function as an exit
+    # - Allow an exit to be destroyed without keeping its direction locked
+    # - Share a single exit between two rooms
+    # - Respect a room's permissions: exits can only be made where you have
+    #   execute permission
+
+    # The big hurdle i want to tackle conceptually up front is the potential
+    # for exits existing in two rooms.
+    #
+    # What if you pick up an exit?
+    # - it is removed from both rooms
+    # - it is added to inventory
+    #
+    # At this point, it will never be noticed as an exit (not in a room.contains)
+    #
+    # When dropped?
+    #
+    # If the game doesn't detect that it's an exit then we risk masking an
+    # existing exit. We can look to see if the exit metadata is in kv and check
+    # to see if it's a legal drop. this gives us the same flexibility as when
+    # handling create_exit to know to do that book-keeping.
+    #
+    # i feel good about that -- reflection based exit detection. I can even
+    # define it on the model, it just won't rely on a flag.
+    #
+    # The bigger issue is contained_by suddenly returning >1 things.
+
+    # The more I think about it, the strict single contains-by is a limitation
+    # on player objects. I think it's okay to have th code always assume
+    # contained_by return a list and have it throw clientexception if called on
+    # a player object and they're in multiple rooms.
+
     @classmethod
     def create_exit(cls, owner_obj, name, additional_args):
         # TODO consider having parse_create_exit that is called outside of this
+        if not owner_obj.is_player_obj:
+            raise ClientException('only players can create exits.')
         match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
         if not match:
             raise ClientException('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
@@ -550,7 +590,7 @@ class GameWorld:
         if direction not in DIRECTIONS:
             raise ClientException('Try one of these directions: {}'.format(DIRECTIONS))
 
-        current_room = owner_obj.contained_by
+        current_room = owner_obj.room
         target_room = GameObject.get_or_none(
             GameObject.shortname == target_room_name)
 
@@ -634,8 +674,7 @@ class GameWorld:
         message = ' '.join(action_args[1:])
         if 0 == len(message):
             raise ClientException('try /whisper another_username some cool message')
-        room = sender_obj.contained_by
-        target_obj = cls.resolve_obj(room.contains, target_name)
+        target_obj = cls.resolve_obj(sender_obj.neighbors, target_name)
         if target_obj is None:
             raise ClientException('there is nothing named {} near you'.format(target_name))
         target_obj.handle_action(cls, sender_obj, 'whisper', message)
@@ -650,25 +689,26 @@ class GameWorld:
         # GameObject's state, but I think that dynamism can go into an /examine
         # command. /look is for getting a bearing on what's in front of you.
 
-        msgs = []
-        room = sender_obj.contained_by
-        room_desc = 'You are in the {}'.format(room.name)
-        if room.description:
-            room_desc += ', {}'.format(room.description)
-        msgs.append(room_desc)
+        if sender_obj.is_player_obj:
+            msgs = []
+            room = sender_obj.room
+            room_desc = 'You are in the {}'.format(room.name)
+            if room.description:
+                room_desc += ', {}'.format(room.description)
+            msgs.append(room_desc)
 
-        for o in room.contains:
-            if o.user_account:
-                o_desc = 'You see {}'.format(o.name)
-            else:
-                o_desc = 'You see a {}'.format(o.name)
+            for o in room.contains:
+                if o.user_account:
+                    o_desc = 'You see {}'.format(o.name)
+                else:
+                    o_desc = 'You see a {}'.format(o.name)
 
-            if o.description:
-                o_desc += ', {}'.format(o.description)
-            msgs.append(o_desc)
+                if o.description:
+                    o_desc += ', {}'.format(o.description)
+                msgs.append(o_desc)
 
-        for m in msgs:
-            cls.user_hears(sender_obj, sender_obj, m)
+            for m in msgs:
+                cls.user_hears(sender_obj, sender_obj, m)
 
         # finally, alert everything in the room that it's been looked at. game
         # objects can hook off of this if they want. By default, this does
@@ -696,26 +736,9 @@ class GameWorld:
 
     @classmethod
     def handle_go(cls, sender_obj, action_args):
-        # Originally we discussed having exit items be found via their
-        # shortname; ie, north-a-door-vilmibm. I realized this is terrifying
-        # since any other user could create a drop a trap door named
-        # north-something. The resolution of the door would become undefined.
-        # Thus, while it pains me and I'm hoping for an alternative, I'm going
-        # to add some structure to rooms. Namely, their kv data is going to
-        # store a mapping of direction -> exit shortname. This data can only be
-        # changed (TODO: actually ensure this is true) by the author of the
-        # room.
-
-        # TODO in the future, consider allowing "non authoritative" directional
-        # exits. An exit obj exists in a room and has a direction and target
-        # stored on it. this is valid until the owner of the room overrides it
-        # with a blessed exit named in the room's exits hash.
-        #
-        # this is either redundant or additive if we also implement a "world
-        # writable" mode for stuff.
-
         direction = cls.process_direction(action_args)
-        current_room = sender_obj.contained_by
+        # TODO just using [0] here until the imminent exit refactor
+        current_room = list(sender_obj.contained_by)[0]
         exits = current_room.get_data('exits', {})
         if direction not in exits:
             cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
@@ -782,17 +805,19 @@ class GameWorld:
         this is easier to implement and also means you can "muffle" an object
         by stuffing it into a box.
         """
-        room = sender_obj.contained_by
         inventory = set(sender_obj.contains)
-        adjacent_objs = set(room.contains)
-        return {sender_obj, room} | inventory | adjacent_objs
+        parent_objs = set(sender_obj.contained_by)
+        adjacent_objs = set(sender_obj.neighbors)
+        return {sender_obj} | parent_objs | inventory | adjacent_objs
 
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
         if outer_obj == inner_obj:
             raise ClientException('Cannot put something into itself.')
-        if inner_obj.contained_by:
-            old_outer_obj = inner_obj.contained_by
+        # TODO for exits, i need to be able to put them into two rooms at once.
+        # Right now i'm thinking of just doing a raw Contains call when detecting
+        # an exit.
+        for old_outer_obj in inner_obj.contained_by:
             Contains.delete().where(Contains.inner_obj==inner_obj).execute()
             for o in old_outer_obj.contains:
                 if o.is_player_obj:
@@ -805,6 +830,8 @@ class GameWorld:
 
     @classmethod
     def remove_from(cls, outer_obj, inner_obj):
+        """This is only useful for player objects for when they disconnect;
+        otherwise all object moving is done via put_into."""
         Contains.delete().where(
             Contains.outer_obj==outer_obj,
             Contains.inner_obj==inner_obj).execute()
