@@ -764,14 +764,12 @@ class GameWorld:
         direction.
         """
 
-        dir_map = {
-                'north': ['north', 'n'],
-                'south': ['south', 's'],
-                'east': ['east', 'e'],
-                'west': ['west', 'w'],
-                'above': ['above', 'a', 'up', 'u'],
-                'below': ['below', 'b', 'down', 'd']
-                }
+        dir_map = {'north': {'north', 'n'},
+                   'south': {'south', 's'},
+                   'east': {'east', 'e'},
+                   'west': {'west', 'w'},
+                   'above': {'above', 'a', 'up', 'u'},
+                   'below': {'below', 'b', 'down', 'd'}}
 
         for direction in dir_map:
             if input_direction in dir_map.get(direction):
