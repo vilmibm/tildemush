@@ -5,7 +5,7 @@ import re
 
 import websockets as ws
 
-from .errors import ClientError, UserValidationError, RevisionError, ClientQuit
+from .errors import ClientError, UserValidationError, RevisionError, ClientQuit, UserError
 from .models import UserAccount
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
@@ -147,8 +147,12 @@ class GameServer:
                 except UserValidationError as e:
                     await user_session.client_send('ERROR: {}'.format(e))
             elif message.startswith('COMMAND'):
-                self.handle_command(user_session, message)
-                await user_session.client_send('COMMAND OK')
+                try:
+                    self.handle_command(user_session, message)
+                except UserError as e:
+                    await user_session.client_send('{{red}}{}{{/}}'.format(e))
+                else:
+                    await user_session.client_send('COMMAND OK')
             elif message.startswith('REVISION'):
                 revision_result, revision_exception = self.handle_revision(user_session, message)
                 if revision_exception:

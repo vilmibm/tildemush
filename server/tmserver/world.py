@@ -4,7 +4,7 @@ import re
 from slugify import slugify
 
 from .config import get_db
-from .errors import RevisionError, WitchError, ClientError
+from .errors import RevisionError, WitchError, ClientError, UserError
 from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing, LastSeen
 from .util import strip_color_codes, split_args, ARG_RE
 
@@ -25,6 +25,8 @@ REVERSE_DIRS = {
     'below': 'above'}
 SPECIAL_HANDLING = {'say'} # TODO i thought there were others but for now it's just say. might not need a set in the end.
 
+
+# TODO audit all use of ClientError and use UserError as needed
 
 class GameWorld:
     # TODO logging
