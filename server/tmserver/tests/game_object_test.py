@@ -1,7 +1,7 @@
 import types
 from unittest import mock
 from .. import models
-from ..errors import WitchException
+from ..errors import WitchError
 from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision
 from ..scripting import ScriptEngine
 from ..world import GameWorld
@@ -229,7 +229,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
     def test_bad_witch(self):
         self.script_rev.code = '''(witch)'''
         self.script_rev.save()
-        with self.assertRaises(WitchException):
+        with self.assertRaises(WitchError):
             self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
 
     def test_unhandled_action(self):

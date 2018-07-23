@@ -1,7 +1,7 @@
 import unittest.mock as mock
 import unittest
 
-from ..errors import ClientException
+from ..errors import ClientError
 from ..models import UserAccount
 from ..core import GameServer, UserSession
 from ..world import GameWorld
@@ -27,7 +27,7 @@ class TestLogin(TildemushTestCase):
         for malformed in malformed_logins:
             expected_msg = 'malformed login message'
             with self.assertRaisesRegex(
-                    ClientException,
+                    ClientError,
                     expected_msg.format(malformed)):
                 self.server.parse_login(malformed)
 
@@ -35,7 +35,7 @@ class TestLogin(TildemushTestCase):
         vil = UserAccount.create(username='vilmibm', password='12345678901')
         msg = 'LOGIN vilmibbm:foobarbazquux'
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'no such user'):
             self.server.handle_login(UserSession(None, GameWorld, None), msg)
 
@@ -43,7 +43,7 @@ class TestLogin(TildemushTestCase):
         vil = UserAccount.create(username='vilmibm', password='12345678901')
         msg = 'LOGIN vilmibm:foobarbazquux'
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'bad password'):
             self.server.handle_login(UserSession(None, GameWorld, None), msg)
 
@@ -62,6 +62,6 @@ class TestLogin(TildemushTestCase):
         user_session = UserSession(None, GameWorld, mock.Mock())
         user_session.associate(vil)
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'log out first'):
             self.server.handle_login(user_session, 'LOGIN vilmibm:foobarbazquux')

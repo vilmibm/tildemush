@@ -1,7 +1,7 @@
 from unittest import mock
 
 from .tm_test_case import TildemushTestCase
-from ..errors import ClientException
+from ..errors import ClientError
 from ..models import UserAccount, GameObject, Permission
 from ..world import GameWorld
 
@@ -38,7 +38,7 @@ class InventoryTestCase(TildemushTestCase):
 class GetTest(InventoryTestCase):
     def test_obj_not_found(self, _):
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'You look in vain for shoe.'):
             GameWorld.handle_get(self.vil, 'shoe')
 
@@ -46,7 +46,7 @@ class GetTest(InventoryTestCase):
         self.can.set_perm('carry', 'owner')
 
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'You grab a hold of A Rusted Tin Can but'):
             GameWorld.handle_get(self.vil, 'can')
 
@@ -107,7 +107,7 @@ class PutTest(InventoryTestCase):
             'can i n bag']
         for bad in malformed:
             with self.assertRaisesRegex(
-                    ClientException,
+                    ClientError,
                     'Try /put some'):
                 GameWorld.handle_put(self.vil, bad)
 
@@ -120,7 +120,7 @@ class PutTest(InventoryTestCase):
 
     def test_target_not_found(self, _):
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'You look in vain for shoe.'):
             GameWorld.handle_put(self.vil, 'shoe in bag')
 
@@ -155,20 +155,20 @@ class PutTest(InventoryTestCase):
 
     def test_container_not_found(self, _):
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'You look in vain for pail.'):
             GameWorld.handle_put(self.vil, 'can in pail')
 
     def test_target_denied(self, _):
         self.can.set_perm('carry', 'owner')
         with self.assertRaisesRegex(
-                ClientException, 'You grab a hold of A Rusted Tin Can but'):
+                ClientError, 'You grab a hold of A Rusted Tin Can but'):
             GameWorld.handle_put(self.vil, 'can in bag')
 
     def test_container_denied(self, _):
         self.bag.set_perm('execute', 'owner')
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'You try as hard as you can, but you are unable to pry open A Garbage Bag'):
             GameWorld.handle_put(self.vil, 'can in bag')
 
@@ -185,13 +185,13 @@ class RemoveTest(InventoryTestCase):
             'canfrombag']
         for bad in malformed:
             with self.assertRaisesRegex(
-                    ClientException,
+                    ClientError,
                     'Try /remove some'):
                 GameWorld.handle_remove(self.vil, bad)
 
     def test_target_not_found(self, _):
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'You look in vain for shoe.'):
             GameWorld.handle_remove(self.vil, 'shoe from bag')
 
@@ -216,7 +216,7 @@ class RemoveTest(InventoryTestCase):
 
     def test_container_not_found(self, _):
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'You look in vain for pail.'):
             GameWorld.handle_remove(self.vil, 'shoe from pail')
 
@@ -224,12 +224,12 @@ class RemoveTest(InventoryTestCase):
         GameWorld.handle_put(self.vil, 'can in bag')
         self.can.set_perm('carry', 'owner')
         with self.assertRaisesRegex(
-                ClientException, 'You grab a hold of A Rusted Tin Can but'):
+                ClientError, 'You grab a hold of A Rusted Tin Can but'):
             GameWorld.handle_remove(self.vil, 'can from bag')
 
     def test_container_denied(self, _):
         self.bag.set_perm('execute', 'owner')
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'You try as hard as you can, but you are unable to pry open A Garbage Bag'):
             GameWorld.handle_put(self.vil, 'can in bag')

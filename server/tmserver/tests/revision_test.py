@@ -2,7 +2,7 @@ import json
 from unittest.mock import Mock, patch
 
 from ..core import GameServer, UserSession
-from ..errors import ClientException, RevisionException
+from ..errors import ClientError, RevisionError
 from ..models import GameObject, UserAccount, ScriptRevision
 from ..world import GameWorld
 from .tm_test_case import TildemushTestCase, TildemushUnitTestCase
@@ -17,7 +17,7 @@ class GameServerRevisionHandlingTest(TildemushUnitTestCase):
     def test_require_auth(self):
         self.sess.associated = False
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'not logged in'):
             self.gs.handle_revision(self.sess, 'REVISION {}')
 
@@ -28,7 +28,7 @@ class GameServerRevisionHandlingTest(TildemushUnitTestCase):
         ]
         for bad in malformed:
             with self.assertRaisesRegex(
-                    ClientException,
+                    ClientError,
                     'malformed revision'):
                 self.gs.handle_revision(self.sess, bad)
 
@@ -37,13 +37,13 @@ class GameServerRevisionHandlingTest(TildemushUnitTestCase):
             'shortname': 'hmm',
             'code': '(fart)'}
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'revision payload missing key'):
             self.gs.handle_revision(self.sess, 'REVISION {}'.format(json.dumps(payload)))
 
     def test_bad_json(self):
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'failed to parse'):
             self.gs.handle_revision(self.sess, 'REVISION {"rad":"yeah"')
 
@@ -54,7 +54,7 @@ class UserSessionRevisionHandlingTest(TildemushUnitTestCase):
         sess = UserSession(Mock(), GameWorld, Mock())
         sess.user_account = Mock()
         payload, error = (None, None)
-        with patch('tmserver.GameWorld.handle_revision', side_effect=RevisionException(
+        with patch('tmserver.GameWorld.handle_revision', side_effect=RevisionError(
                 'aw shit',
                 payload={'fun': 'times'})):
             payload, error = sess.handle_revision('vilmibm/snoozy', '(ohno)', 3)
@@ -93,7 +93,7 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
     def test_perm_denied(self):
         cm = None
         with self.assertRaisesRegex(
-                RevisionException,
+                RevisionError,
                 'Tried to edit illegal') as cm:
             GameWorld.handle_revision(
                 self.vil.player_obj,
@@ -114,7 +114,7 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
     def test_revision_mismatch(self):
         cm = None
         with self.assertRaisesRegex(
-                RevisionException,
+                RevisionError,
                 'Revision mismatch') as cm:
             GameWorld.handle_revision(
                 self.vil.player_obj,
@@ -135,7 +135,7 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
     def test_no_change(self):
         cm = None
         with self.assertRaisesRegex(
-                RevisionException,
+                RevisionError,
                 'No change to code') as cm:
             GameWorld.handle_revision(
                 self.vil.player_obj,

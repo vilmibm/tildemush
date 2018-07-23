@@ -8,7 +8,7 @@ from playhouse.signals import Model, pre_save, post_save
 from playhouse.postgres_ext import JSONField
 
 from . import config
-from .errors import UserValidationError, ClientException
+from .errors import UserValidationError, ClientError
 from .scripting import ScriptedObjectMixin
 from .util import strip_color_codes, collapse_whitespace
 
@@ -225,7 +225,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         if not model_set:
             return None
         if len(model_set) > 1:
-            raise ClientException("Bad state: room() called but obj contained by multiple things.")
+            raise ClientError("Bad state: room() called but obj contained by multiple things.")
         return model_set[0].outer_obj
 
 

@@ -4,7 +4,7 @@ import os
 import hy
 
 from .config import get_db
-from .errors import ClientException, WitchException
+from .errors import ClientError, WitchError
 from .util import split_args
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
@@ -67,7 +67,7 @@ class ScriptEngine:
     def _contain_handler(self, receiver, sender, action_args):
         contain_type = action_args
         if contain_type not in self.CONTAIN_TYPES:
-            raise ClientException('Bad container relation: {}'.format(contain_type))
+            raise ClientError('Bad container relation: {}'.format(contain_type))
         if receiver.user_account:
             self.game_world.send_client_update(receiver.user_account)
             # TODO we actually want the client to show messages about these
@@ -136,7 +136,7 @@ class ScriptedObjectMixin:
                     try:
                         self.script_revision = latest_rev
                         self.init_scripting()
-                    except WitchException as e:
+                    except WitchError as e:
                         self.script_revision = current_rev
                         # TODO log
                     else:
@@ -150,7 +150,7 @@ class ScriptedObjectMixin:
             try:
                 self._engine = self._execute_script(self.script_revision.code)
             except Exception as e:
-                raise WitchException(
+                raise WitchError(
                     ';_; There is a problem with your witch script: {}'.format(e))
 
     def handle_action(self, game_world, sender_obj, action, action_args):
@@ -184,7 +184,7 @@ class ScriptedObjectMixin:
         current_room = sender_obj.room
         route = self.get_data('exit', {}).get(current_room.shortname)
         if route is None or route[0] != direction:
-            raise ClientException('illegal move') # this should have been caught higher up, so ok to throw
+            raise ClientError('illegal move') # this should have been caught higher up, so ok to throw
 
         self.game_world.move_obj(sender_obj, route[1])
 

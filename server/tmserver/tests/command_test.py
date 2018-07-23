@@ -1,6 +1,6 @@
 import unittest.mock as mock
 
-from ..errors import ClientException
+from ..errors import ClientError
 from ..models import UserAccount
 from ..core import GameServer, UserSession
 from ..world import GameWorld
@@ -51,13 +51,13 @@ class CommandTest(TildemushTestCase):
             'COMMAND  ']
         for malformed in malformed_msgs:
             with self.assertRaisesRegex(
-                    ClientException,
+                    ClientError,
                     'malformed command message: {}'.format(malformed)):
                 self.server.handle_command(self.user_session, malformed)
 
     def test_rejects_unauthenticated_command(self):
         user_session = UserSession(None, GameWorld, None)
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'not logged in'):
             self.server.handle_command(user_session, 'COMMAND go')

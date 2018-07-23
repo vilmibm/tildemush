@@ -5,7 +5,7 @@ import re
 
 import websockets as ws
 
-from .errors import ClientException, UserValidationError, RevisionException, ClientQuit
+from .errors import ClientError, UserValidationError, RevisionError, ClientQuit
 from .models import UserAccount
 
 LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
@@ -72,7 +72,7 @@ class UserSession:
                 shortname,
                 code,
                 current_rev)
-        except RevisionException as e:
+        except RevisionError as e:
             return_payload = e.payload
             revision_exception = str(e)
 
@@ -164,45 +164,45 @@ class GameServer:
                 # TODO clients should format said things (ie things a user
                 # types not prefixed with a / command) with "COMMAND SAY"
                 #await user_session.client_send('you said {}'.format(message))
-                raise ClientException('message not understood')
-        except ClientException as e:
+                raise ClientError('message not understood')
+        except ClientError as e:
             await user_session.client_send('ERROR: {}'.format(e))
 
     def handle_command(self, user_session, message):
         if not user_session.associated:
-            raise ClientException('not logged in')
+            raise ClientError('not logged in')
         action, action_args = self.parse_command(message)
         user_session.dispatch_action(action, action_args)
 
     def parse_command(self, message):
         match = COMMAND_RE.fullmatch(message)
         if match is None:
-            raise ClientException('malformed command message: {}'.format(message))
+            raise ClientError('malformed command message: {}'.format(message))
         return match.groups()
 
     def handle_login(self, user_session, message):
         if user_session.associated:
-            raise ClientException('log out first')
+            raise ClientError('log out first')
         username, password = self.parse_login(message)
         user_accounts = UserAccount.select().where(UserAccount.username==username)
         if len(user_accounts) == 0:
-            raise ClientException('no such user')
+            raise ClientError('no such user')
         user_account = user_accounts[0]
         if user_account.check_password(password):
             self.logger.info('logging in user {}'.format(user_account.username))
             user_session.associate(user_account)
         else:
-            raise ClientException('bad password')
+            raise ClientError('bad password')
 
     def parse_login(self, message):
         match = LOGIN_RE.fullmatch(message)
         if match is None:
-            raise ClientException('malformed login message: {}'.format(message))
+            raise ClientError('malformed login message: {}'.format(message))
         return match.groups()
 
     def handle_registration(self, user_session, message):
         if user_session.associated:
-            raise ClientException('log out first')
+            raise ClientError('log out first')
         username, password = self.parse_registration(message)
         u = UserAccount(username=username, password=password)
         u.validate()
@@ -213,31 +213,31 @@ class GameServer:
         return the username and password."""
         match = REGISTER_RE.fullmatch(message)
         if match is None:
-            raise ClientException('malformed registration message: {}'.format(message))
+            raise ClientError('malformed registration message: {}'.format(message))
         return match.groups()
 
     def handle_revision(self, user_session, message):
         if not user_session.associated:
-            raise ClientException('not logged in')
+            raise ClientError('not logged in')
         payload = self.parse_revision(message)
         return user_session.handle_revision(**payload)
 
     def parse_revision(self, message):
         match = REVISION_RE.fullmatch(message)
         if match is None:
-            raise ClientException('malformed revision payload: {}'.format(message))
+            raise ClientError('malformed revision payload: {}'.format(message))
         payload = match.groups()[0]
 
         try:
             payload = json.loads(payload)
         except Exception as e:
-            raise ClientException('failed to parse revision payload: {}'.format(payload))
+            raise ClientError('failed to parse revision payload: {}'.format(payload))
 
         # TODO ensure it's a dict, raise otherwise
 
         for k in REVISION_KEYS:
             if payload.get(k) is None:
-                raise ClientException('revision payload missing key: {}'.format(k))
+                raise ClientError('revision payload missing key: {}'.format(k))
 
         return payload
 

@@ -1,7 +1,7 @@
 import unittest.mock as mock
 import unittest
 
-from ..errors import ClientException
+from ..errors import ClientError
 from ..models import UserAccount
 from ..core import GameServer, UserSession
 from ..world import GameWorld
@@ -29,7 +29,7 @@ class TestRegistration(TildemushTestCase):
         for malformed in malformed_registrations:
             expected_msg = 'malformed registration message: {}'
             with self.assertRaisesRegex(
-                    ClientException,
+                    ClientError,
                     expected_msg.format(malformed)):
                 self.server.parse_registration(malformed)
 
@@ -56,6 +56,6 @@ class TestRegistration(TildemushTestCase):
         user_session = UserSession(None, GameWorld, mock.Mock())
         user_session.associate(vil)
         with self.assertRaisesRegex(
-                ClientException,
+                ClientError,
                 'log out first'):
             self.server.handle_registration(user_session, 'LOGIN vilmibm:foobarbazquux')

@@ -4,7 +4,7 @@ import re
 from slugify import slugify
 
 from .config import get_db
-from .errors import RevisionException, WitchException, ClientException
+from .errors import RevisionError, WitchError, ClientError
 from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing, LastSeen
 from .util import strip_color_codes, split_args, ARG_RE
 
@@ -37,7 +37,7 @@ class GameWorld:
     @classmethod
     def register_session(cls, user_account, user_session):
         if user_account.id in cls._sessions:
-            raise ClientException('User {} already logged in.'.format(user_account))
+            raise ClientError('User {} already logged in.'.format(user_account))
 
         cls._sessions[user_account.id] = user_session
 
@@ -73,7 +73,7 @@ class GameWorld:
     def get_session(cls, user_account_id):
         session = cls._sessions.get(user_account_id)
         if session is None:
-            raise ClientException('No session found. Log in again.')
+            raise ClientError('No session found. Log in again.')
 
         return session
 
@@ -267,14 +267,14 @@ class GameWorld:
 
         if found is None:
             # TODO do not use exception
-            raise ClientException(OBJECT_NOT_FOUND.format(action_args))
+            raise ClientError(OBJECT_NOT_FOUND.format(action_args))
 
         if not sender_obj.can_carry(found):
             # TODO do not use exception
-            raise ClientException(OBJECT_DENIED.format(found.name))
+            raise ClientError(OBJECT_DENIED.format(found.name))
 
         if found.get_data('exit'):
-            raise ClientException("You can't pick up an exit, only destroy it.")
+            raise ClientError("You can't pick up an exit, only destroy it.")
 
         cls.put_into(sender_obj, found)
         cls.user_hears(sender_obj, sender_obj, 'You grab {}.'.format(found.name))
@@ -290,7 +290,7 @@ class GameWorld:
 
         if found is None:
             # TODO do not use exception
-            raise ClientException('You look in vain for something called {}.'.format(obj_string))
+            raise ClientError('You look in vain for something called {}.'.format(obj_string))
 
         cls.put_into(list(sender_obj.contained_by)[0], found)
         cls.user_hears(sender_obj, sender_obj, 'You drop {}.'.format(found.name))
@@ -313,7 +313,7 @@ class GameWorld:
         """
         match = PUT_ARGS_RE.fullmatch(action_args)
         if match is None:
-            raise ClientException('Try /put some object in container object')
+            raise ClientError('Try /put some object in container object')
         target_obj_str, container_obj_str = match.groups()
 
         target_obj = cls.resolve_obj(
@@ -321,20 +321,20 @@ class GameWorld:
             target_obj_str, lambda o: o.is_player_obj)
 
         if target_obj is None:
-            raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
+            raise ClientError(OBJECT_NOT_FOUND.format(target_obj_str))
 
         if not sender_obj.can_carry(target_obj):
-            raise ClientException(OBJECT_DENIED.format(target_obj.name))
+            raise ClientError(OBJECT_DENIED.format(target_obj.name))
 
         container_obj = cls.resolve_obj(
             itertools.chain(sender_obj.contains, sender_obj.neighbors),
             container_obj_str, lambda o: o.is_player_obj)
 
         if container_obj is None:
-            raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
+            raise ClientError(OBJECT_NOT_FOUND.format(container_obj_str))
 
         if not sender_obj.can_execute(container_obj):
-            raise ClientException(
+            raise ClientError(
                 'You try as hard as you can, but you are unable to pry open {}'.format(
                     container_obj.name))
 
@@ -360,7 +360,7 @@ class GameWorld:
         """
         match = REMOVE_ARGS_RE.fullmatch(action_args)
         if match is None:
-            raise ClientException('Try /remove some object from container object')
+            raise ClientError('Try /remove some object from container object')
         target_obj_str, container_obj_str = match.groups()
 
         container_obj = cls.resolve_obj(
@@ -368,20 +368,20 @@ class GameWorld:
             container_obj_str, lambda o: o.is_player_obj)
 
         if container_obj is None:
-            raise ClientException(OBJECT_NOT_FOUND.format(container_obj_str))
+            raise ClientError(OBJECT_NOT_FOUND.format(container_obj_str))
 
         if not sender_obj.can_execute(container_obj):
-            raise ClientException(
+            raise ClientError(
                 'You try as hard as you can, but you are unable to pry open {}'.format(
                     container_obj))
 
         target_obj = cls.resolve_obj(container_obj.contains, target_obj_str)
 
         if target_obj is None:
-            raise ClientException(OBJECT_NOT_FOUND.format(target_obj_str))
+            raise ClientError(OBJECT_NOT_FOUND.format(target_obj_str))
 
         if not sender_obj.can_carry(target_obj):
-            raise ClientException(OBJECT_DENIED.format(target_obj.name))
+            raise ClientError(OBJECT_DENIED.format(target_obj.name))
 
         cls.put_into(sender_obj, target_obj)
         cls.user_hears(sender_obj, sender_obj, 'You remove {} from {} and carry it with you.'.format(
@@ -481,12 +481,12 @@ class GameWorld:
     def parse_create(cls, action_args):
         match = CREATE_RE.fullmatch(action_args)
         if match is None:
-            raise ClientException(
+            raise ClientError(
                 'malformed call to /create. the syntax is /create object-type "pretty name" [additional arguments]')
 
         obj_type, name, additional_args = match.groups()
         if obj_type not in CREATE_TYPES:
-            raise ClientException(
+            raise ClientError(
                 'Unknown type for /create. Try one of {}'.format(CREATE_TYPES))
 
         return obj_type, name, additional_args
@@ -537,31 +537,31 @@ class GameWorld:
         # TODO consider having parse_create_exit that is called outside of this
         # TODO currently the perms for adding exit to a room use write; should we use execute?
         if not owner_obj.is_player_obj:
-            raise ClientException('only players can create exits.')
+            raise ClientError('only players can create exits.')
         match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
         if not match:
-            raise ClientException('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
+            raise ClientError('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
         direction, target_room_name, description = match.groups()
         direction = cls.process_direction(direction)
         if direction not in DIRECTIONS:
-            raise ClientException('Try one of these directions: {}'.format(DIRECTIONS))
+            raise ClientError('Try one of these directions: {}'.format(DIRECTIONS))
 
         current_room = owner_obj.room
         target_room = GameObject.get_or_none(
             GameObject.shortname == target_room_name)
 
         if target_room is None:
-            raise ClientException('Could not find a room with the ID {}'.format(target_room_name))
+            raise ClientError('Could not find a room with the ID {}'.format(target_room_name))
 
         if not (owner_obj.user_account.is_god \
                 or current_room.author == owner_obj.user_account \
                 or owner_obj.can_write(current_room)):
-            raise ClientException('You lack the power to create an exit here.')
+            raise ClientError('You lack the power to create an exit here.')
 
         # Check if exit for this dir already exists
         current_exit = cls.resolve_exit(current_room, direction)
         if current_exit:
-            raise ClientException('An exit already exists in this room for that direction.')
+            raise ClientError('An exit already exists in this room for that direction.')
 
         # make the exit and add it to the creator's current room
         with get_db().atomic():
@@ -603,7 +603,7 @@ class GameWorld:
     @classmethod
     def handle_announce(cls, sender_obj, action_args):
         if not sender_obj.user_account.is_god:
-            raise ClientException('you are not powerful enough to do that.')
+            raise ClientError('you are not powerful enough to do that.')
 
         aoe = cls.all_active_objects()
         for o in aoe:
@@ -613,14 +613,14 @@ class GameWorld:
     def handle_whisper(cls, sender_obj, action_args):
         action_args = action_args.split(' ')
         if 0 == len(action_args):
-            raise ClientException('try /whisper another_username some cool message')
+            raise ClientError('try /whisper another_username some cool message')
         target_name = action_args[0]
         message = ' '.join(action_args[1:])
         if 0 == len(message):
-            raise ClientException('try /whisper another_username some cool message')
+            raise ClientError('try /whisper another_username some cool message')
         target_obj = cls.resolve_obj(sender_obj.neighbors, target_name)
         if target_obj is None:
-            raise ClientException('there is nothing named {} near you'.format(target_name))
+            raise ClientError('there is nothing named {} near you'.format(target_name))
         target_obj.handle_action(cls, sender_obj, 'whisper', message)
 
     @classmethod
@@ -665,7 +665,7 @@ class GameWorld:
     def move_obj(cls, target_obj, target_room_name):
         target_room = GameObject.get_or_none(GameObject.shortname==target_room_name)
         if target_room is None:
-            raise ClientException('illegal move') # should have been caught earlier
+            raise ClientError('illegal move') # should have been caught earlier
         if target_obj.is_player_obj and target_obj == target_room:
             cls.user_hears(target_obj, target_obj, "You can't move to yourself.")
             return
@@ -739,7 +739,7 @@ class GameWorld:
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
         if outer_obj == inner_obj:
-            raise ClientException('Cannot put something into itself.')
+            raise ClientError('Cannot put something into itself.')
         # TODO for exits, i need to be able to put them into two rooms at once.
         # Right now i'm thinking of just doing a raw Contains call when detecting
         # an exit.
@@ -800,7 +800,7 @@ class GameWorld:
                 error = 'No change to code'
 
             if error:
-                raise RevisionException(error, payload=result)
+                raise RevisionError(error, payload=result)
 
             rev = ScriptRevision.create(
                 code=code,
@@ -818,7 +818,7 @@ class GameWorld:
 
             try:
                 obj.init_scripting()
-            except WitchException as e:
+            except WitchError as e:
                 # TODO i don't actually have a good reason for errors being a
                 # list yet
                 witch_errors.append(str(e))
