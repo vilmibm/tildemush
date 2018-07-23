@@ -39,11 +39,11 @@ class MoveTest(TildemushTestCase):
         assert self.pond == player_obj.room
 
         # can move to object
-        GameWorld.handle_move(player_obj, 'cabin')
+        GameWorld.move_obj(player_obj, 'cabin')
         assert self.cabin == player_obj.room
 
         # can't move into self
-        GameWorld.handle_move(player_obj, 'selfsame')
+        GameWorld.move_obj(player_obj, 'selfsame')
         assert self.cabin == player_obj.room
 
         # can move to existing exit

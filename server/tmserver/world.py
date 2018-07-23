@@ -83,28 +83,20 @@ class GameWorld:
         to the game client."""
         player_obj = user_account.player_obj
         room = player_obj.room
-        exits = room.get_data('exits', {})
+
+        exits = [o for o in room.contains if o.get_data('exit')]
         exit_payload = {}
+        for e in exits:
+            route = e.get_data('exit', {}).get(room.shortname)
+            if route is None: continue
 
-        for direction in DIRECTIONS:
-            if direction not in exits:
-                continue
+            target_room_shortname = route[1]
+            target_room = GameObject.get_or_none(GameObject.shortname==target_room_shortname)
+            if target_room is None: continue
 
-            exit_obj = GameObject.get_or_none(GameObject.shortname==exits[direction])
-            if exit_obj is None:
-                continue
-
-            target_room_name = exit_obj.get_data('target')
-            if target_room_name is None:
-                continue
-
-            target_room = GameObject.get_or_none(GameObject.shortname==target_room_name)
-            if target_room is None:
-                continue
-
-            exit_payload[direction] = dict(
-                exit_name=exit_obj.name,
-                room_name=target_room.name)
+            exit_payload[route[0]] = {
+                'exit_name': e.name,
+                'room_name': target_room.name}
 
         return {
             'motd': 'welcome to tildemush',  # TODO
@@ -152,6 +144,9 @@ class GameWorld:
         # listens for like "pet"). I'm considering generalizing this as a list
         # of GAME_COMMANDS that map to a GameWorld handle_* method.
 
+        # TODO add destroy action
+        # TODO teleport, either 'home' or 'foyer'
+
         # admin
         if action == 'announce':
             cls.handle_announce(sender_obj, action_args)
@@ -171,22 +166,6 @@ class GameWorld:
             cls.handle_edit(sender_obj, action_args)
             return
 
-        # TODO teleport, either 'home' or 'foyer'
-
-        # movement
-        elif action == 'move':
-            # TODO
-            # an unintentional side effect of the exits/rooms implementation
-            # was exposing a /move command. this lets any user teleport to any
-            # shortname, including (at the moment) sanctums.
-            #
-            # there are a few options:
-            # - keep this code here exactly the same, but block /move in core.py
-            # - change tell-sender to be move-sender and don't go through dispatch_action
-            # - keep this code here exactly the same, but block moving to
-            #   places you aren't allowed to be in in handle_move
-            cls.handle_move(sender_obj, action_args)
-            return
         elif action == 'go':
             cls.handle_go(sender_obj, action_args)
             return
@@ -237,6 +216,24 @@ class GameWorld:
         return None
 
     @classmethod
+    def resolve_exit(cls, room, direction):
+        resolved = None
+        for o in room.contains:
+            if o.is_player_obj: continue
+
+            exits_map = o.get_data('exit')
+            if exits_map is None: continue
+
+            route = exits_map.get(room.shortname)
+            if route is None: continue
+
+            if route[0] == direction:
+                resolved = o
+                break
+
+        return resolved
+
+    @classmethod
     def all_active_objects(cls):
         """This method assumes that if an object is contained by something
         else, it's "active" in the game; in other words, we're assuming that a
@@ -275,6 +272,9 @@ class GameWorld:
         if not sender_obj.can_carry(found):
             # TODO do not use exception
             raise ClientException(OBJECT_DENIED.format(found.name))
+
+        if found.get_data('exit'):
+            raise ClientException("You can't pick up an exit, only destroy it.")
 
         cls.put_into(sender_obj, found)
         cls.user_hears(sender_obj, sender_obj, 'You grab {}.'.format(found.name))
@@ -532,54 +532,10 @@ class GameWorld:
 
         return room
 
-    # EXIT REFACTOR
-
-    # The current implementation relies on state in both room and exit objects.
-    # If an exit is moved or destroyed, the corresponding state has to be
-    # managed on the room. This trade-off was made so that a room could govern
-    # exits-per-direction.
-    #
-    # Another confusing aspect of the current implementation is how you end up
-    # creating two almost identical exits -- one in each connected room. What
-    # if an exit could be contained by two rooms at once?
-    #
-    # A new approach should:
-    # - Enforce one exit per cardinal direction
-    # - Allow an exit to be moved and still function as an exit
-    # - Allow an exit to be destroyed without keeping its direction locked
-    # - Share a single exit between two rooms
-    # - Respect a room's permissions: exits can only be made where you have
-    #   execute permission
-
-    # The big hurdle i want to tackle conceptually up front is the potential
-    # for exits existing in two rooms.
-    #
-    # What if you pick up an exit?
-    # - it is removed from both rooms
-    # - it is added to inventory
-    #
-    # At this point, it will never be noticed as an exit (not in a room.contains)
-    #
-    # When dropped?
-    #
-    # If the game doesn't detect that it's an exit then we risk masking an
-    # existing exit. We can look to see if the exit metadata is in kv and check
-    # to see if it's a legal drop. this gives us the same flexibility as when
-    # handling create_exit to know to do that book-keeping.
-    #
-    # i feel good about that -- reflection based exit detection. I can even
-    # define it on the model, it just won't rely on a flag.
-    #
-    # The bigger issue is contained_by suddenly returning >1 things.
-
-    # The more I think about it, the strict single contains-by is a limitation
-    # on player objects. I think it's okay to have th code always assume
-    # contained_by return a list and have it throw clientexception if called on
-    # a player object and they're in multiple rooms.
-
     @classmethod
     def create_exit(cls, owner_obj, name, additional_args):
         # TODO consider having parse_create_exit that is called outside of this
+        # TODO currently the perms for adding exit to a room use write; should we use execute?
         if not owner_obj.is_player_obj:
             raise ClientException('only players can create exits.')
         match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
@@ -602,47 +558,35 @@ class GameWorld:
                 or owner_obj.can_write(current_room)):
             raise ClientException('You lack the power to create an exit here.')
 
-        # make the here_exit
-        shortname = cls.derive_shortname(owner_obj, name)
-        here_exit = GameObject.create_scripted_object(
-            owner_obj.user_account, shortname, 'exit', {
-            'name': name,
-            'description': description,
-            'target_room_name': target_room.shortname})
+        # Check if exit for this dir already exists
+        current_exit = cls.resolve_exit(current_room, direction)
+        if current_exit:
+            raise ClientException('An exit already exists in this room for that direction.')
 
-
+        # make the exit and add it to the creator's current room
         with get_db().atomic():
+            shortname = cls.derive_shortname(owner_obj, name)
+            new_exit = GameObject.create_scripted_object(
+                owner_obj.user_account, shortname, 'exit', {
+                'name': name,
+                'description': description})
+
+            new_exit.set_data('exit',
+                              {current_room.shortname: (direction, target_room.shortname),
+                               target_room.shortname: (REVERSE_DIRS[direction], current_room.shortname)})
             # exits inherit the write permission from the rooms they are
             # created in
             if current_room.perms.write == Permission.WORLD:
-                here_exit.set_perm('write', 'world')
-            exits = current_room.get_data('exits', {})
-            exits[direction] = here_exit.shortname
-            current_room.set_data('exits', exits)
-            cls.put_into(current_room, here_exit)
+                new_exit.set_perm('write', 'world')
+            cls.put_into(current_room, new_exit)
 
-        # make the there_exit
+        # Expose the exit to the target room if able
         if owner_obj.user_account.is_god \
            or target_room.author == owner_obj.user_account \
            or owner_obj.can_write(target_room):
-            shortname = cls.derive_shortname(owner_obj, name, 'reverse')
-            there_exit = GameObject.create_scripted_object(
-                owner_obj.user_account, shortname, 'exit', {
-                'name': name,
-                'description': description,
-                'target_room_name': current_room.shortname})
-            rev_dir = REVERSE_DIRS[direction]
-            with get_db().atomic():
-                # exits inherit the write permission from the rooms they are
-                # created in
-                if target_room.perms.write == Permission.WORLD:
-                    there_exit.set_perm('write', 'world')
-                exits = target_room.get_data('exits', {})
-                exits[rev_dir] = there_exit.shortname
-                target_room.set_data('exits', exits)
-                cls.put_into(target_room, there_exit)
+            Contains.create(outer_obj=target_room, inner_obj=new_exit)
 
-        return here_exit
+        return new_exit
 
     @classmethod
     def create_portkey(cls, owner_obj, target, name=None):
@@ -718,44 +662,28 @@ class GameWorld:
             o.handle_action(cls, sender_obj, 'look', action_args)
 
     @classmethod
-    def handle_move(cls, sender_obj, action_args):
-        # We need to move sender_obj to whatever room is specified by the
-        # action_args string. Right now actions_args has to exactly match the
-        # shortname of a room in the database. In the future we might need
-        # fuzzy matching but for now I think moves are largely programmatic?
-        room = GameObject.get_or_none(GameObject.shortname==action_args)
-        if room:
-            if sender_obj == room:
-                cls.user_hears(sender_obj, sender_obj, "You can't move to yourself.")
-            else:
-                # TODO check room for execute permission
-                cls.put_into(room, sender_obj)
-                cls.user_hears(sender_obj, sender_obj, 'You materialize in a new place!')
-        else:
-            cls.user_hears(sender_obj, sender_obj, "Can't figure out what you meant to move to.")
+    def move_obj(cls, target_obj, target_room_name):
+        target_room = GameObject.get_or_none(GameObject.shortname==target_room_name)
+        if target_room is None:
+            raise ClientException('illegal move') # should have been caught earlier
+        if target_obj.is_player_obj and target_obj == target_room:
+            cls.user_hears(target_obj, target_obj, "You can't move to yourself.")
+            return
+
+        cls.put_into(target_room, target_obj)
+        if target_obj.is_player_obj:
+            cls.user_hears(target_obj, target_obj, 'You materialize in a new place!')
 
     @classmethod
     def handle_go(cls, sender_obj, action_args):
         direction = cls.process_direction(action_args)
-        # TODO just using [0] here until the imminent exit refactor
-        current_room = list(sender_obj.contained_by)[0]
-        exits = current_room.get_data('exits', {})
-        if direction not in exits:
-            cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
-            return
-
-        exit_obj_shortname = exits[direction]
-        exit_obj = None
-        for obj in current_room.contains:
-            if obj.shortname == exit_obj_shortname:
-                exit_obj = obj
-                break
-
+        current_room = sender_obj.room
+        exit_obj = cls.resolve_exit(sender_obj.room, direction)
         if exit_obj is None:
             cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
             return
 
-        exit_obj.handle_action(cls, sender_obj, 'touch', '')
+        exit_obj.handle_action(cls, sender_obj, 'go', direction)
 
     @classmethod
     def process_direction(cls, input_direction):

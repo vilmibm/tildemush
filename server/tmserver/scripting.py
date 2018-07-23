@@ -32,10 +32,8 @@ SCRIPT_TEMPLATES = {
     'exit': '''
     (witch "{name}"
       (has {{"name" "{name}"
-            "description" "{description}"
-            "target" "{target_room_name}"}})
-      (hears "touch"
-        (tell-sender "move" (get-data "target"))))
+            "description" "{description}"}})
+      (hears "go" (move-sender arg))),
     ''',
     'portkey': '''
     (witch "{name}"
@@ -43,7 +41,7 @@ SCRIPT_TEMPLATES = {
             "description" "{description}"
             "target" "{target_room_name}"}})
       (hears "touch"
-        (tell-sender "move" (get-data "target"))))
+        (teleport-sender (get-data "target"))))
     '''}
 
 class ScriptEngine:
@@ -181,6 +179,17 @@ class ScriptedObjectMixin:
 
     def tell_sender(self, sender_obj, action, args):
         self.game_world.dispatch_action(sender_obj, action, args)
+
+    def move_sender(self, sender_obj, direction):
+        current_room = sender_obj.room
+        route = self.get_data('exit', {}).get(current_room.shortname)
+        if route is None or route[0] != direction:
+            raise ClientException('illegal move') # this should have been caught higher up, so ok to throw
+
+        self.game_world.move_obj(sender_obj, route[1])
+
+    def teleport_sender(self, sender_obj, target_room_name):
+        self.game_world.move_obj(sender_obj, target_room_name)
 
     def get_split_args(self, action_args):
         return split_args(action_args)

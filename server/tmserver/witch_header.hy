@@ -3,6 +3,8 @@
 (defmacro says [message] `(.say receiver ~message))
 #_("TODO support additional args, here. right now, they have to be one big string.")
 (defmacro tell-sender [action args] `(.tell-sender receiver sender ~action ~args))
+(defmacro move-sender [direction] `(.move-sender receiver sender ~direction))
+(defmacro teleport-sender [target_room_name] `(.teleport-sender receiver sender ~target_room_name))
 
 #_("TODO eventually decide on cmd-args handling")
 
