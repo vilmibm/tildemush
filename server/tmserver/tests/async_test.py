@@ -429,9 +429,7 @@ async def test_create_room(client):
 
     await client.assert_next('STATE')
 
-    # TODO eventually when we have transitive commands, touch the actual right
-    # thing. For now, only one thing should be touchable.
-    await client.send('COMMAND touch', [
+    await client.send('COMMAND touch stone', [
         'COMMAND OK',
         'STATE',
         'You materialize'])
