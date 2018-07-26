@@ -243,7 +243,7 @@ class GameMain(urwid.Frame):
             self.switch_tab(self.tabs.get(key))
         elif key in self.hotkeys.get("scrolling").keys():
             if self.body == self.game_tab:
-                self.game_text.keypress(size, key)
+                self.game_tab.game_area.keypress(size, key)
         elif key in self.hotkeys.get("movement").keys():
             asyncio.ensure_future(self.client_state.send(
                     "COMMAND {}".format(self.hotkeys.get("movement").get(key))
