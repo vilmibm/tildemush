@@ -1,6 +1,6 @@
 # TODO unit tests for create command parsing
 
-from ..errors import ClientError
+from ..errors import UserError
 from ..models import UserAccount, GameObject
 from ..world import GameWorld
 from .tm_test_case import TildemushTestCase
@@ -58,12 +58,12 @@ class ParseCreateCommandTest(TildemushTestCase):
 
         for bad in malformed:
             with self.assertRaisesRegex(
-                    ClientError,
-                    'malformed call to /create'):
+                    UserError,
+                    'try /create'):
                 GameWorld.parse_create(bad)
 
     def test_bad_object_type(self):
         with self.assertRaisesRegex(
-                ClientError,
+                UserError,
                 'Unknown type for /create'):
             GameWorld.parse_create('fart "Yeah" sorry')
