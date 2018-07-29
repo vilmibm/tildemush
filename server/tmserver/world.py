@@ -663,8 +663,7 @@ class GameWorld:
         if target_room is None:
             raise UserError('illegal move') # should have been caught earlier
         if target_obj.is_player_obj and target_obj == target_room:
-            cls.user_hears(target_obj, target_obj, "You can't move to yourself.")
-            return
+            raise UserError('You cannot move to yourself')
 
         cls.put_into(target_room, target_obj)
         if target_obj.is_player_obj:

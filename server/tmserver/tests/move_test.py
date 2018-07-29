@@ -1,5 +1,6 @@
 import unittest.mock as mock
 from ..core import GameServer, UserSession
+from ..errors import UserError
 from ..models import UserAccount, GameObject, Contains
 from ..world import GameWorld
 
@@ -35,7 +36,8 @@ class MoveTest(TildemushTestCase):
         GameWorld.put_into(self.pond, self.frog)
 
         # can't go to non existing exit
-        GameWorld.handle_go(player_obj, 'north')
+        with self.assertRaisesRegex(UserError, 'cannot go that way'):
+            GameWorld.handle_go(player_obj, 'north')
         assert self.pond == player_obj.room
 
         # can move to object
@@ -43,7 +45,8 @@ class MoveTest(TildemushTestCase):
         assert self.cabin == player_obj.room
 
         # can't move into self
-        GameWorld.move_obj(player_obj, 'selfsame')
+        with self.assertRaisesRegex(UserError, 'move to yourself'):
+            GameWorld.move_obj(player_obj, 'selfsame')
         assert self.cabin == player_obj.room
 
         # can move to existing exit
