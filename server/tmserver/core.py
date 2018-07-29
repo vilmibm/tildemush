@@ -152,6 +152,10 @@ class GameServer:
                 except UserError as e:
                     await user_session.client_send('{{red}}{}{{/}}'.format(e))
                 else:
+                    # TODO consider switching this to COMMAND ACK and sending
+                    # as soon as we get the command. This is really only useful
+                    # in that it tells the client "yes, i saw you; if you don't
+                    # get a response it's not because i didn't see you."
                     await user_session.client_send('COMMAND OK')
             elif message.startswith('REVISION'):
                 revision_result, revision_exception = self.handle_revision(user_session, message)

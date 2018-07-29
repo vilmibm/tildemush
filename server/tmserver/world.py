@@ -26,8 +26,6 @@ REVERSE_DIRS = {
 SPECIAL_HANDLING = {'say'} # TODO i thought there were others but for now it's just say. might not need a set in the end.
 
 
-# TODO audit all use of ClientError and use UserError as needed
-
 class GameWorld:
     # TODO logging
     _sessions = {}
@@ -268,15 +266,13 @@ class GameWorld:
         found = cls.resolve_obj(sender_obj.neighbors, action_args, lambda o: o.is_player_obj)
 
         if found is None:
-            # TODO do not use exception
-            raise ClientError(OBJECT_NOT_FOUND.format(action_args))
+            raise UserError(OBJECT_NOT_FOUND.format(action_args))
 
         if not sender_obj.can_carry(found):
-            # TODO do not use exception
-            raise ClientError(OBJECT_DENIED.format(found.name))
+            raise UserError(OBJECT_DENIED.format(found.name))
 
         if found.get_data('exit'):
-            raise ClientError("You can't pick up an exit, only destroy it.")
+            raise UserError("You can't pick up an exit, only destroy it.")
 
         cls.put_into(sender_obj, found)
         cls.user_hears(sender_obj, sender_obj, 'You grab {}.'.format(found.name))
@@ -291,8 +287,7 @@ class GameWorld:
         found = cls.resolve_obj(sender_obj.contains, action_args)
 
         if found is None:
-            # TODO do not use exception
-            raise ClientError('You look in vain for something called {}.'.format(obj_string))
+            raise UserError('You look in vain for something called {}.'.format(obj_string))
 
         cls.put_into(list(sender_obj.contained_by)[0], found)
         cls.user_hears(sender_obj, sender_obj, 'You drop {}.'.format(found.name))
@@ -315,7 +310,7 @@ class GameWorld:
         """
         match = PUT_ARGS_RE.fullmatch(action_args)
         if match is None:
-            raise ClientError('Try /put some object in container object')
+            raise UserError('Try /put some object in container object')
         target_obj_str, container_obj_str = match.groups()
 
         target_obj = cls.resolve_obj(
@@ -323,20 +318,20 @@ class GameWorld:
             target_obj_str, lambda o: o.is_player_obj)
 
         if target_obj is None:
-            raise ClientError(OBJECT_NOT_FOUND.format(target_obj_str))
+            raise UserError(OBJECT_NOT_FOUND.format(target_obj_str))
 
         if not sender_obj.can_carry(target_obj):
-            raise ClientError(OBJECT_DENIED.format(target_obj.name))
+            raise UserError(OBJECT_DENIED.format(target_obj.name))
 
         container_obj = cls.resolve_obj(
             itertools.chain(sender_obj.contains, sender_obj.neighbors),
             container_obj_str, lambda o: o.is_player_obj)
 
         if container_obj is None:
-            raise ClientError(OBJECT_NOT_FOUND.format(container_obj_str))
+            raise UserError(OBJECT_NOT_FOUND.format(container_obj_str))
 
         if not sender_obj.can_execute(container_obj):
-            raise ClientError(
+            raise UserError(
                 'You try as hard as you can, but you are unable to pry open {}'.format(
                     container_obj.name))
 
@@ -362,7 +357,7 @@ class GameWorld:
         """
         match = REMOVE_ARGS_RE.fullmatch(action_args)
         if match is None:
-            raise ClientError('Try /remove some object from container object')
+            raise UserError('Try /remove some object from container object')
         target_obj_str, container_obj_str = match.groups()
 
         container_obj = cls.resolve_obj(
@@ -370,20 +365,20 @@ class GameWorld:
             container_obj_str, lambda o: o.is_player_obj)
 
         if container_obj is None:
-            raise ClientError(OBJECT_NOT_FOUND.format(container_obj_str))
+            raise UserError(OBJECT_NOT_FOUND.format(container_obj_str))
 
         if not sender_obj.can_execute(container_obj):
-            raise ClientError(
+            raise UserError(
                 'You try as hard as you can, but you are unable to pry open {}'.format(
                     container_obj))
 
         target_obj = cls.resolve_obj(container_obj.contains, target_obj_str)
 
         if target_obj is None:
-            raise ClientError(OBJECT_NOT_FOUND.format(target_obj_str))
+            raise UserError(OBJECT_NOT_FOUND.format(target_obj_str))
 
         if not sender_obj.can_carry(target_obj):
-            raise ClientError(OBJECT_DENIED.format(target_obj.name))
+            raise UserError(OBJECT_DENIED.format(target_obj.name))
 
         cls.put_into(sender_obj, target_obj)
         cls.user_hears(sender_obj, sender_obj, 'You remove {} from {} and carry it with you.'.format(
@@ -408,24 +403,19 @@ class GameWorld:
         obj = cls.resolve_obj(cls.area_of_effect(sender_obj), action_args)
 
         if obj is None:
-            cls.user_hears(sender_obj, sender_obj, '{{red}}You do not see an object called {}{{/}}'.format(action_args))
-            return
+            raise UserError(OBJECT_NOT_FOUND.format(action_args))
 
         # TODO if we're switching users to the WITCH tab when they run /edit,
         # they might miss these errors. they can always switch back to the main
         # tab though if nothing appears in the WITCH tab.
         if not sender_obj.can_write(obj):
-            cls.user_hears(sender_obj, sender_obj, '{{red}}You lack the authority to edit {}{{/}}'.format(obj.name))
-            return
+            raise UserError('You lack the authority to edit {}'.format(obj.name))
 
         if Editing.select().where(Editing.game_obj==obj).count() > 0:
-            cls.user_hears(sender_obj, sender_obj, '{red}That object is already being edited{/}')
-            return
+            raise UserError('That object is already being edited')
 
-        # TODO we still aren't cleanly handling disconnects. Part of the
-        # cleanup for a disconnect is clearing out any related entries in the
-        # Editing table. It should probably be cleared out on server start,
-        # too, now that I think about it.
+        # TODO Ensure that part of disconnecting is clearing out Editing table.
+        # It should also be cleared out on server start.
         with get_db().atomic():
             Editing.delete().where(Editing.user_account==sender_obj.user_account).execute()
             Editing.delete().where(Editing.game_obj==obj).execute()
@@ -483,12 +473,11 @@ class GameWorld:
     def parse_create(cls, action_args):
         match = CREATE_RE.fullmatch(action_args)
         if match is None:
-            raise ClientError(
-                'malformed call to /create. the syntax is /create object-type "pretty name" [additional arguments]')
+            raise UserError('try /create object-type "pretty name" [additional arguments]')
 
         obj_type, name, additional_args = match.groups()
         if obj_type not in CREATE_TYPES:
-            raise ClientError(
+            raise UserError(
                 'Unknown type for /create. Try one of {}'.format(CREATE_TYPES))
 
         return obj_type, name, additional_args
@@ -534,36 +523,41 @@ class GameWorld:
 
         return room
 
+    # TODO audit error handling for non-user execution paths. UserErrors and
+    # ClientErrors initiating from a script engine and not the server core are
+    # going to crash the server.
+
     @classmethod
     def create_exit(cls, owner_obj, name, additional_args):
         # TODO consider having parse_create_exit that is called outside of this
         # TODO currently the perms for adding exit to a room use write; should we use execute?
         if not owner_obj.is_player_obj:
-            raise ClientError('only players can create exits.')
+            # TODO log
+            return
         match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
         if not match:
-            raise ClientError('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
+            raise UserError('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
         direction, target_room_name, description = match.groups()
         direction = cls.process_direction(direction)
         if direction not in DIRECTIONS:
-            raise ClientError('Try one of these directions: {}'.format(DIRECTIONS))
+            raise UserError('Try one of these directions: {}'.format(DIRECTIONS))
 
         current_room = owner_obj.room
         target_room = GameObject.get_or_none(
             GameObject.shortname == target_room_name)
 
         if target_room is None:
-            raise ClientError('Could not find a room with the ID {}'.format(target_room_name))
+            raise UserError('Could not find a room with the ID {}'.format(target_room_name))
 
         if not (owner_obj.user_account.is_god \
                 or current_room.author == owner_obj.user_account \
                 or owner_obj.can_write(current_room)):
-            raise ClientError('You lack the power to create an exit here.')
+            raise UserError('You lack the power to create an exit here.')
 
         # Check if exit for this dir already exists
         current_exit = cls.resolve_exit(current_room, direction)
         if current_exit:
-            raise ClientError('An exit already exists in this room for that direction.')
+            raise UserError('An exit already exists in this room for that direction.')
 
         # make the exit and add it to the creator's current room
         with get_db().atomic():
@@ -605,7 +599,7 @@ class GameWorld:
     @classmethod
     def handle_announce(cls, sender_obj, action_args):
         if not sender_obj.user_account.is_god:
-            raise ClientError('you are not powerful enough to do that.')
+            raise UserError('you are not powerful enough to do that.')
 
         aoe = cls.all_active_objects()
         for o in aoe:
@@ -615,14 +609,14 @@ class GameWorld:
     def handle_whisper(cls, sender_obj, action_args):
         action_args = action_args.split(' ')
         if 0 == len(action_args):
-            raise ClientError('try /whisper another_username some cool message')
+            raise UserError('try /whisper another_username some cool message')
         target_name = action_args[0]
         message = ' '.join(action_args[1:])
         if 0 == len(message):
-            raise ClientError('try /whisper another_username some cool message')
+            raise UserError('try /whisper another_username some cool message')
         target_obj = cls.resolve_obj(sender_obj.neighbors, target_name)
         if target_obj is None:
-            raise ClientError('there is nothing named {} near you'.format(target_name))
+            raise UserError('there is nothing named {} near you'.format(target_name))
         target_obj.handle_action(cls, sender_obj, 'whisper', message)
 
     @classmethod
@@ -667,7 +661,7 @@ class GameWorld:
     def move_obj(cls, target_obj, target_room_name):
         target_room = GameObject.get_or_none(GameObject.shortname==target_room_name)
         if target_room is None:
-            raise ClientError('illegal move') # should have been caught earlier
+            raise UserError('illegal move') # should have been caught earlier
         if target_obj.is_player_obj and target_obj == target_room:
             cls.user_hears(target_obj, target_obj, "You can't move to yourself.")
             return
@@ -682,8 +676,7 @@ class GameWorld:
         current_room = sender_obj.room
         exit_obj = cls.resolve_exit(sender_obj.room, direction)
         if exit_obj is None:
-            cls.user_hears(sender_obj, sender_obj, 'You cannot go that way.')
-            return
+            raise UserError('You cannot go that way.')
 
         exit_obj.handle_action(cls, sender_obj, 'go', direction)
 
@@ -741,7 +734,7 @@ class GameWorld:
     @classmethod
     def put_into(cls, outer_obj, inner_obj):
         if outer_obj == inner_obj:
-            raise ClientError('Cannot put something into itself.')
+            raise UserError('Cannot put something into itself.')
         # TODO for exits, i need to be able to put them into two rooms at once.
         # Right now i'm thinking of just doing a raw Contains call when detecting
         # an exit.
@@ -788,8 +781,8 @@ class GameWorld:
     def handle_revision(cls, owner_obj, shortname, code, current_rev):
         result = None
         with get_db().atomic():
-            # TODO this is going to create sadness; should be handled and user
-            # gently told
+            # TODO this is going to maybe create sadness; should be handled and
+            # user gently told
             obj = GameObject.get(GameObject.shortname==shortname)
             result = cls.object_state(obj)
 
