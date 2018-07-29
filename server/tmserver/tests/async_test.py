@@ -133,7 +133,7 @@ async def test_game_command(client):
 async def test_announce_forbidden(client):
     await client.setup_user('vilmibm')
     await client.send('COMMAND announce HELLO EVERYONE', [
-         'ERROR: you are not powerful enough to do that.'])
+         '{red}you are not powerful enough to do that.'])
 
 @pytest.mark.asyncio
 async def test_announce(event_loop):
@@ -182,21 +182,21 @@ async def test_witch_script(client):
 async def test_whisper_no_args(client):
     await client.setup_user('vilmibm')
     await client.send('COMMAND whisper', [
-         'ERROR: try /whisper another_username some cool message'])
+         '{red}try /whisper another_username some cool message'])
 
 
 @pytest.mark.asyncio
 async def test_whisper_no_msg(client):
     await client.setup_user('vilmibm')
     await client.send('COMMAND whisper snoozy', [
-         'ERROR: try /whisper another_username some cool message'])
+         '{red}try /whisper another_username some cool message'])
 
 
 @pytest.mark.asyncio
 async def test_whisper_bad_target(client):
     await client.setup_user('vilmibm')
     await client.send('COMMAND whisper snoozy hey what are the haps', [
-         'ERROR: there is nothing named snoozy near you'])
+         '{red}there is nothing named snoozy near you'])
 
 
 @pytest.mark.asyncio
@@ -537,7 +537,7 @@ async def test_handle_get_denied(client):
     await client.setup_user('vilmibm')
 
     await client.send('COMMAND get phaser', [
-        'ERROR: You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'])
+        '{red}You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'])
 
 
 @pytest.mark.asyncio
@@ -720,31 +720,24 @@ async def test_edit(event_loop):
         await vclient.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
             'COMMAND OK',
             'STATE',
-            'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'
-        ])
+            'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'])
 
         # create obj for snoozy
         await sclient.send('COMMAND create item "A stick" Seems to be maple.', [
             'COMMAND OK',
             'STATE',
-            'You breathed light into a whole new item. Its true name is snoozy/a-stick'
-        ])
+            'You breathed light into a whole new item. Its true name is snoozy/a-stick'])
         await sclient.send('COMMAND drop stick', [
             'COMMAND OK',
-            'You drop A stick.'
-        ])
+            'You drop A stick.'])
 
         # obj not found
         await vclient.send('COMMAND edit fart', [
-            'COMMAND OK',
-            '{red}You do not see an object called fart{/}'
-        ])
+            '{red}You look in vain for fart.{/}'])
 
         # perm denied
         await vclient.send('COMMAND edit stick', [
-            'COMMAND OK',
-            '{red}You lack the authority to edit A stick{/}'
-        ])
+            '{red}You lack the authority to edit A stick{/}'])
 
         # success
         await vclient.send('COMMAND edit cigar', ['COMMAND OK'])
@@ -761,9 +754,7 @@ async def test_edit(event_loop):
 
         # already being edited
         await vclient.send('COMMAND edit cigar', [
-            'COMMAND OK',
-            '{red}That object is already being edited{/}'
-        ])
+            '{red}That object is already being edited{/}'])
 
         assert 1 == Editing.select().where(Editing.user_account==vil).count()
         assert 1 == Editing.select().where(Editing.game_obj==cigar).count()
