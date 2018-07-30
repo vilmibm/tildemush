@@ -87,6 +87,8 @@ class TestMapping(TildemushUnitTestCase):
             ('Path', 'graveyard', 'south', 'south-graveyard'),
             ('Path', 'graveyard', 'west', 'west-graveyard'),]
 
+        # TODO need to ensure this graph has nasty circuits in it to make sure we terminate.
+
         for name, current, direction, target in exits:
             current_room = GameObject.get(GameObject.shortname=='god/'+current)
             GameWorld.put_into(current_room, cls.god)

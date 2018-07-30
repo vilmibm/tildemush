@@ -12,34 +12,47 @@ from .world import GameWorld, DIRECTIONS
 # [ Room Name 1 ] -- direction --> [ Room Name 2]
 # ...
 
-def from_room(room_obj, distance=3):
+def mapfile_for_room(room):
+    return [
+        '[ {from_room} ] -- {direction} --> [ {to_room} ]'.format(
+            from_room=room.name,
+            direction=d,
+            to_room=r.name)
+        for d,r in adjacent(room)]
+
+def adjacent(room):
+    out = []
+    for d in DIRECTIONS:
+        e = GameWorld.resolve_exit(room, d)
+        if e is None: continue
+        route = e.get_data('exit').get(room.shortname)
+        target_room = GameObject.get_or_none(GameObject.shortname==route[1])
+        out.append((d,target_room))
+
+    return out
+
+def build_queue(queue, room):
+    print('QUEUE CALLED WITH ' + room.shortname)
+    if queue[room.shortname] == 0:
+        return
+    else:
+        for d,r in adjacent(room):
+            if r.shortname in queue: continue
+            queue[r.shortname] = queue[room.shortname] - 1
+            build_queue(queue, r)
+
+def from_room(room, distance=3):
     if distance < 0:
         raise ValueError('distance must be greater than 0')
 
+    queue = {room.shortname: distance}
+    build_queue(queue, room)
+    to_map = set([GameObject.get(GameObject.shortname==k) for k in queue.keys()])
     mapfile = []
+    for room in to_map:
+        mapfile.extend(mapfile_for_room(room))
 
-    for d in DIRECTIONS:
-        room = room_obj
-        done = False
-        travelled = 0
-        while not done:
-            e = GameWorld.resolve_exit(room, d)
-            if e is None:
-                # We've gone as far as we can in this direction; time for the
-                # next direction.
-                done = True
-                continue
-            route = e.get_data('exit').get(room.shortname)
-            target_room = GameObject.get_or_none(GameObject.shortname==route[1])
-            mapfile.append('[ {from_room} ] -- {direction} --> [ {to_room} ]'.format(
-                from_room=room.name,
-                direction=d,
-                to_room=target_room.name))
-            travelled += 1
-            room = target_room
-            if travelled >= distance:
-                # We've performed distance hops; we should be mapping distance nodes + source node
-                done = True
-
+    import ipdb; ipdb.set_trace()
     return '\n'.join(mapfile)
+
 
