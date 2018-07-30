@@ -41,10 +41,10 @@ def init_db():
             password='TODO',  # TODO set from config
             is_god=True)
 
-    if 0 == GameObject.select().where(GameObject.shortname=='foyer').count():
+    if 0 == GameObject.select().where(GameObject.shortname=='god/foyer').count():
         god_ua = UserAccount.get(UserAccount.username=='god')
         GameObject.create_scripted_object(
-            god_ua, 'foyer', 'room',
+            god_ua, 'god/foyer', 'room',
             {'name': 'Foyer',
              'description': "A waiting room. Magazines in every language from every decade litter dusty end tables sitting between overstuffed armchairs." })
 

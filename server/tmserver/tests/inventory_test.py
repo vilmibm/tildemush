@@ -8,7 +8,7 @@ from ..world import GameWorld
 class InventoryTestCase(TildemushTestCase):
     def setUp(self):
         super().setUp()
-        foyer = GameObject.get(GameObject.shortname=='foyer')
+        foyer = GameObject.get(GameObject.shortname=='god/foyer')
         god = UserAccount.get(UserAccount.username=='god')
 
         vil_ua = UserAccount.create(

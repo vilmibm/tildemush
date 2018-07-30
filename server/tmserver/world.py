@@ -45,7 +45,7 @@ class GameWorld:
         ls = LastSeen.get_or_none(user_account=user_account)
         room = None
         if ls is None:
-            room = GameObject.get(GameObject.shortname=='foyer')
+            room = GameObject.get(GameObject.shortname=='god/foyer')
         else:
             room = ls.room
         cls.put_into(room, player_obj)
@@ -536,7 +536,7 @@ class GameWorld:
             return
         match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
         if not match:
-            raise UserError('To make an exit, try /create exit "A Door" north foyer A rusted, metal door')
+            raise UserError('To make an exit, try /create exit "A Door" north god/foyer A rusted, metal door')
         direction, target_room_name, description = match.groups()
         direction = cls.process_direction(direction)
         if direction not in DIRECTIONS:
