@@ -32,7 +32,6 @@ def adjacent(room):
     return out
 
 def build_queue(queue, room):
-    print('QUEUE CALLED WITH ' + room.shortname)
     if queue[room.shortname] == 0:
         return
     else:
@@ -52,7 +51,6 @@ def from_room(room, distance=3):
     for room in to_map:
         mapfile.extend(mapfile_for_room(room))
 
-    import ipdb; ipdb.set_trace()
     return '\n'.join(mapfile)
 
 
