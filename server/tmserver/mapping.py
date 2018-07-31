@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from .models import GameObject
 from .world import GameWorld, DIRECTIONS
 
@@ -12,13 +13,14 @@ from .world import GameWorld, DIRECTIONS
 # [ Room Name 1 ] -- direction --> [ Room Name 2]
 # ...
 
-def mapfile_for_room(room):
+def mapfile_for_room(mapped, room):
     return [
         '[ {from_room} ] -- {direction} --> [ {to_room} ]'.format(
             from_room=room.name,
             direction=d,
             to_room=r.name)
-        for d,r in adjacent(room)]
+        for d,r in adjacent(room)
+        if r.shortname not in mapped]
 
 def adjacent(room):
     out = []
