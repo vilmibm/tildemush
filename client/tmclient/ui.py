@@ -40,8 +40,8 @@ palettes = [
     ('light cyan', 'light cyan', ''),
     ('white', 'white', ''),
     ('black', 'black', 'white'),
-    ('/', 'white', ''),
-    ('reset', 'white', '')]
+    ('/', 'default', ''),
+    ('reset', 'default', '')]
 
 KEY_ESCAPE_MAP = {
     key: urwid.vterm.ESC + sequence
