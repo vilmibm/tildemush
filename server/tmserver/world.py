@@ -287,7 +287,7 @@ class GameWorld:
         found = cls.resolve_obj(sender_obj.contains, action_args)
 
         if found is None:
-            raise UserError('You look in vain for something called {}.'.format(obj_string))
+            raise UserError(OBJECT_NOT_FOUND.format(action_args))
 
         cls.put_into(list(sender_obj.contained_by)[0], found)
         cls.user_hears(sender_obj, sender_obj, 'You drop {}.'.format(found.name))
