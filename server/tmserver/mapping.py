@@ -46,13 +46,14 @@ def from_room(room, distance=3):
     if distance < 0:
         raise ValueError('distance must be greater than 0')
 
-    queue = {room.shortname: distance}
+    queue = OrderedDict()
+    queue[room.shortname] = distance
     build_queue(queue, room)
-    to_map = set([GameObject.get(GameObject.shortname==k) for k in queue.keys()])
+    mapped = set()
     mapfile = []
-    for room in to_map:
-        mapfile.extend(mapfile_for_room(room))
+    for room_name in queue.keys():
+        room = GameObject.get(GameObject.shortname==room_name)
+        mapfile.extend(mapfile_for_room(mapped, room))
+        mapped.add(room_name)
 
     return '\n'.join(mapfile)
-
-
