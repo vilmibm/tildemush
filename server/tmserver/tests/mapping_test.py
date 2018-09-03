@@ -119,8 +119,6 @@ class TestMapping(TildemushUnitTestCase):
             ('Path', 'graveyard', 'south', 'south-graveyard'),
             ('Path', 'graveyard', 'west', 'west-graveyard'),]
 
-        # TODO need to ensure this graph has nasty circuits in it to make sure we terminate.
-
         for name, current, direction, target in exits:
             current_room = GameObject.get(GameObject.shortname=='god/'+current)
             GameWorld.put_into(current_room, cls.god)
@@ -176,9 +174,8 @@ class TestMapping(TildemushUnitTestCase):
 [ Foyer ] -- above --> [ Airy Loft ]
 [ Foyer ] -- east --> [ Living Room ]
 [ Foyer ] -- west --> [ Hallway ]
-[ Foyer ] -- south --> [ Front Lawn ]
-        '''.lstrip()
-        assert sorted(expected.split('\n')) == sorted(expected.split('\n'))
+[ Foyer ] -- south --> [ Front Lawn ]'''.lstrip()
+        assert sorted(expected.split('\n')) == sorted(mapfile.split('\n'))
 
     def test_boxgraph(self):
         mapfile = from_room(self.foyer, distance=2)
