@@ -33,7 +33,10 @@ setup(
             'pytest-asyncio==0.8.0'
         ]
     },
-    include_package_data=True,
+    #include_package_data=True,
+    package_data={
+      'tmserver': ['boxgraph']
+    },
     entry_points={
           'console_scripts': [
               'tmserver = tmserver.__init__:main',
