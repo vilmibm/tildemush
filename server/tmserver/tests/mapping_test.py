@@ -2,8 +2,40 @@ from unittest.mock import Mock
 from ..migrations import reset_db
 from ..models import GameObject
 from ..world import GameWorld
-from ..mapping import from_room
+from ..mapping import from_room, graph_easy
 from .tm_test_case import TildemushUnitTestCase
+
+RENDERED_MAP = '''                      ┌────────────────┐         ┌─────────────┐  north   ┌───────────┐  north   ┌───────────────────────┐
+                      │ Small Bedroom  │         │   Kitchen   │ ───────> │ Rear Lawn │ ───────> │        Forest         │
+                      └────────────────┘         └─────────────┘          └───────────┘          └───────────────────────┘
+                        ∧                          ∧
+                        │ south                    │ north
+                        │                          │
+┌──────────┐  north   ┌────────────────┐  west   ┌─────────────┐  above   ┌───────────┐  above   ┌───────────────────────┐  above   ┌───────────┐
+│ Bathroom │ <─────── │    Hallway     │ <────── │             │ ───────> │ Airy Loft │ ───────> │         Attic         │ ───────> │ Tree Limb │
+└──────────┘          └────────────────┘         │             │          └───────────┘          └───────────────────────┘          └───────────┘
+                        │                        │             │
+                        │ west                   │    Foyer    │
+                        ∨                        │             │
+                      ┌────────────────┐         │             │  below   ┌───────────┐  west    ┌───────────────────────┐
+                      │ Master Bedroom │  ┌───── │             │ ───────> │ Basement  │ ───────> │     Computer Room     │
+                      └────────────────┘  │      └─────────────┘          └───────────┘          └───────────────────────┘
+                        │                 │        │                        │
+                        │ west            │        │ south                  │ east
+                        ∨                 │        ∨                        ∨
+                      ┌────────────────┐  │ east ┌─────────────┐          ┌───────────┐
+                      │   West Lawn    │  │      │ Front Lawn  │          │ Rec Room  │
+                      └────────────────┘  │      └─────────────┘          └───────────┘
+                                          │      ┌─────────────┐  east    ┌───────────┐  east    ┌───────────────────────┐
+                                          └────> │ Living Room │ ───────> │ East Lawn │ ───────> │ Abandoned House Foyer │
+                                                 └─────────────┘          └───────────┘          └───────────────────────┘
+                                                   │
+                                                   │ north
+                                                   ∨
+                                                 ┌─────────────┐
+                                                 │ Dining Room │
+                                                 └─────────────┘
+'''
 
 class TestMapping(TildemushUnitTestCase):
     @classmethod
@@ -102,11 +134,53 @@ class TestMapping(TildemushUnitTestCase):
 
     def test_from_room_max_distance(self):
         mapfile = from_room(self.foyer, 100)
-        expected = 'TODO'
-        assert expected == mapfile
+        expected = '''
+[ Foyer ] -- north --> [ Kitchen ]
+[ Foyer ] -- below --> [ Basement ]
+[ Foyer ] -- above --> [ Airy Loft ]
+[ Foyer ] -- east --> [ Living Room ]
+[ Foyer ] -- west --> [ Hallway ]
+[ Foyer ] -- south --> [ Front Lawn ]
+[ Kitchen ] -- north --> [ Rear Lawn ]
+[ Rear Lawn ] -- north --> [ Forest ]
+[ Basement ] -- east --> [ Rec Room ]
+[ Basement ] -- west --> [ Computer Room ]
+[ Airy Loft ] -- above --> [ Attic ]
+[ Attic ] -- above --> [ Tree Limb ]
+[ Living Room ] -- north --> [ Dining Room ]
+[ Living Room ] -- east --> [ East Lawn ]
+[ East Lawn ] -- east --> [ Abandoned House Foyer ]
+[ Abandoned House Foyer ] -- north --> [ Abandoned House Living Room ]
+[ Abandoned House Foyer ] -- below --> [ Abandoned House Basement ]
+[ Abandoned House Foyer ] -- above --> [ Abandoned House Master Bedroom ]
+[ Abandoned House Foyer ] -- east --> [ Abandoned House Kitchen ]
+[ Abandoned House Foyer ] -- south --> [ Abandoned House Small Bedroom ]
+[ Abandoned House Basement ] -- east --> [ Tunnel ]
+[ Tunnel ] -- east --> [ Graveyard Cave ]
+[ Graveyard Cave ] -- above --> [ Graveyard ]
+[ Graveyard ] -- north --> [ North Graveyard ]
+[ Graveyard ] -- east --> [ East Graveyard ]
+[ Graveyard ] -- west --> [ West Graveyard ]
+[ Graveyard ] -- south --> [ South Graveyard ]
+[ Hallway ] -- north --> [ Bathroom ]
+[ Hallway ] -- west --> [ Master Bedroom ]
+[ Hallway ] -- south --> [ Small Bedroom ]
+[ Master Bedroom ] -- west --> [ West Lawn ]'''.lstrip()
+        assert sorted(expected.split('\n')) == sorted(mapfile.split('\n'))
 
     def test_from_room_zero_distance(self):
-        pass
+        mapfile = from_room(self.foyer, distance=0)
+        expected = '''
+[ Foyer ] -- north --> [ Kitchen ]
+[ Foyer ] -- below --> [ Basement ]
+[ Foyer ] -- above --> [ Airy Loft ]
+[ Foyer ] -- east --> [ Living Room ]
+[ Foyer ] -- west --> [ Hallway ]
+[ Foyer ] -- south --> [ Front Lawn ]
+        '''.lstrip()
+        assert sorted(expected.split('\n')) == sorted(expected.split('\n'))
 
-    def test_from_room_mid_distance(self):
-        pass
+    def test_boxgraph(self):
+        mapfile = from_room(self.foyer, distance=2)
+        rendered = graph_easy(mapfile)
+        assert rendered == RENDERED_MAP
