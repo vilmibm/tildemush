@@ -5,6 +5,7 @@ from slugify import slugify
 
 from .config import get_db
 from .errors import RevisionError, WitchError, ClientError, UserError
+from .mapping import render_map
 from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing, LastSeen
 from .util import strip_color_codes, split_args, ARG_RE
 
@@ -821,3 +822,7 @@ class GameWorld:
             result['errors'] = witch_errors
 
         return result
+
+    @classmethod
+    def handle_map(cls, player_obj):
+        return render_map(player_obj.room, distance=2)

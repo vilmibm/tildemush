@@ -1,20 +1,3 @@
-import subprocess
-from collections import OrderedDict
-from importlib import resources
-
-from .models import GameObject
-from .world import GameWorld, DIRECTIONS
-
-
-def graph_easy(mapfile_content):
-    with resources.path(__package__, 'boxgraph') as p:
-        completed = subprocess.run([p],
-                             input=mapfile_content,
-                             capture_output=True,
-                             text=True)
-        # TODO error handling
-        return completed.stdout
-
 # There are three phases to mapping:
 # 1. walking rooms
 # 2. generating the mapfile
@@ -31,6 +14,26 @@ def graph_easy(mapfile_content):
 #
 # TODO This code is pretty slow right now and should have plenty of room for
 # optimization
+import subprocess
+from collections import OrderedDict
+from importlib import resources
+
+from .models import GameObject
+from .world import GameWorld, DIRECTIONS
+
+def render_map(room, distance=2):
+    mapfile = from_room(room, distance)
+    return graph_easy(mapfile)
+
+
+def graph_easy(mapfile_content):
+    with resources.path(__package__, 'boxgraph') as p:
+        completed = subprocess.run([p],
+                             input=mapfile_content,
+                             capture_output=True,
+                             text=True)
+        # TODO error handling
+        return completed.stdout
 
 def mapfile_for_room(mapped, room):
     return [

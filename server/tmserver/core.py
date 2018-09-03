@@ -19,6 +19,8 @@ REVISION_KEYS = ('shortname', 'code', 'current_rev')
 LOOP = asyncio.get_event_loop()
 
 
+# TODO auth_required login for checking associated user_sessions
+
 class UserSession:
     """An instance of this class represents a user's session."""
     def __init__(self, loop, game_world, websocket):
@@ -77,6 +79,9 @@ class UserSession:
             revision_exception = str(e)
 
         return return_payload, revision_exception
+
+    def handle_map(self):
+        return self.game_world.render_map(self.user_account.player_obj)
 
     def handle_disconnect(self):
         if not self.associated:
@@ -163,6 +168,13 @@ class GameServer:
                     # TODO consider something more specific than ERROR
                     await user_session.client_send('ERROR: {}'.format(revision_exception))
                 user_session.send_object_state(revision_result)
+            elif message.startswith('MAP'):
+                # For now, we return a map of the room a user is currently in +
+                # what they can reach in 2 hops. In the future this message
+                # could include a room to arbitrarily map from (ie as a user
+                # scrolls the map client side).
+                rendered_map = self.handle_map(user_session)
+                await user_session.client_send('MAP\n{}'.format(rendered_map))
             elif message.startswith('QUIT'):
                 self.logger.info('Client quit {}'.format(user_session))
                 raise ClientQuit()
@@ -248,6 +260,12 @@ class GameServer:
                 raise ClientError('revision payload missing key: {}'.format(k))
 
         return payload
+
+    def handle_map(self, user_session):
+        if not user_session.associated:
+            raise ClientError('not logged in')
+        return user_session.handle_map()
+
 
     def start(self):
         self.logger.info('Starting up asyncio loop')
