@@ -39,10 +39,14 @@ See [running a little postgres database without sudo](a_little_postgres.md).
 
 ## running
 
+**NB: if you are running the server on any OS except linux64, mapping will not work!**
+
 * `tmserver --debug` to start the server
 * `tmclient` in another terminal to start a client
 
 ## testing
+
+**NB: if you are running the server on any OS except linux64, mapping will not work!**
 
 * `TILDEMUSH_ENV=test pytest`
 
@@ -93,8 +97,8 @@ Thus, the goals of _tildemush_:
 
 ## Guiding Quotes
 
-> Designing human-computer experience isn't about building a better deskto. It's
-> about creating imaginary worlds that have a special relationship to
+> Designing human-computer experience isn't about building a better desktop.
+> It's about creating imaginary worlds that have a special relationship to
 > reality--worlds in which we can extend, amplify, and enrich our own capacities
 > to think, feel, and act.
 
