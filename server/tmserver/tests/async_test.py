@@ -445,7 +445,7 @@ async def test_create_oneway_exit(client):
 
     await client.assert_next('STATE')
 
-    await client.send('COMMAND create exit "Rusty Door" east foyer A rusted, metal door', [
+    await client.send('COMMAND create exit "Rusty Door" east god/foyer A rusted, metal door', [
         'COMMAND OK',
         'You breathed light into a whole new exit'])
     await client.send('COMMAND go east', [

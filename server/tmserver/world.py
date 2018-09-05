@@ -4,6 +4,7 @@ import re
 from slugify import slugify
 
 from .config import get_db
+from .constants import DIRECTIONS, REVERSE_DIRS
 from .errors import RevisionError, WitchError, ClientError, UserError
 from .mapping import render_map
 from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing, LastSeen
@@ -11,19 +12,11 @@ from .util import strip_color_codes, split_args, ARG_RE
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
 OBJECT_NOT_FOUND = 'You look in vain for {}.'
-DIRECTIONS = {'north', 'south', 'west', 'east', 'above', 'below'}
 CREATE_TYPES = {'room', 'exit', 'item'}
 CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
 CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*)$')
 PUT_ARGS_RE = re.compile(r'^(.+) in (.+)$')
 REMOVE_ARGS_RE = re.compile(r'^(.+) from (.+)$')
-REVERSE_DIRS = {
-    'north': 'south',
-    'south': 'north',
-    'east': 'west',
-    'west': 'east',
-    'above': 'below',
-    'below': 'above'}
 SPECIAL_HANDLING = {'say'} # TODO i thought there were others but for now it's just say. might not need a set in the end.
 
 
@@ -825,4 +818,4 @@ class GameWorld:
 
     @classmethod
     def handle_map(cls, player_obj):
-        return render_map(player_obj.room, distance=2)
+        return render_map(cls, player_obj.room, distance=2)

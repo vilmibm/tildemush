@@ -128,10 +128,10 @@ class TestMapping(TildemushUnitTestCase):
 
     def test_from_room_bad_distance(self):
         with self.assertRaisesRegex(ValueError, 'greater than 0'):
-            from_room(self.foyer, -1)
+            from_room(GameWorld, self.foyer, -1)
 
     def test_from_room_max_distance(self):
-        mapfile = from_room(self.foyer, 100)
+        mapfile = from_room(GameWorld, self.foyer, 100)
         expected = '''
 [ Foyer ] -- north --> [ Kitchen ]
 [ Foyer ] -- below --> [ Basement ]
@@ -167,7 +167,7 @@ class TestMapping(TildemushUnitTestCase):
         assert sorted(expected.split('\n')) == sorted(mapfile.split('\n'))
 
     def test_from_room_zero_distance(self):
-        mapfile = from_room(self.foyer, distance=0)
+        mapfile = from_room(GameWorld, self.foyer, distance=0)
         expected = '''
 [ Foyer ] -- north --> [ Kitchen ]
 [ Foyer ] -- below --> [ Basement ]
@@ -178,6 +178,6 @@ class TestMapping(TildemushUnitTestCase):
         assert sorted(expected.split('\n')) == sorted(mapfile.split('\n'))
 
     def test_boxgraph(self):
-        mapfile = from_room(self.foyer, distance=2)
+        mapfile = from_room(GameWorld, self.foyer, distance=2)
         rendered = graph_easy(mapfile)
         assert rendered == RENDERED_MAP

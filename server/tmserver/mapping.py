@@ -18,11 +18,11 @@ import subprocess
 from collections import OrderedDict
 from importlib import resources
 
+from .constants import DIRECTIONS
 from .models import GameObject
-from .world import GameWorld, DIRECTIONS
 
-def render_map(room, distance=2):
-    mapfile = from_room(room, distance)
+def render_map(world, room, distance=2):
+    mapfile = from_room(world, room, distance)
     return graph_easy(mapfile)
 
 
@@ -35,19 +35,19 @@ def graph_easy(mapfile_content):
         # TODO error handling
         return completed.stdout
 
-def mapfile_for_room(mapped, room):
+def mapfile_for_room(world, mapped, room):
     return [
         '[ {from_room} ] -- {direction} --> [ {to_room} ]'.format(
             from_room=room.name,
             direction=d,
             to_room=r.name)
-        for d,r in adjacent(room)
+        for d,r in adjacent(world, room)
         if r.shortname not in mapped]
 
-def adjacent(room):
+def adjacent(world, room):
     out = []
     for d in DIRECTIONS:
-        e = GameWorld.resolve_exit(room, d)
+        e = world.resolve_exit(room, d)
         if e is None: continue
         route = e.get_data('exit').get(room.shortname)
         target_room = GameObject.get_or_none(GameObject.shortname==route[1])
@@ -55,27 +55,27 @@ def adjacent(room):
 
     return out
 
-def build_queue(queue, room):
+def build_queue(world, queue, room):
     if queue[room.shortname] == 0:
         return
     else:
-        for d,r in adjacent(room):
+        for d,r in adjacent(world, room):
             if r.shortname in queue: continue
             queue[r.shortname] = queue[room.shortname] - 1
-            build_queue(queue, r)
+            build_queue(world, queue, r)
 
-def from_room(room, distance=3):
+def from_room(world, room, distance=3):
     if distance < 0:
         raise ValueError('distance must be greater than 0')
 
     queue = OrderedDict()
     queue[room.shortname] = distance
-    build_queue(queue, room)
+    build_queue(world, queue, room)
     mapped = set()
     mapfile = []
     for room_name in queue.keys():
         room = GameObject.get(GameObject.shortname==room_name)
-        mapfile.extend(mapfile_for_room(mapped, room))
+        mapfile.extend(mapfile_for_room(world, mapped, room))
         mapped.add(room_name)
 
     return '\n'.join(mapfile)
