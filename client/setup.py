@@ -23,7 +23,7 @@ setup(
     install_requires=[
         'click==6.7',
         'urwid==3.0.0',
-        'websockets==4.0.1',
+        'websockets==6.0.0',
     ],
     extras_require={
         'testing': [
