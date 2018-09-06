@@ -158,7 +158,7 @@ class GameMain(urwid.Frame):
             object_state = json.loads(server_msg[7:])
             if object_state.get('edit'):
                 self.launch_witch(object_state)
-        elif server_msg.startswitch('MAP'):
+        elif server_msg.startswith('MAP'):
             self.worldmap_tab.update_map(server_msg[4:])
         else:
             self.game_tab.add_message(server_msg)
