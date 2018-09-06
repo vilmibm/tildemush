@@ -170,7 +170,7 @@ async def test_witch_script(client):
         author=vil,
         shortname='snoozy',
         script_revision=script_rev)
-    foyer = GameObject.get(GameObject.shortname=='foyer')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
     GameWorld.put_into(foyer, snoozy)
     for _ in range(0, 4):
         await client.send('COMMAND pet', ['COMMAND OK'])
@@ -227,7 +227,7 @@ async def test_look(event_loop):
             vil, 'kwam', 'item', {
                 'name': 'Kwam',
                 'description': 'A smartphone application for KWAM'})
-        foyer = GameObject.get(GameObject.shortname=='foyer')
+        foyer = GameObject.get(GameObject.shortname=='god/foyer')
         GameWorld.put_into(foyer, phone)
         GameWorld.put_into(foyer, cigar)
         GameWorld.put_into(phone, app)
@@ -445,7 +445,7 @@ async def test_create_oneway_exit(client):
 
     await client.assert_next('STATE')
 
-    await client.send('COMMAND create exit "Rusty Door" east foyer A rusted, metal door', [
+    await client.send('COMMAND create exit "Rusty Door" east god/foyer A rusted, metal door', [
         'COMMAND OK',
         'You breathed light into a whole new exit'])
     await client.send('COMMAND go east', [
@@ -453,7 +453,7 @@ async def test_create_oneway_exit(client):
         'STATE',
         'You materialize'])
 
-    foyer = GameObject.get(GameObject.shortname=='foyer')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
     assert vil.player_obj in foyer.contains
 
 
@@ -503,7 +503,7 @@ async def test_create_twoway_exit_between_owned_rooms(client):
 @pytest.mark.asyncio
 async def test_handle_get(client):
     vil = await client.setup_user('vilmibm')
-    foyer = GameObject.get(GameObject.shortname == 'foyer')
+    foyer = GameObject.get(GameObject.shortname == 'god/foyer')
 
     cigar = GameObject.create_scripted_object(
         vil, 'vilmibm/a-fresh-cigar', 'item', dict(
@@ -524,7 +524,7 @@ async def test_handle_get(client):
 @pytest.mark.asyncio
 async def test_handle_get_denied(client):
     god = UserAccount.get(UserAccount.username=='god')
-    foyer = GameObject.get(GameObject.shortname=='foyer')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
     phaser = GameObject.create_scripted_object(
         god, 'phaser-god', 'item', dict(
             name='a phaser',
@@ -543,7 +543,7 @@ async def test_handle_get_denied(client):
 @pytest.mark.asyncio
 async def test_handle_drop(client):
     god = UserAccount.get(UserAccount.username=='god')
-    foyer = GameObject.get(GameObject.shortname=='foyer')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
     phaser = GameObject.create_scripted_object(
         god, 'phaser-god', 'item', dict(
             name='a phaser',
@@ -569,7 +569,7 @@ async def test_handle_drop(client):
 @pytest.mark.asyncio
 async def test_handle_put(client):
     god = UserAccount.get(UserAccount.username=='god')
-    foyer = GameObject.get(GameObject.shortname=='foyer')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
     phaser = GameObject.create_scripted_object(
         god, 'phaser-god', 'item', dict(
             name='a phaser',
@@ -596,7 +596,7 @@ async def test_handle_put(client):
 @pytest.mark.asyncio
 async def test_handle_remove(client):
     god = UserAccount.get(UserAccount.username=='god')
-    foyer = GameObject.get(GameObject.shortname=='foyer')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
     phaser = GameObject.create_scripted_object(
         god, 'phaser-god', 'item', dict(
             name='a phaser',
@@ -624,7 +624,7 @@ async def test_handle_remove(client):
 async def test_create_twoway_exit_via_world_perms(client):
     vil = await client.setup_user('vilmibm')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
-    foyer = GameObject.get(GameObject.shortname=='foyer')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
     foyer.set_perm('write', 'world')
 
     await client.send('COMMAND create room "Crystal Cube" a cube-shaped room made entirely of crystal.', [
