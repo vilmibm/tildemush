@@ -125,6 +125,8 @@ async def test_login_error(client):
 async def test_game_command(client):
     await client.setup_user('vilmibm')
     await client.send('COMMAND say hello', [
+        'STATE',
+        'STATE',
         'COMMAND OK',
         'vilmibm says, "hello"'])
 
@@ -132,6 +134,7 @@ async def test_game_command(client):
 @pytest.mark.asyncio
 async def test_announce_forbidden(client):
     await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     await client.send('COMMAND announce HELLO EVERYONE', [
          '{red}you are not powerful enough to do that.'])
 
@@ -140,11 +143,11 @@ async def test_announce(event_loop):
     async with Client(event_loop) as vclient, Client(event_loop) as sclient:
         await vclient.setup_user('vilmibm', god=True)
         await sclient.setup_user('snoozy')
-        await vclient.assert_next('snoozy fades')
+        await vclient.assert_next('STATE', 'STATE', 'STATE', 'STATE', 'snoozy fades')
         await vclient.send('COMMAND announce HELLO EVERYONE', [
             'COMMAND OK',
             "The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE"])
-        await sclient.assert_next("The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE")
+        await sclient.assert_next('STATE', 'STATE', "The very air around you seems to shake as vilmibm's booming voice says HELLO EVERYONE")
 
         # TODO test in between rooms
 
@@ -152,6 +155,7 @@ async def test_announce(event_loop):
 @pytest.mark.asyncio
 async def test_witch_script(client):
     vil = await client.setup_user('vilmibm', god=True)
+    await client.assert_next('STATE', 'STATE')
     horse_script = Script.create(
         name='horse',
         author=vil)
@@ -172,6 +176,7 @@ async def test_witch_script(client):
         script_revision=script_rev)
     foyer = GameObject.get(GameObject.shortname=='god/foyer')
     GameWorld.put_into(foyer, snoozy)
+    await client.assert_next('STATE', 'STATE')
     for _ in range(0, 4):
         await client.send('COMMAND pet', ['COMMAND OK'])
     await client.send('COMMAND pet', [
@@ -181,6 +186,7 @@ async def test_witch_script(client):
 @pytest.mark.asyncio
 async def test_whisper_no_args(client):
     await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     await client.send('COMMAND whisper', [
          '{red}try /whisper another_username some cool message'])
 
@@ -188,6 +194,7 @@ async def test_whisper_no_args(client):
 @pytest.mark.asyncio
 async def test_whisper_no_msg(client):
     await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     await client.send('COMMAND whisper snoozy', [
          '{red}try /whisper another_username some cool message'])
 
@@ -195,6 +202,7 @@ async def test_whisper_no_msg(client):
 @pytest.mark.asyncio
 async def test_whisper_bad_target(client):
     await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     await client.send('COMMAND whisper snoozy hey what are the haps', [
          '{red}there is nothing named snoozy near you'])
 
@@ -203,8 +211,10 @@ async def test_whisper_bad_target(client):
 async def test_whisper(event_loop):
     async with Client(event_loop) as vclient, Client(event_loop) as sclient:
         await vclient.setup_user('vilmibm')
+        await vclient.assert_next('STATE', 'STATE')
         await sclient.setup_user('snoozy')
-        await vclient.assert_next('snoozy fades')
+        await sclient.assert_next('STATE', 'STATE')
+        await vclient.assert_next('STATE', 'STATE', 'snoozy fades')
         await vclient.send('COMMAND whisper snoozy hey here is a conspiracy', ['COMMAND OK',])
         await sclient.assert_next("vilmibm whispers so only you can hear: hey here is a conspiracy")
 
@@ -213,8 +223,10 @@ async def test_whisper(event_loop):
 async def test_look(event_loop):
     async with Client(event_loop) as vclient, Client(event_loop) as sclient:
         vil = await vclient.setup_user('vilmibm')
+        await vclient.assert_next('STATE', 'STATE')
         await sclient.setup_user('snoozy')
-        await vclient.assert_next('snoozy fades in')
+        await sclient.assert_next('STATE', 'STATE')
+        await vclient.assert_next('STATE', 'STATE', 'snoozy fades')
         cigar = GameObject.create_scripted_object(
             vil, 'cigar', 'item', {
                 'name': 'cigar',
@@ -231,6 +243,7 @@ async def test_look(event_loop):
         GameWorld.put_into(foyer, phone)
         GameWorld.put_into(foyer, cigar)
         GameWorld.put_into(phone, app)
+        await vclient.assert_next('STATE', 'STATE', 'STATE', 'STATE')
 
         await vclient.send('COMMAND look', ['COMMAND OK'])
         await vclient.assert_set({'You see vilmibm, a gaseous cloud',
@@ -323,6 +336,7 @@ async def test_client_state(client):
     await client.recv()
 
     GameWorld.put_into(room, vilmibm.player_obj)
+    await client.assert_next('STATE', 'STATE')
 
     data_msg = await client.assert_recv('STATE')
     payload = json.loads(data_msg[len('STATE '):])
@@ -391,6 +405,7 @@ async def test_client_state(client):
 @pytest.mark.asyncio
 async def test_create_item(client):
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
         'COMMAND OK',
         'STATE',
@@ -417,6 +432,7 @@ async def test_create_item(client):
 @pytest.mark.asyncio
 async def test_create_room(client):
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.', [
         'COMMAND OK',
         'You breathed light into a whole new room'])
@@ -427,29 +443,33 @@ async def test_create_room(client):
 
     GameWorld.put_into(sanctum, vil.player_obj)
 
-    await client.assert_next('STATE')
+    await client.assert_next('STATE', 'STATE', 'STATE')
 
     await client.send('COMMAND touch stone', [
-        'COMMAND OK',
-        'STATE',
+        'COMMAND OK', 'STATE', 'STATE', 'STATE',
         'You materialize'])
 
 
 @pytest.mark.asyncio
 async def test_create_oneway_exit(client):
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     sanctum = GameObject.get(
         GameObject.author==vil,
         GameObject.is_sanctum==True)
     GameWorld.put_into(sanctum, vil.player_obj)
 
-    await client.assert_next('STATE')
+    await client.assert_next('STATE', 'STATE', 'STATE')
 
     await client.send('COMMAND create exit "Rusty Door" east god/foyer A rusted, metal door', [
         'COMMAND OK',
+        'STATE',
+        'STATE',
         'You breathed light into a whole new exit'])
     await client.send('COMMAND go east', [
         'COMMAND OK',
+        'STATE',
+        'STATE',
         'STATE',
         'You materialize'])
 
@@ -460,6 +480,7 @@ async def test_create_oneway_exit(client):
 @pytest.mark.asyncio
 async def test_create_twoway_exit_between_owned_rooms(client):
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     sanctum = GameObject.get(
         GameObject.author==vil,
         GameObject.is_sanctum==True)
@@ -468,7 +489,11 @@ async def test_create_twoway_exit_between_owned_rooms(client):
     await client.assert_next('STATE')
 
     await client.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.', [
+        'STATE',
+        'STATE',
         'COMMAND OK',
+        'STATE',
+        'STATE',
         'You breathed light into a whole new room'])
 
     cube = GameObject.get(GameObject.shortname.startswith('vilmibm/crystal-cube'))
@@ -476,10 +501,14 @@ async def test_create_twoway_exit_between_owned_rooms(client):
     await client.send(
         'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname), [
             'COMMAND OK',
+            'STATE',
+            'STATE',
             'You breathed light into a whole new exit'])
 
     await client.send('COMMAND go east', [
         'COMMAND OK',
+        'STATE',
+        'STATE',
         'STATE',
         'You materialize'])
 
@@ -488,6 +517,8 @@ async def test_create_twoway_exit_between_owned_rooms(client):
 
     await client.send('COMMAND go west', [
         'COMMAND OK',
+        'STATE',
+        'STATE',
         'STATE',
         'You materialize'])
 
@@ -503,6 +534,7 @@ async def test_create_twoway_exit_between_owned_rooms(client):
 @pytest.mark.asyncio
 async def test_handle_get(client):
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     foyer = GameObject.get(GameObject.shortname == 'god/foyer')
 
     cigar = GameObject.create_scripted_object(
@@ -513,8 +545,9 @@ async def test_handle_get(client):
     GameWorld.put_into(foyer, cigar)
 
     await client.send('COMMAND get cigar', [
-        'COMMAND OK',
         'STATE',
+        'STATE',
+        'COMMAND OK',
         'STATE',
         'You grab A fresh cigar'])
 
@@ -535,6 +568,7 @@ async def test_handle_get_denied(client):
     GameWorld.put_into(foyer, phaser)
 
     await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
 
     await client.send('COMMAND get phaser', [
         '{red}You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'])
@@ -552,10 +586,9 @@ async def test_handle_drop(client):
     GameWorld.put_into(foyer, phaser)
 
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
 
     await client.send('COMMAND get phaser', [
-        'STATE',
-        'STATE',
         'COMMAND OK',
         'STATE',
         'You grab a phaser.'])
@@ -589,10 +622,10 @@ async def test_handle_put(client):
     GameWorld.put_into(foyer, space_chest)
 
     await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
 
     await client.send('COMMAND put phaser in chest', [
         'COMMAND OK',
-        'STATE',
         'You put a phaser in Fancy Space Chest'])
 
 
@@ -616,6 +649,7 @@ async def test_handle_remove(client):
     GameWorld.put_into(space_chest, phaser)
 
     await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
 
     await client.send('COMMAND remove phaser from chest', [
         'COMMAND OK',
@@ -626,6 +660,7 @@ async def test_handle_remove(client):
 @pytest.mark.asyncio
 async def test_create_twoway_exit_via_world_perms(client):
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     vil = UserAccount.get(UserAccount.username=='vilmibm')
     foyer = GameObject.get(GameObject.shortname=='god/foyer')
     foyer.set_perm('write', 'world')
@@ -639,10 +674,14 @@ async def test_create_twoway_exit_via_world_perms(client):
     await client.send(
         'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname), [
             'COMMAND OK',
+            'STATE',
+            'STATE',
             'You breathed light into a whole new exit'])
 
     await client.send('COMMAND go east', [
         'COMMAND OK',
+        'STATE',
+        'STATE',
         'STATE',
         'You materialize'])
 
@@ -651,6 +690,8 @@ async def test_create_twoway_exit_via_world_perms(client):
 
     await client.send('COMMAND go west', [
         'COMMAND OK',
+        'STATE',
+        'STATE',
         'STATE',
         'You materialize'])
 
@@ -661,6 +702,7 @@ async def test_create_twoway_exit_via_world_perms(client):
 @pytest.mark.asyncio
 async def test_revision(client):
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
 
     await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
         'COMMAND OK',
@@ -715,9 +757,11 @@ async def test_revision(client):
 async def test_edit(event_loop):
     async with Client(event_loop) as vclient, Client(event_loop) as sclient:
         vil = await vclient.setup_user('vilmibm')
+        await vclient.assert_next('STATE', 'STATE')
         snoozy = await sclient.setup_user('snoozy')
+        await sclient.assert_next('STATE', 'STATE')
 
-        await vclient.assert_next('snoozy fades')
+        await vclient.assert_next('STATE', 'STATE', 'snoozy fades')
 
         # create obj for vil
         await vclient.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
@@ -732,10 +776,14 @@ async def test_edit(event_loop):
             'You breathed light into a whole new item. Its true name is snoozy/a-stick'])
         await sclient.send('COMMAND drop stick', [
             'COMMAND OK',
+            'STATE',
+            'STATE',
             'You drop A stick.'])
 
         # obj not found
         await vclient.send('COMMAND edit fart', [
+            'STATE',
+            'STATE',
             '{red}You look in vain for fart.{/}'])
 
         # perm denied
@@ -786,6 +834,7 @@ async def test_edit(event_loop):
 @pytest.mark.asyncio
 async def test_transitive_command(client):
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
 
     ### create an object to send transitive commands to
     await client.send('COMMAND create item "lemongrab" a high strung lemon man', [
@@ -853,9 +902,11 @@ async def test_session_handling(event_loop):
 
     async with Client(event_loop) as eclient:
         endo = await eclient.setup_user('endo')
+        await eclient.assert_next('STATE', 'STATE')
         async with Client(event_loop) as vclient:
             vil = await vclient.setup_user('vilmibm')
-            await eclient.assert_next('vilmibm fades in')
+            await vclient.assert_next('STATE', 'STATE')
+            await eclient.assert_next('STATE', 'STATE', 'vilmibm fades in')
             assert LastSeen.get_or_none(LastSeen.user_account==vil) is None
             assert vil.id in GameWorld._sessions
             await vclient.send('COMMAND create room "Crystal Cube" A cube-shaped room made entirely of crystal.', [
@@ -866,7 +917,7 @@ async def test_session_handling(event_loop):
             GameWorld.put_into(cube, endo.player_obj)
             await vclient.quit_game()
 
-        await eclient.assert_next('STATE', 'STATE', 'STATE', 'vilmibm fades out')
+        await eclient.assert_next('STATE', 'STATE', 'STATE', 'STATE', 'vilmibm fades out')
         assert vil.player_obj not in cube.contains
         assert vil not in GameWorld._sessions
         ls = LastSeen.get_or_none(LastSeen.user_account==vil)
@@ -874,13 +925,14 @@ async def test_session_handling(event_loop):
 
         async with Client(event_loop) as vclient:
             await vclient.login('vilmibm')
-            await eclient.assert_next('vilmibm fades in')
+            await eclient.assert_next('STATE', 'STATE', 'vilmibm fades in')
             assert vil.player_obj in cube.contains
             assert LastSeen.get_or_none(LastSeen.user_account==vil) is None
 
 @pytest.mark.asyncio
 async def test_witch_argument_string(client):
     await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
     echo_code = """
     (witch "Cave Echo"
       (has {"name" "Cave Echo"
@@ -907,6 +959,7 @@ async def test_witch_argument_string(client):
 @pytest.mark.asyncio
 async def test_witch_arguments_split(client):
     await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
 
     vending_code = """
     (witch "Vending Machine"
@@ -940,9 +993,10 @@ async def test_witch_arguments_split(client):
 @pytest.mark.asyncio
 async def test_teleport(client):
     vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
 
-    await client.send('COMMAND home', ['COMMAND OK', 'STATE', 'You materialize'])
+    await client.send('COMMAND home', ['COMMAND OK', 'STATE', 'STATE', 'STATE', 'You materialize'])
     assert vil.player_obj.room.shortname == 'vilmibm/sanctum'
 
-    await client.send('COMMAND foyer', ['COMMAND OK', 'STATE', 'You materialize'])
+    await client.send('COMMAND foyer', ['COMMAND OK', 'STATE', 'STATE', 'STATE', 'You materialize'])
     assert vil.player_obj.room.shortname == 'god/foyer'
