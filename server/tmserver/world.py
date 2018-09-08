@@ -582,7 +582,7 @@ class GameWorld:
     def create_portkey(cls, owner_obj, target, name=None):
         if name is None:
             name = 'Teleport Stone to {}'.format(target.name)
-        description = 'Touching this stone will transport you to'.format(target.name)
+        description = 'Touching this stone will transport you to {}'.format(target.name)
         shortname = cls.derive_shortname(owner_obj, name)
         return GameObject.create_scripted_object(
             owner_obj.user_account, shortname, 'portkey', {
