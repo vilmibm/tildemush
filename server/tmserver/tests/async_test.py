@@ -770,6 +770,14 @@ async def test_edit(event_loop):
         assert 0 == Editing.select().where(Editing.game_obj==cigar).count()
         assert 1 == Editing.select().where(Editing.game_obj==stick).count()
 
+        revision_payload = dict(
+            shortname='snoozy/a-stick',
+            code=stick.script_revision.code,
+            current_rev=stick.script_revision.id)
+
+        await vclient.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
+        assert 0 == Editing.select().where(Editing.game_obj==stick).count()
+
 # TODO witch exception when saving revision
 
 @pytest.mark.asyncio
