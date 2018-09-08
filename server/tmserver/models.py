@@ -93,7 +93,7 @@ def on_user_account_create(cls, instance, created):
         player.is_player_obj = True
         player.save()
         sanctum = GameObject.create_scripted_object(
-            instance, '{}-sanctum'.format(instance.username), 'room',
+            instance, '{}/sanctum'.format(instance.username), 'room',
             dict(name="{}'s Sanctum".format(instance.username),
                  description="""This is your private space. Only you (and gods)
                  can enter here. Any new rooms you create will be attached to
