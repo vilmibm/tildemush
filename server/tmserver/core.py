@@ -23,7 +23,10 @@ LOOP = asyncio.get_event_loop()
 
 class UserSession:
     """An instance of this class represents a user's session."""
-    def __init__(self, loop, game_world, websocket):
+    def __init__(self, loop, game_world, websocket, logger=None):
+        if logger is None:
+            logger = logging.getLogger('tmserver')
+        self.logger = logger
         self.loop = loop
         self.websocket = websocket
         self.game_world = game_world
@@ -47,6 +50,7 @@ class UserSession:
             loop=self.loop)
 
     def handle_client_update(self, client_state):
+        self.logger.info('sending client_update to {}'.format(self.user_account.username))
         asyncio.ensure_future(
             self.client_send('STATE {}'.format(json.dumps(client_state))),
             loop=self.loop)
@@ -118,10 +122,10 @@ class GameServer:
         self.game_world = game_world
         if logger is None:
             logger = logging.getLogger('tmserver')
+        self.logger = logger
         self.bind = bind
         self.port = port
         self.connections = ConnectionMap()
-        self.logger = logger
 
     async def handle_connection(self, websocket, path):
         self.logger.info('Handling initial connection at path {}'.format(path))
