@@ -782,7 +782,6 @@ async def test_transitive_command(client):
         'STATE',
         'You breathed light into a whole new item. Its true name is vilmibm/lemongrab'])
 
-
     lemongrab = GameObject.get(GameObject.shortname=='vilmibm/lemongrab')
 
     new_code = """

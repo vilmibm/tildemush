@@ -53,6 +53,7 @@ class GameWorld:
         if user_account.id in cls._sessions:
             del cls._sessions[user_account.id]
 
+        Editing.delete().where(Editing.user_account==user_account).execute()
         player_obj = user_account.player_obj
         room = player_obj.room
         if room is not None:
@@ -412,7 +413,6 @@ class GameWorld:
         # It should also be cleared out on server start.
         with get_db().atomic():
             Editing.delete().where(Editing.user_account==sender_obj.user_account).execute()
-            Editing.delete().where(Editing.game_obj==obj).execute()
             Editing.create(
                 user_account=sender_obj.user_account,
                 game_obj=obj)
@@ -778,6 +778,13 @@ class GameWorld:
             # user gently told
             obj = GameObject.get(GameObject.shortname==shortname)
             result = cls.object_state(obj)
+
+            # TODO this is probably bad, but for now we're assuming that
+            # REVISION implies a user edited a witch script and closed their
+            # editor, meaning they're done editing. In the future other things
+            # might use REVISION and this assumption might be bad; in that
+            # case, we can add another verb like UNLOCK.
+            Editing.delete().where(Editing.user_account==owner_obj.user_account).execute()
 
             error = None
             if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
