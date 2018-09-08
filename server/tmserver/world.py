@@ -786,13 +786,15 @@ class GameWorld:
             # case, we can add another verb like UNLOCK.
             Editing.delete().where(Editing.user_account==owner_obj.user_account).execute()
 
+            if obj.script_revision.code == code.lstrip().rstrip():
+                #  this was originally an error, but it felt weird.
+                return cls.object_state(obj)
+
             error = None
             if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
                 error = 'Tried to edit illegal object'
             elif obj.script_revision.id != current_rev:
                 error = 'Revision mismatch'
-            elif obj.script_revision.code == code.lstrip().rstrip():
-                error = 'No change to code'
 
             if error:
                 raise RevisionError(error, payload=result)
