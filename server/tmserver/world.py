@@ -508,6 +508,8 @@ class GameWorld:
             'name': name,
             'description': additional_args})
 
+        room.set_perm('carry', 'owner')
+
         sanctum = GameObject.get(
             GameObject.author==owner_obj.user_account,
             GameObject.is_sanctum==True)
@@ -568,6 +570,7 @@ class GameWorld:
             # created in
             if current_room.perms.write == Permission.WORLD:
                 new_exit.set_perm('write', 'world')
+            new_exit.set_perm('carry', 'owner')
             cls.put_into(current_room, new_exit)
 
         # Expose the exit to the target room if able
