@@ -140,7 +140,6 @@ class GameWorld:
         # of GAME_COMMANDS that map to a GameWorld handle_* method.
 
         # TODO add destroy action
-        # TODO teleport, either 'home' or 'foyer'
 
         # admin
         if action == 'announce':
@@ -149,21 +148,24 @@ class GameWorld:
         # chatting
         elif action == 'whisper':
             cls.handle_whisper(sender_obj, action_args)
-
         elif action == 'look':
             cls.handle_look(sender_obj, action_args)
 
         # scripting
         elif action == 'create':
             cls.handle_create(sender_obj, action_args)
-
         elif action == 'edit':
             cls.handle_edit(sender_obj, action_args)
             return
 
+        # movement
         elif action == 'go':
             cls.handle_go(sender_obj, action_args)
             return
+        elif action == 'home':
+            cls.move_obj(sender_obj, '{}/sanctum'.format(sender_obj.user_account.username))
+        elif action == 'foyer':
+            cls.move_obj(sender_obj, 'god/foyer')
 
         # inventory commands
         elif action == 'get':

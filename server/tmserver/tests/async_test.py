@@ -933,3 +933,13 @@ async def test_witch_arguments_split(client):
     await client.assert_next('Vending Machine says, "need more yen"')
     await client.send('COMMAND give machine 100 yen', ['COMMAND OK'])
     await client.assert_next('Vending Machine says, "have a pocari sweat. enjoy."')
+
+@pytest.mark.asyncio
+async def test_teleport(client):
+    vil = await client.setup_user('vilmibm')
+
+    await client.send('COMMAND home', ['COMMAND OK', 'STATE', 'You materialize'])
+    assert vil.player_obj.room.shortname == 'vilmibm/sanctum'
+
+    await client.send('COMMAND foyer', ['COMMAND OK', 'STATE', 'You materialize'])
+    assert vil.player_obj.room.shortname == 'god/foyer'
