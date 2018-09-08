@@ -554,13 +554,16 @@ async def test_handle_drop(client):
     vil = await client.setup_user('vilmibm')
 
     await client.send('COMMAND get phaser', [
-        'COMMAND OK',
         'STATE',
+        'STATE',
+        'COMMAND OK',
         'STATE',
         'You grab a phaser.'])
 
     await client.send('COMMAND drop phaser', [
         'COMMAND OK',
+        'STATE',
+        'STATE',
         'You drop a phaser'])
 
     assert 'a phaser' not in [o.name for o in vil.player_obj.contains]

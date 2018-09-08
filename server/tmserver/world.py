@@ -279,8 +279,6 @@ class GameWorld:
         """Matches an object in sender_obj.contains and moves it to
         sender_obj's first contained by object."""
 
-        # TODO this doesn't seem to trigger a state update?
-
         found = cls.resolve_obj(sender_obj.contains, action_args)
 
         if found is None:
@@ -733,13 +731,20 @@ class GameWorld:
         # TODO for exits, i need to be able to put them into two rooms at once.
         # Right now i'm thinking of just doing a raw Contains call when detecting
         # an exit.
+
         for old_outer_obj in inner_obj.contained_by:
             Contains.delete().where(Contains.inner_obj==inner_obj).execute()
+
+        Contains.create(outer_obj=outer_obj, inner_obj=inner_obj)
+
+        for old_outer_obj in inner_obj.contained_by:
             for o in old_outer_obj.contains:
                 if o.is_player_obj:
                     cls.send_client_update(o.user_account)
 
-        Contains.create(outer_obj=outer_obj, inner_obj=inner_obj)
+        for o in outer_obj.contains:
+            if o.is_player_obj:
+                cls.send_client_update(o.user_account)
 
         outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
         inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
