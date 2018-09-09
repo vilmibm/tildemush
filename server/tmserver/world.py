@@ -157,6 +157,8 @@ class GameWorld:
         elif action == 'edit':
             cls.handle_edit(sender_obj, action_args)
             return
+        elif action == 'mode':
+            cls.handle_mode(sender_obj, action_args)
 
         # movement
         elif action == 'go':
@@ -592,6 +594,33 @@ class GameWorld:
             'name': name,
             'description': description,
             'target_room_name': target.shortname})
+
+    @classmethod
+    def handle_mode(cls, sender_obj, action_args):
+        try:
+            obj_str, permission, value = split_args(action_args)
+        except ValueError:
+            raise UserError('try /mode object permission value')
+
+        target_obj = cls.resolve_obj(cls.area_of_effect(sender_obj), obj_str)
+        if target_obj is None:
+            raise UserError(OBJECT_NOT_FOUND.format(obj_str))
+
+        if not Permission.valid_perm(permission):
+            raise UserError('invalid permission. valid permissions are {}'.format(
+                ', '.join(Permission.PERMISSIONS)))
+
+        if not Permission.valid_value(value):
+            raise UserError('invalid value. valid values are {}'.format(
+                ', '.join(Permission.VALUES)))
+
+        if sender_obj.user_account != target_obj.author:
+            raise UserError("you lack the authority to mess with this object's permissions.")
+
+        target_obj.set_perm(permission, value)
+        cls.user_hears(sender_obj, sender_obj,
+                       'The world seems to gently vibrate around you. You have updated the {} permission to {}.'.format(
+                       permission, value))
 
     @classmethod
     def handle_announce(cls, sender_obj, action_args):

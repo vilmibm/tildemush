@@ -133,6 +133,9 @@ class Permission(BaseModel):
 
     W+R O+W W+C W+C
     """
+    PERMISSIONS = ['read', 'write', 'carry', 'execute']
+    VALUES = ['owner', 'world']
+
     OWNER = 1
     WORLD = 2
 
@@ -141,7 +144,16 @@ class Permission(BaseModel):
     carry = pw.IntegerField(default=WORLD)
     execute = pw.IntegerField(default=WORLD)
 
-    def _enum_to_str(self, perm):
+    @classmethod
+    def valid_perm(cls, perm):
+        return perm in cls.PERMISSIONS
+
+    @classmethod
+    def valid_value(cls, value):
+        return value in cls.VALUES
+
+    @classmethod
+    def _enum_to_str(cls, perm):
         return 'world' if perm == self.WORLD else 'owner'
 
     def as_dict(self):

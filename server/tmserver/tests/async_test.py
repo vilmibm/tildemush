@@ -8,7 +8,7 @@ import websockets
 
 from ..core import GameServer
 from ..migrations import reset_db
-from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing, LastSeen
+from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing, LastSeen, Permission
 from ..world import GameWorld
 
 class Client:
@@ -990,6 +990,7 @@ async def test_witch_arguments_split(client):
     await client.send('COMMAND give machine 100 yen', ['COMMAND OK'])
     await client.assert_next('Vending Machine says, "have a pocari sweat. enjoy."')
 
+
 @pytest.mark.asyncio
 async def test_teleport(client):
     vil = await client.setup_user('vilmibm')
@@ -1000,3 +1001,32 @@ async def test_teleport(client):
 
     await client.send('COMMAND foyer', ['COMMAND OK', 'STATE', 'STATE', 'STATE', 'You materialize'])
     assert vil.player_obj.room.shortname == 'god/foyer'
+
+
+@pytest.mark.asyncio
+async def test_handle_mode(event_loop):
+    async with Client(event_loop) as vclient, Client(event_loop) as eclient:
+        vil = await vclient.setup_user('vilmibm')
+        await vclient.assert_next('STATE', 'STATE')
+        endo = await eclient.setup_user('endo')
+        await eclient.assert_next('STATE', 'STATE')
+
+        await vclient.assert_next('STATE', 'STATE', 'endo fades')
+
+        await vclient.send('COMMAND create item "cat" it is a cat', [
+            'COMMAND OK',
+            'STATE',
+            'You breathed light into a whole new item. Its true name is vilmibm/cat'])
+
+        await vclient.send('COMMAND mode cat carry owner', [
+            'COMMAND OK',
+            'The world seems to gently vibrate around you. You have updated the carry permission to owner.'])
+
+        cat = GameObject.get(GameObject.shortname=='vilmibm/cat')
+        assert cat.perms.carry == Permission.OWNER
+
+        await vclient.send('COMMAND drop cat')
+
+        await eclient.send('COMMAND mode cat carry world', [
+            '{red}you lack the authority to mess'])
+
