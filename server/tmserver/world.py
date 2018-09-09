@@ -53,6 +53,7 @@ class GameWorld:
         if user_account.id in cls._sessions:
             del cls._sessions[user_account.id]
 
+        Editing.delete().where(Editing.user_account==user_account).execute()
         player_obj = user_account.player_obj
         room = player_obj.room
         if room is not None:
@@ -139,7 +140,6 @@ class GameWorld:
         # of GAME_COMMANDS that map to a GameWorld handle_* method.
 
         # TODO add destroy action
-        # TODO teleport, either 'home' or 'foyer'
 
         # admin
         if action == 'announce':
@@ -148,21 +148,26 @@ class GameWorld:
         # chatting
         elif action == 'whisper':
             cls.handle_whisper(sender_obj, action_args)
-
         elif action == 'look':
             cls.handle_look(sender_obj, action_args)
 
         # scripting
         elif action == 'create':
             cls.handle_create(sender_obj, action_args)
-
         elif action == 'edit':
             cls.handle_edit(sender_obj, action_args)
             return
+        elif action == 'mode':
+            cls.handle_mode(sender_obj, action_args)
 
+        # movement
         elif action == 'go':
             cls.handle_go(sender_obj, action_args)
             return
+        elif action == 'home':
+            cls.move_obj(sender_obj, '{}/sanctum'.format(sender_obj.user_account.username))
+        elif action == 'foyer':
+            cls.move_obj(sender_obj, 'god/foyer')
 
         # inventory commands
         elif action == 'get':
@@ -275,8 +280,6 @@ class GameWorld:
     def handle_drop(cls, sender_obj, action_args):
         """Matches an object in sender_obj.contains and moves it to
         sender_obj's first contained by object."""
-
-        # TODO this doesn't seem to trigger a state update?
 
         found = cls.resolve_obj(sender_obj.contains, action_args)
 
@@ -412,7 +415,6 @@ class GameWorld:
         # It should also be cleared out on server start.
         with get_db().atomic():
             Editing.delete().where(Editing.user_account==sender_obj.user_account).execute()
-            Editing.delete().where(Editing.game_obj==obj).execute()
             Editing.create(
                 user_account=sender_obj.user_account,
                 game_obj=obj)
@@ -508,6 +510,8 @@ class GameWorld:
             'name': name,
             'description': additional_args})
 
+        room.set_perm('carry', 'owner')
+
         sanctum = GameObject.get(
             GameObject.author==owner_obj.user_account,
             GameObject.is_sanctum==True)
@@ -568,6 +572,7 @@ class GameWorld:
             # created in
             if current_room.perms.write == Permission.WORLD:
                 new_exit.set_perm('write', 'world')
+            new_exit.set_perm('carry', 'owner')
             cls.put_into(current_room, new_exit)
 
         # Expose the exit to the target room if able
@@ -582,13 +587,40 @@ class GameWorld:
     def create_portkey(cls, owner_obj, target, name=None):
         if name is None:
             name = 'Teleport Stone to {}'.format(target.name)
-        description = 'Touching this stone will transport you to'.format(target.name)
+        description = 'Touching this stone will transport you to {}'.format(target.name)
         shortname = cls.derive_shortname(owner_obj, name)
         return GameObject.create_scripted_object(
             owner_obj.user_account, shortname, 'portkey', {
             'name': name,
             'description': description,
             'target_room_name': target.shortname})
+
+    @classmethod
+    def handle_mode(cls, sender_obj, action_args):
+        try:
+            obj_str, permission, value = split_args(action_args)
+        except ValueError:
+            raise UserError('try /mode object permission value')
+
+        target_obj = cls.resolve_obj(cls.area_of_effect(sender_obj), obj_str)
+        if target_obj is None:
+            raise UserError(OBJECT_NOT_FOUND.format(obj_str))
+
+        if not Permission.valid_perm(permission):
+            raise UserError('invalid permission. valid permissions are {}'.format(
+                ', '.join(Permission.PERMISSIONS)))
+
+        if not Permission.valid_value(value):
+            raise UserError('invalid value. valid values are {}'.format(
+                ', '.join(Permission.VALUES)))
+
+        if sender_obj.user_account != target_obj.author:
+            raise UserError("you lack the authority to mess with this object's permissions.")
+
+        target_obj.set_perm(permission, value)
+        cls.user_hears(sender_obj, sender_obj,
+                       'The world seems to gently vibrate around you. You have updated the {} permission to {}.'.format(
+                       permission, value))
 
     @classmethod
     def handle_announce(cls, sender_obj, action_args):
@@ -731,13 +763,20 @@ class GameWorld:
         # TODO for exits, i need to be able to put them into two rooms at once.
         # Right now i'm thinking of just doing a raw Contains call when detecting
         # an exit.
+
         for old_outer_obj in inner_obj.contained_by:
             Contains.delete().where(Contains.inner_obj==inner_obj).execute()
+
+        Contains.create(outer_obj=outer_obj, inner_obj=inner_obj)
+
+        for old_outer_obj in inner_obj.contained_by:
             for o in old_outer_obj.contains:
                 if o.is_player_obj:
                     cls.send_client_update(o.user_account)
 
-        Contains.create(outer_obj=outer_obj, inner_obj=inner_obj)
+        for o in outer_obj.contains:
+            if o.is_player_obj:
+                cls.send_client_update(o.user_account)
 
         outer_obj.handle_action(cls, inner_obj, 'contain',  'acquired')
         inner_obj.handle_action(cls, outer_obj, 'contain',  'entered')
@@ -779,13 +818,22 @@ class GameWorld:
             obj = GameObject.get(GameObject.shortname==shortname)
             result = cls.object_state(obj)
 
+            # TODO this is probably bad, but for now we're assuming that
+            # REVISION implies a user edited a witch script and closed their
+            # editor, meaning they're done editing. In the future other things
+            # might use REVISION and this assumption might be bad; in that
+            # case, we can add another verb like UNLOCK.
+            Editing.delete().where(Editing.user_account==owner_obj.user_account).execute()
+
+            if obj.script_revision.code == code.lstrip().rstrip():
+                #  this was originally an error, but it felt weird.
+                return cls.object_state(obj)
+
             error = None
             if not (owner_obj.can_write(obj) or owner_obj.user_account == obj.author):
                 error = 'Tried to edit illegal object'
             elif obj.script_revision.id != current_rev:
                 error = 'Revision mismatch'
-            elif obj.script_revision.code == code.lstrip().rstrip():
-                error = 'No change to code'
 
             if error:
                 raise RevisionError(error, payload=result)

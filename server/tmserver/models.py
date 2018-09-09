@@ -93,7 +93,7 @@ def on_user_account_create(cls, instance, created):
         player.is_player_obj = True
         player.save()
         sanctum = GameObject.create_scripted_object(
-            instance, '{}-sanctum'.format(instance.username), 'room',
+            instance, '{}/sanctum'.format(instance.username), 'room',
             dict(name="{}'s Sanctum".format(instance.username),
                  description="""This is your private space. Only you (and gods)
                  can enter here. Any new rooms you create will be attached to
@@ -133,6 +133,9 @@ class Permission(BaseModel):
 
     W+R O+W W+C W+C
     """
+    PERMISSIONS = ['read', 'write', 'carry', 'execute']
+    VALUES = ['owner', 'world']
+
     OWNER = 1
     WORLD = 2
 
@@ -141,8 +144,17 @@ class Permission(BaseModel):
     carry = pw.IntegerField(default=WORLD)
     execute = pw.IntegerField(default=WORLD)
 
-    def _enum_to_str(self, perm):
-        return 'world' if perm == self.WORLD else 'owner'
+    @classmethod
+    def valid_perm(cls, perm):
+        return perm in cls.PERMISSIONS
+
+    @classmethod
+    def valid_value(cls, value):
+        return value in cls.VALUES
+
+    @classmethod
+    def _enum_to_str(cls, perm):
+        return 'world' if perm == cls.WORLD else 'owner'
 
     def as_dict(self):
         return dict(

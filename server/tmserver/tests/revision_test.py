@@ -133,17 +133,13 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
             'code': self.snoozy.script_revision.code}
 
     def test_no_change(self):
-        cm = None
-        with self.assertRaisesRegex(
-                RevisionError,
-                'No change to code') as cm:
-            GameWorld.handle_revision(
-                self.vil.player_obj,
-                'vilmibm/snoozy',
-                self.snoozy.script_revision.code,
-                self.snoozy.script_revision.id)
+        result = GameWorld.handle_revision(
+            self.vil.player_obj,
+            'vilmibm/snoozy',
+            self.snoozy.script_revision.code,
+            self.snoozy.script_revision.id)
 
-        assert cm.exception.payload == {
+        assert result == {
             'shortname': 'vilmibm/snoozy',
             'data': {'description': 'just a horse', 'name':'snoozy'},
             'permissions': {'carry': 'world',
