@@ -4,7 +4,7 @@ import unittest
 
 from ..logs import PGHandler, get_logger
 from ..models import Log
-from .tm_test_case import TildemushTestCase
+from .tm_test_case import TildemushTestCase, TildemushUnitTestCase
 
 
 class TestPGHandler(TildemushTestCase):
@@ -34,7 +34,7 @@ class TestPGHandler(TildemushTestCase):
         self.assertEqual(logs[0].raw, 'sweet')
 
 
-class TestLogging(TildemushTestCase):
+class TestLogging(TildemushUnitTestCase):
     def test_debug_ignores_pg(self):
         with mock.patch('logging.getLogger') as m:
             logger = get_logger(debug=True)

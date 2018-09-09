@@ -2,17 +2,15 @@ import os, time
 import asyncio
 import json
 import websockets
+from tempfile import NamedTemporaryFile
 import urwid
 
 from .config import Config
 from . import ui
-from .ui import Screen, Form, FormField, menu, menu_button, sub_menu
+from .ui import Screen, Form, FormField, menu, menu_button, sub_menu, ColorText, ExternalEditor
 
 def quit_client(screen):
-    # TODO: quit command isn't getting caught by the server for some
-    # reason?
-    asyncio.ensure_future(screen.client_state.send('COMMAND QUIT'), loop=screen.loop)
-
+    asyncio.ensure_future(screen.client_state.send('QUIT'), loop=screen.loop)
     raise urwid.ExitMainLoop()
 
 class Splash(Screen):
@@ -20,7 +18,7 @@ class Splash(Screen):
         bt = urwid.BigText('WELCOME TO TILDEMUSH', urwid.font.HalfBlock5x4Font())
         bt = urwid.Padding(bt, 'center', None)
         bt = urwid.Filler(bt, 'middle', None, 7)
-        ftr = urwid.Text('~ press any key to jack in ~', align='center')
+        ftr = ColorText('~ press any key to jack in ~', align='center')
         self.base = urwid.Frame(body=bt, footer=ftr)
         super().__init__(self.base, exit=exit)
 
@@ -31,7 +29,7 @@ class Splash(Screen):
 class MainMenu(Screen):
     def __init__(self, loop, client=None, exit=lambda _: True):
         self.loop = loop
-        ftr = urwid.Text('press ESC to close windows', align='center')
+        ftr = ColorText('press ESC to close windows', align='center')
         body = ui.solidfill('░', 'background')
         self.base = urwid.Frame(body=body, footer=ftr)
         super().__init__(self.base, client, exit)
@@ -78,7 +76,7 @@ class MainMenu(Screen):
         await self.client.authenticate(login_data['username'], login_data['password'])
 
     def show_register(self):
-        info = urwid.Text('register a new account! password must be at least 12 characters long.\n')
+        info = ColorText('register a new account! password must be at least 12 characters long.\n')
         un_field = FormField(caption='username: ', name='username')
         pw_field = FormField(caption='password: ', name='password', mask='~')
         pw_confirm_field = FormField(caption='confirm password: ', name='confirm_password', mask='~')
@@ -106,21 +104,13 @@ class MainMenu(Screen):
 
         await self.client.register(register_data['username'], register_data['password'])
 
-    def forget_details(self):
-        self.open_box(urwid.Filler(urwid.Pile([
-            urwid.Text("not implemented yet!")
-            ])))
-
-class GamePrompt(urwid.Edit):
-    def __init__(self):
-        super().__init__(caption='> ', multiline=True)
-
-
 class GameMain(urwid.Frame):
-    def __init__(self, client_state, loop):
+    def __init__(self, client_state, loop, ui_loop, config):
         self.client_state = client_state
         self.loop = loop
-        self.state = {"user":{
+        self.ui_loop = ui_loop
+        self.config = config
+        self.game_state = {"USER":{
                     "description": "a shadow",
                     "display_name": "nothing"},
                     "room": {
@@ -128,61 +118,23 @@ class GameMain(urwid.Frame):
                         "description": "a liminal space. type /look to open your eyes.",
                         "contains":[]}
                     }
+        self.scope = []
         self.hotkeys = self.load_hotkeys()
 
-        # game view stuff
-        self.game_walker = urwid.SimpleFocusListWalker([
-            urwid.Text('you have reconstituted into tildemush')
-            ])
-        self.game_text = urwid.ListBox(self.game_walker)
-        self.here_text = urwid.Pile(self.here_info())
-        self.user_text = urwid.Pile(self.user_info())
-        self.minimap_text = urwid.Text("MAP", align='center')
-        self.main_body = urwid.Columns([
-            self.game_text,
-            urwid.Pile([
-                ui.DashedBox(urwid.Filler(self.here_text, valign='top')),
-                ui.DashedBox(urwid.Filler(self.minimap_text, valign='middle')),
-                ui.DashedBox(urwid.Filler(self.user_text, valign='top'))
-            ])
-        ])
-        self.main_banner = urwid.Text('====welcome 2 tildemush, u are jacked in====')
-        self.main_prompt = GamePrompt()
-        self.main_view = urwid.Frame(header=self.main_banner,
-                body=self.main_body, footer=self.main_prompt)
-        self.main_view.focus_position = 'footer'
-
-        self.main_tab = ui.GameTab(self.main_view,
-                ui.TabHeader("F1 MAIN", position='first',
-                    selected=True), self.main_prompt)
-
-        # witch view stuff
-        self.witch_prompt = urwid.Edit()
-        self.witch_view= urwid.Filler(urwid.Text("witch editor in progress", align='center'), valign='middle')
-        self.witch_tab = ui.GameTab(self.witch_view,
-                ui.TabHeader("F2 WITCH"), self.witch_prompt)
-
-        # worldmap view stuff
-        self.worldmap_prompt = urwid.Edit()
-        self.worldmap_view = urwid.Filler(urwid.Text("worldmap coming soon", align='center'), valign='middle')
-        self.worldmap_tab = ui.GameTab(self.worldmap_view,
-                ui.TabHeader("F3 WORLDMAP"), self.worldmap_prompt)
-
-        # settings view stuff
-        self.settings_prompt = urwid.Edit()
-        self.settings_view = urwid.Filler(urwid.Text("settings menu under construction", align='center'), valign='middle')
-        self.settings_tab = ui.GameTab(self.settings_view,
-                ui.TabHeader("F4 SETTINGS"), self.settings_prompt)
+        self.game_tab = ui.GameView(self.game_state, self.config)
+        self.witch_tab = ui.WitchView({}, self.scope, self.config)
+        self.worldmap_tab = ui.WorldmapView(self.config)
+        self.settings_tab = ui.SettingsView(self.config)
 
         # quit placeholder
         self.quit_prompt = urwid.Edit()
-        self.quit_view = self.main_view
+        self.quit_view = ColorText("quit")
         self.quit_tab = ui.GameTab(self.quit_view,
                 ui.TabHeader("F9 QUIT", position='last'), self.quit_prompt)
 
         # set starting conditions
         self.tabs = {
-                "f1": self.main_tab,
+                "f1": self.game_tab,
                 "f2": self.witch_tab,
                 "f3": self.worldmap_tab,
                 "f4": self.settings_tab,
@@ -191,10 +143,10 @@ class GameMain(urwid.Frame):
         self.tab_headers = urwid.Columns([])
         self.header = self.tab_headers
         self.refresh_tabs()
-        self.prompt = self.main_prompt
-        self.statusbar = urwid.Text("connection okay!", align='right')
+        self.prompt = self.game_tab.prompt
+        self.statusbar = ColorText("{dark green}connection okay!", align='right')
         self.client_state.set_on_recv(self.on_server_message)
-        super().__init__(header=self.header, body=self.main_tab, footer=self.statusbar)
+        super().__init__(header=self.header, body=self.game_tab, footer=self.statusbar)
         self.focus_prompt()
 
     async def on_server_message(self, server_msg):
@@ -202,37 +154,81 @@ class GameMain(urwid.Frame):
             pass
         elif server_msg.startswith('STATE'):
             self.update_state(server_msg[6:])
+        elif server_msg.startswith('OBJECT'):
+            object_state = json.loads(server_msg[7:])
+            if object_state.get('edit'):
+                self.launch_witch(object_state)
+        elif server_msg.startswith('MAP'):
+            self.worldmap_tab.update_map(server_msg[4:])
         else:
-            self.game_walker.append(urwid.Text(server_msg))
-            self.game_walker.set_focus(len(self.game_walker)-1)
+            self.game_tab.add_message(server_msg)
 
         self.focus_prompt()
+
+    def launch_witch(self, data):
+        tf = NamedTemporaryFile(delete=False, mode='w')
+        tf.write(data["code"])
+        tf.close()
+        self.witch_tab.editor.original_widget = urwid.BoxAdapter(
+                ExternalEditor(tf.name, self.ui_loop,
+                    lambda path: self.close_witch(data, path)),
+                self.ui_loop.screen_size[1] // 2
+            )
+        self.witch_tab.prompt = self.witch_tab.editor.original_widget
+        self.witch_tab.refresh(data, self.scope)
+        self.switch_tab(self.tabs.get("f2"))
+
+    def close_witch(self, data, filepath):
+        with open(filepath, "r") as f:
+            code = f.read()
+        revision_payload = dict(
+            shortname=data["shortname"],
+            code=code,
+            current_rev=data["current_rev"])
+        os.remove(filepath)
+
+        self.witch_tab.editor.original_widget  = self.witch_tab.editor_filler
+        self.switch_tab(self.tabs.get("f1"))
+
+        payload = 'REVISION {}'.format(json.dumps(revision_payload))
+        self.witch_tab.refresh({}, self.scope)
+        asyncio.ensure_future(self.client_state.send(payload), loop=self.loop)
 
     def focus_prompt(self):
         self.focus_position = 'body'
         self.prompt = self.body.prompt
 
     def keypress(self, size, key):
-        if key == 'enter':
-            if self.prompt == self.main_tab.prompt:
-                self.handle_game_input(self.prompt.get_edit_text())
-            else:
-                self.prompt.edit_text = ''
+        if key == 'enter' and self.prompt == self.game_tab.prompt:
+            self.handle_game_input(self.prompt.get_edit_text())
         else:
-            self.prompt.keypress((size[0],), key)
+            try:
+                self.prompt.keypress((size[0],), key)
+            except ValueError:
+                pass
             self.handle_keypress(size, key)
+
 
     def handle_game_input(self, text):
         # TODO handle any validation of text
+        self.prompt.add_line(text)
+
         if not self.client_state.listening:
             asyncio.ensure_future(self.client_state.start_listen_loop(), loop=self.loop)
 
         if text.startswith('/quit'):
             quit_client(self)
+        elif text.startswith('/edit'):
+            #TODO check for active witch editor
+            text = text[1:]
         elif text.startswith('/'):
             text = text[1:]
         else:
-            text = 'say {}'.format(text)
+            chat_color = self.config.get('chat_color', 'light magenta')
+            if text:
+                text = 'say {'+chat_color+'}'+text+'{/}'
+            else:
+                text = 'say {'+chat_color+'}...{/}'
 
         server_msg = 'COMMAND {}'.format(text)
 
@@ -246,15 +242,23 @@ class GameMain(urwid.Frame):
         if key in self.hotkeys.get("quit"):
             quit_client(self)
         elif key in self.tabs.keys():
-            # tab switcher
-            self.body.unfocus()
-            self.body = self.tabs.get(key)
-            self.body.focus()
-            self.focus_prompt()
-            self.refresh_tabs()
-        elif key in self.hotkeys.get("scrolling"):
-            if self.body == self.main_tab:
-                self.game_text.keypress(size, key)
+            self.switch_tab(self.tabs.get(key))
+        elif key in self.hotkeys.get("scrolling").keys():
+            if self.body == self.game_tab:
+                self.game_tab.game_area.keypress(size, key)
+        elif key in self.hotkeys.get("movement").keys():
+            asyncio.ensure_future(self.client_state.send(
+                    "COMMAND {}".format(self.hotkeys.get("movement").get(key))
+                ), loop=self.loop)
+        elif key in self.hotkeys.get("rlwrap").keys() and isinstance(self.prompt, ui.GamePrompt):
+            self.prompt.handle_rlwrap(self.hotkeys.get("rlwrap").get(key))
+
+    def switch_tab(self, new_tab):
+        self.body.unfocus()
+        self.body = new_tab
+        self.body.focus()
+        self.focus_prompt()
+        self.refresh_tabs()
 
     def refresh_tabs(self):
         headers = []
@@ -264,78 +268,46 @@ class GameMain(urwid.Frame):
         self.header = self.tab_headers
 
     def update_state(self, raw_state):
-        self.state = json.loads(raw_state)
-        self.here_text.contents.clear()
-        self.user_text.contents.clear()
+        self.game_state = json.loads(raw_state)
+        self.update_scope()
+        self.game_tab.refresh(self.game_state)
+        self.witch_tab.refresh(self.game_state, self.scope)
 
-        # TODO: this is kind of hardcoded for the current three-widget
-        # here_info() and two-widget user_info()
-
-        self.here_text.contents.extend(list(
-            zip(self.here_info(),
-                [self.here_text.options(),
-                    self.here_text.options(),
-                    self.here_text.options()]
-                )
-            ))
-
-        self.user_text.contents.extend(list(
-            zip(self.user_info(),
-                [self.here_text.options(),
-                    self.here_text.options()]
-                )
-            ))
-
-    def here_info(self):
-        room = self.state.get("room", {})
-        info = "[{}]".format(room.get("name"))
-        contents = []
-        if len(room.get("contains", [])) < 2:
-            contents.append("no one but yourself")
-        else:
-            for o in room.get("contains"):
-                contents.append(o.name)
-
-        lines = [
-                urwid.Text("[{}]".format(room.get("name")), align='center'),
-                urwid.Text("{}\n".format(room.get("description"))),
-                urwid.Text("You see here ({pop}): {contents}".format(
-                    pop=len(contents), contents=', '.join(contents)))
-                ]
-
-        return lines
-
-    def user_info(self):
-        user = self.state.get("user", {})
-        inventory = []
-
-        for item in self.state.get("inventory", []):
-            inventory.append(item.get("name"))
-
-        lines = [
-                urwid.Text("<{desc} named {name}>\n".format(
-                desc=user.get("description"),
-                name=user.get("display_name")), align='center'),
-                urwid.Text("Inventory ({count}): {inv}".format(
-                    count=len(inventory),
-                    inv=", ".join(inventory)))
-                ]
-
-        return lines
+    def update_scope(self):
+        self.scope.clear()
+        for o in self.game_state.get("room").get("contains"):
+            self.scope.append(o.get("shortname"))
+        for o in self.game_state.get("inventory"):
+            self.scope.append(o.get("shortname"))
 
     def load_hotkeys(self):
-        # TODO: defaults are listed here, but this should also eventually
-        # load user's custom keybindings/overrides
-        hotkeys = {
+        defaults = {
                 "scrolling": {
                     "page up": "up",
                     "page down": "down",
-                    "up": "up",
-                    "down": "down"
                     },
                 "quit": [
                     "f9"
-                    ]
+                    ],
+                "movement": {
+                    "shift up": "go north",
+                    "shift down": "go south",
+                    "shift left": "go west",
+                    "shift right": "go east",
+                    "shift page up": "go above",
+                    "shift page down": "go below",
+                    },
+                "rlwrap": {
+                    "up": "up",
+                    "down": "down",
+                    "ctrl a": "start",
+                    "ctrl e": "end",
+                    "ctrl u": "delete backwards",
+                    "ctrl k": "delete forwards"
+                    }
                 }
 
+        hotkeys = {}
+        for group in defaults:
+            hotkeys.update({group: self.config.get(group, defaults.get(group))})
         return hotkeys

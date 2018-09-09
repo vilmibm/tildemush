@@ -9,13 +9,14 @@ class ContainTest(TildemushTestCase):
         self.vil = UserAccount.create(
             username='vilmibm',
             password='foobarbazquux')
-        self.room = GameObject.create(
+        self.room = GameObject.create_scripted_object(
             author=self.vil,
-            shortname='foul-foyer',)
-        self.phone = GameObject.create(
+            shortname='foul-foyer',
+            obj_type='room')
+        self.phone = GameObject.create_scripted_object(
             author=self.vil,
             shortname='pixel-2')
-        self.app = GameObject.create(
+        self.app = GameObject.create_scripted_object(
             author=self.vil,
             shortname='signal')
 
@@ -28,15 +29,16 @@ class ContainTest(TildemushTestCase):
 
     def test_area_of_effect(self):
         player_obj = self.vil.player_obj
-        cigar = GameObject.create(
+        cigar = GameObject.create_scripted_object(
             author=self.vil,
             shortname='black-and-mild')
-        rug = GameObject.create(
+        rug = GameObject.create_scripted_object(
             author=self.vil,
             shortname='rug')
-        ship = GameObject.create(
+        ship = GameObject.create_scripted_object(
             author=self.vil,
-            shortname='voyager')
+            shortname='voyager',
+            obj_type='room')
 
         Contains.create(
             outer_obj=self.room,
@@ -69,35 +71,38 @@ class ContainTest(TildemushTestCase):
         GameWorld.put_into(self.room, player_obj)
         GameWorld.put_into(player_obj, self.phone)
         GameWorld.put_into(self.phone, self.app)
-        assert self.room == player_obj.contained_by
-        assert None == self.room.contained_by
-        assert self.phone == self.app.contained_by
+        assert self.room == player_obj.room
+        assert None == self.room.room
+        assert self.phone == self.app.room
         assert [self.app] == list(self.phone.contains)
         assert [player_obj] == list(self.room.contains)
         assert [] == list(self.app.contains)
 
     def test_removing_contains(self):
+        # This is a weird test since remove_from produces orphaned objects and
+        # is only really used when players disconnect.
         player_obj = self.vil.player_obj
         GameWorld.put_into(self.room, player_obj)
         GameWorld.put_into(player_obj, self.phone)
         GameWorld.put_into(self.phone, self.app)
-        assert self.phone == self.app.contained_by
+        assert self.phone == self.app.room
         assert [self.app] == list(self.phone.contains)
         GameWorld.remove_from(self.phone, self.app)
         assert [] == list(self.phone.contains)
-        assert None == self.app.contained_by
+        assert None == self.app.room
 
     def test_all_active_objects(self):
         player_obj = self.vil.player_obj
-        cigar = GameObject.create(
+        cigar = GameObject.create_scripted_object(
             author=self.vil,
             shortname='black-and-mild')
-        rug = GameObject.create(
+        rug = GameObject.create_scripted_object(
             author=self.vil,
             shortname='rug')
-        ship = GameObject.create(
+        ship = GameObject.create_scripted_object(
             author=self.vil,
-            shortname='voyager')
+            shortname='voyager',
+            obj_type='room')
 
         GameWorld.put_into(self.room, player_obj)
         GameWorld.put_into(self.phone, self.app)

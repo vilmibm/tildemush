@@ -3,12 +3,13 @@
 (defmacro says [message] `(.say receiver ~message))
 #_("TODO support additional args, here. right now, they have to be one big string.")
 (defmacro tell-sender [action args] `(.tell-sender receiver sender ~action ~args))
+(defmacro move-sender [direction] `(.move-sender receiver sender ~direction))
+(defmacro teleport-sender [target_room_name] `(.teleport-sender receiver sender ~target_room_name))
 
-#_("TODO what to do with script_name and author_name?")
 #_("TODO eventually decide on cmd-args handling")
 
 (defmacro witch
-  [script_name _ author_name data &rest actions]
+  [script_name data &rest actions]
   (setv se (gensym))
   (setv hp (gensym))
   `(do
@@ -17,7 +18,9 @@
          (fn [hp] `(.add-handler
                      ~se
                      ~(get hp 1)
-                     (fn [receiver sender action-args]
+                     (fn [receiver sender arg]
+                       (setv args (.get-split-args receiver arg))
+                       (setv from-me? (= receiver sender))
                        ~@(cut hp 2))) )
          actions)
      (ensure-obj-data ~(get data 1))
@@ -25,7 +28,7 @@
 
 
 
-#_(setv hmm (witch "horse" by "vilmibm"
+#_(setv hmm (witch "horse"
                 (has {"num-pets" 0})
                 (hears "pet"
                        (set-data "num-pets"

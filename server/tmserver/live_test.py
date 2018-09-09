@@ -14,7 +14,7 @@ def setup_vil():
 def setup_horse():
     reset_db()
     vil = setup_vil()
-    foyer = GameObject.get(GameObject.shortname=='foyer')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
     horse_script = Script.create(
         name='horse',
         author=vil
@@ -22,7 +22,7 @@ def setup_horse():
     script_rev = ScriptRevision.create(
         script=horse_script,
         code='''
-            (witch "horse" by "vilmibm"
+            (witch "horse"
               (has {"num-pets" 0
                     "name" "snoozy"
                     "description" "a horse"})

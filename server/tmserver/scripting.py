@@ -3,50 +3,46 @@ import os
 
 import hy
 
-from .errors import ClientException, WitchException
+from .config import get_db
+from .errors import ClientError, WitchError
+from .util import split_args
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 
 # Note an awful thing here; since we call .format on the script templates, we
 # have to escape the WITCH macro's {}. {{}} is not the Hy that we want, but we
 # need it in the templates.
+# TODO consider using shortname instead of name for the string passed to (witch)
 SCRIPT_TEMPLATES = {
     'item': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'player': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'room': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'exit': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
-            "description" "{description}"
-            "target" "{target_room_name}"}})
-      (hears "touch"
-        (tell-sender "move" (get-data "target"))))
+            "description" "{description}"}})
+      (hears "go" (move-sender arg))),
     ''',
     'portkey': '''
-    (witch "{name}" by "TODO fix macro to not need author"
+    (witch "{name}"
       (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
       (hears "touch"
-        (tell-sender "move" (get-data "target"))))
+        (teleport-sender (get-data "target"))))
     '''}
-
-def get_template(obj_type, name, description="A trinket"):
-    # TODO accept an arbitrary dict for formatting
-    return SCRIPT_TEMPLATES[obj_type].format(name=name,
-                                             description=description)
 
 class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
@@ -71,7 +67,7 @@ class ScriptEngine:
     def _contain_handler(self, receiver, sender, action_args):
         contain_type = action_args
         if contain_type not in self.CONTAIN_TYPES:
-            raise ClientException('Bad container relation: {}'.format(contain_type))
+            raise ClientError('Bad container relation: {}'.format(contain_type))
         if receiver.user_account:
             self.game_world.send_client_update(receiver.user_account)
             # TODO we actually want the client to show messages about these
@@ -120,17 +116,42 @@ class ScriptedObjectMixin:
 
     @property
     def engine(self):
+        # TODO sadness, a circular dependency got introduced here
+        # as it is this module is a hack to just save on lines in models.py.
+        # models.py should probably just be refactored into a hierarchy of
+        # smaller files; until then i'm going to be disgusting and add a
+        # .latest_script_rev method to GameObject
         if not hasattr(self, '_engine'):
-            if self.script_revision is None:
-                self._engine = ScriptEngine()
-            else:
-                try:
-                    self._engine = self._execute_script(self.script_revision.code)
-                except Exception as e:
-                    raise WitchException(
-                        ';_; There is a problem with your witch script: {}'.format(e))
-
+            self.init_scripting()
+        else:
+            with get_db().atomic():
+                # TODO this looks stupid and weird. Consider some kind of
+                # 'live_script_rev' that is probably just an alias for
+                # GameObject.script_revision; alternatively, change
+                # latest_script_rev to like get_latested_script_rev() or
+                # something.
+                current_rev = self.script_revision
+                latest_rev = self.latest_script_rev
+                if latest_rev.id != current_rev.id:
+                    try:
+                        self.script_revision = latest_rev
+                        self.init_scripting()
+                    except WitchError as e:
+                        self.script_revision = current_rev
+                        # TODO log
+                    else:
+                        self.save()
         return self._engine
+
+    def init_scripting(self):
+        if self.script_revision is None:
+            self._engine = ScriptEngine()
+        else:
+            try:
+                self._engine = self._execute_script(self.script_revision.code)
+            except Exception as e:
+                raise WitchError(
+                    ';_; There is a problem with your witch script: {}'.format(e))
 
     def handle_action(self, game_world, sender_obj, action, action_args):
         self._ensure_world(game_world)
@@ -159,6 +180,20 @@ class ScriptedObjectMixin:
     def tell_sender(self, sender_obj, action, args):
         self.game_world.dispatch_action(sender_obj, action, args)
 
+    def move_sender(self, sender_obj, direction):
+        current_room = sender_obj.room
+        route = self.get_data('exit', {}).get(current_room.shortname)
+        if route is None or route[0] != direction:
+            raise ClientError('illegal move') # this should have been caught higher up, so ok to throw
+
+        self.game_world.move_obj(sender_obj, route[1])
+
+    def teleport_sender(self, sender_obj, target_room_name):
+        self.game_world.move_obj(sender_obj, target_room_name)
+
+    def get_split_args(self, action_args):
+        return split_args(action_args)
+
     def _execute_script(self, witch_code):
         """Given a pile of script revision code, this function prepends the
         (witch) macro definition and then reads and evals the combined code."""
@@ -180,9 +215,13 @@ class ScriptedObjectMixin:
     def _ensure_data(self, data_mapping):
         """Given the default values for some gameobject's script, initialize
         this object's data column to those defaults. Saves the instance."""
-        if data_mapping == {} or self.data != {}:
+        if data_mapping == {}:
             return
-        self.data = data_mapping
+
+        for k,v in data_mapping.items():
+            if k not in self.data:
+                self.data[k] = v
+
         self.save()
 
     def _ensure_world(self, game_world):
