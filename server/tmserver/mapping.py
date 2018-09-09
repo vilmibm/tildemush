@@ -14,10 +14,11 @@
 #
 # TODO This code is pretty slow right now and should have plenty of room for
 # optimization
+from os import path
 import subprocess
-from collections import OrderedDict
-from importlib import resources
+import sys
 
+from collections import OrderedDict
 from .constants import DIRECTIONS
 from .models import GameObject
 
@@ -27,13 +28,15 @@ def render_map(world, room, distance=2):
 
 
 def graph_easy(mapfile_content):
-    with resources.path(__package__, 'boxgraph') as p:
-        completed = subprocess.run([p],
-                             input=mapfile_content,
-                             capture_output=True,
-                             text=True)
-        # TODO error handling
-        return completed.stdout
+    # TODO use when we can have py37: with resources.path(__package__, 'boxgraph') as p:
+    tmserver_install_path = path.dirname(sys.modules['tmserver'].__file__)
+    boxgraph_path = path.join(tmserver_install_path, 'boxgraph')
+    completed = subprocess.run([boxgraph_path],
+                               input=mapfile_content,
+                               capture_output=True,
+                               text=True)
+    # TODO error handling
+    return completed.stdout
 
 def mapfile_for_room(world, mapped, room):
     return [
