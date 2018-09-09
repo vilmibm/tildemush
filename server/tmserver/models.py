@@ -154,7 +154,7 @@ class Permission(BaseModel):
 
     @classmethod
     def _enum_to_str(cls, perm):
-        return 'world' if perm == self.WORLD else 'owner'
+        return 'world' if perm == cls.WORLD else 'owner'
 
     def as_dict(self):
         return dict(
