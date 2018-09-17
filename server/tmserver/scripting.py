@@ -1,7 +1,9 @@
 import io
 import os
 
+import asteval
 import hy
+from hy.compiler import hy_compile
 
 from .config import get_db
 from .errors import ClientError, WitchError
@@ -202,12 +204,14 @@ class ScriptedObjectMixin:
         buff = io.StringIO(with_header)
         stop = False
         result = None
+        aeval = asteval.Interpreter(use_numpy=False, max_time=1000000.0, usersyms={
+            'ScriptEngine': ScriptEngine,
+            'ensure_obj_data': lambda data: self._ensure_data(data)})
         while not stop:
             try:
                 tree = hy.read(buff)
-                result = hy.eval(tree,
-                                 namespace={'ScriptEngine': ScriptEngine,
-                                            'ensure_obj_data': lambda data: self._ensure_data(data)})
+                witch_ast = hy_compile(tree, '__main__')
+                result = aeval(witch_ast)
             except EOFError:
                 stop = True
         return result
