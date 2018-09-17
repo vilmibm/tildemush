@@ -1,5 +1,6 @@
 import io
 import os
+import re
 
 import asteval
 import hy
@@ -10,6 +11,7 @@ from .errors import ClientError, WitchError
 from .util import split_args
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
+ERROR_CLEANUP_RE = re.compile(r' in expr=.*$')
 
 # Note an awful thing here; since we call .format on the script templates, we
 # have to escape the WITCH macro's {}. {{}} is not the Hy that we want, but we
@@ -204,14 +206,22 @@ class ScriptedObjectMixin:
         buff = io.StringIO(with_header)
         stop = False
         result = None
-        aeval = asteval.Interpreter(use_numpy=False, max_time=1000000.0, usersyms={
-            'ScriptEngine': ScriptEngine,
-            'ensure_obj_data': lambda data: self._ensure_data(data)})
+        aeval = asteval.Interpreter(
+            use_numpy=False,
+            max_time=1000000.0,
+            usersyms={
+                'ScriptEngine': ScriptEngine,
+                'ensure_obj_data': lambda data: self._ensure_data(data)})
         while not stop:
             try:
                 tree = hy.read(buff)
                 witch_ast = hy_compile(tree, '__main__')
                 result = aeval(witch_ast)
+                if aeval.error_msg:
+                    error_msg = aeval.error_msg
+                    if 'in expr' in error_msg:
+                        error_msg = ERROR_CLEANUP_RE.sub('', error_msg)
+                    raise WitchError(error_msg)
             except EOFError:
                 stop = True
         return result
