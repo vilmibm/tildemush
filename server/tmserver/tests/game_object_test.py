@@ -1,4 +1,3 @@
-import types
 from unittest import mock
 from .. import models
 from ..errors import WitchError
@@ -208,9 +207,6 @@ class GameObjectScriptEngineTest(TildemushTestCase):
     def test_engine_is_created(self):
         eng = self.snoozy.engine
         assert isinstance(eng, ScriptEngine)
-
-    def test_handler_added(self):
-        assert type(self.snoozy.engine.handler(GameWorld, 'pet')) == types.FunctionType
 
     def test_handler_works(self):
         self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
