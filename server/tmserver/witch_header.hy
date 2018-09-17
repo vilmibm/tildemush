@@ -24,6 +24,7 @@
                        ~@(cut hp 2))) )
          actions)
      (ensure-obj-data ~(get data 1))
+     ~se
      ~se))
 
 
