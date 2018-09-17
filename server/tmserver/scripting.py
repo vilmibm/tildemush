@@ -195,9 +195,6 @@ class ScriptedObjectMixin:
     def teleport_sender(self, sender_obj, target_room_name):
         self.game_world.move_obj(sender_obj, target_room_name)
 
-    def get_split_args(self, action_args):
-        return split_args(action_args)
-
     def _execute_script(self, witch_code):
         """Given a pile of script revision code, this function prepends the
         (witch) macro definition and then reads and evals the combined code."""
@@ -210,6 +207,7 @@ class ScriptedObjectMixin:
             use_numpy=False,
             max_time=1000000.0,
             usersyms={
+                'split_args': split_args,
                 'ScriptEngine': ScriptEngine,
                 'ensure_obj_data': lambda data: self._ensure_data(data)})
         while not stop:

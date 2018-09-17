@@ -19,7 +19,7 @@
                      ~se
                      ~(get hp 1)
                      (fn [receiver sender arg]
-                       (setv args (.get-split-args receiver arg))
+                       (setv args (split-args arg))
                        (setv from-me? (= receiver sender))
                        ~@(cut hp 2))) )
          actions)
