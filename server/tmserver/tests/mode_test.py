@@ -19,14 +19,14 @@ class TestModeCommand(TildemushUnitTestCase):
     def test_not_found(self):
         with self.assertRaisesRegex(UserError, 'You look in vain for'):
             with mock.patch('tmserver.GameWorld.resolve_obj', return_value=None):
-                GameWorld.handle_mode(None, 'foo bar baz')
+                GameWorld.handle_mode(mock.MagicMock(), 'foo bar baz')
 
     def test_bad_perm(self):
         with self.assertRaisesRegex(UserError, 'invalid permission'):
             with mock.patch('tmserver.GameWorld.resolve_obj', return_value='fake'):
-                GameWorld.handle_mode(None, 'foo bar baz')
+                GameWorld.handle_mode(mock.MagicMock(), 'foo bar baz')
 
     def test_bad_value(self):
         with self.assertRaisesRegex(UserError, 'invalid value'):
             with mock.patch('tmserver.GameWorld.resolve_obj', return_value='fake'):
-                GameWorld.handle_mode(None, 'foo carry baz')
+                GameWorld.handle_mode(mock.MagicMock(), 'foo carry baz')
