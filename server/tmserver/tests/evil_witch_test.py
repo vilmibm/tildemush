@@ -37,3 +37,19 @@ class EvilWitchTest(TildemushTestCase):
         with self.assertRaisesRegex(NotImplementedError, 'ImportFrom') as cm:
             game_obj.init_scripting()
             game_obj.engine.handlers['lol'](MagicMock(), MagicMock(), MagicMock())
+
+    # TODO
+    # For this, I wonder if the solution is not passing an instance of a Model
+    # but a proxy object without the model functions?
+    def test_prevents_db_access_via_model(self):
+        code = """
+        (witch "foo"
+           (has {"foo" "bar"})
+           (hears "lol"
+              (for [ua (receiver.author.select)]
+                (says ua.username))))"""
+        game_obj = self.create_obj_with_code(code)
+
+        with self.assertRaisesRegex(NotImplementedError, 'ImportFrom') as cm:
+            game_obj.init_scripting()
+            game_obj.engine.handlers['lol'](MagicMock(), MagicMock(), MagicMock())
