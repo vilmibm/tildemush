@@ -26,6 +26,7 @@ setup(
         'bcrypt==3.1.4',
         'hy==0.15.0',
         'python-slugify==1.2.5',
+        'asteval==0.9.12',
     ],
     extras_require={
         'testing': [
