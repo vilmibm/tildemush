@@ -48,6 +48,77 @@ SCRIPT_TEMPLATES = {
         (teleport-sender (get-data "target"))))
     '''}
 
+class ProxyGameObject:
+    def __init__(self, game_object):
+        self.id = game_object.id
+        self.shortname = game_object.shortname
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+class WitchInterpreter:
+    def __init__(self, receiver_model):
+        script_engine = ScriptEngine()
+        def add_handler(action, callback):
+            nonlocal script_engine
+            script_engine.add_handler(action, callback)
+
+        def set_data(key, value):
+            nonlocal receiver_model
+            receiver_model.set_data(key, value)
+
+        def get_data(key):
+            nonlocal receiver_model
+            return receiver_model.get_data(key)
+
+        def says(message):
+            nonlocal receiver_model
+            receiver_model.say(message)
+
+        def tell_sender(sender_obj, action, args):
+            nonlocal receiver_model
+            sender_obj = receiver_model.get_by_id(sender_obj.id)
+            receiver_model.tell_sender(sender_obj, action, args)
+
+        def move_sender(sender_obj, target_room_name):
+            nonlocal receiver_model
+            sender_obj = receiver_model.get_by_id(sender_obj.id)
+            receiver_model.move_sender(sender_obj, target_room_name)
+
+        def teleport_sender(sender_obj, target_room_name):
+            """Given a ProxyGameObject, find the actual gameobject and move it."""
+            nonlocal receiver_model
+            sender_obj = receiver_model.get_by_id(sender_obj.id)
+            receiver_model.teleport_sender(sender_obj, target_room_name)
+
+        def ensure_obj_data(data):
+            nonlocal receiver_model
+            receiver_model._ensure_data(data)
+
+        self.script_engine = script_engine
+        self.interpreter = asteval.Interpreter(
+            use_numpy=False,
+            max_time=100000.0,  # there's a bug with this and setting it arbitrarily high avoids it
+            usersyms=dict(
+                split_args=split_args,
+                add_handler=add_handler,
+                set_data=set_data,
+                get_data=get_data,
+                says=says,
+                witch_tell_sender=tell_sender,
+                witch_move_sender=move_sender,
+                witch_teleport_sender=teleport_sender,
+                ensure_obj_data=ensure_obj_data))
+
+    def evaluate_ast(self, witch_ast):
+        self.interpreter(witch_ast)
+        if self.interpreter.error_msg:
+            error_msg = aeval.error_msg
+            if 'in expr' in error_msg:
+                error_msg = ERROR_CLEANUP_RE.sub('', error_msg)
+            raise WitchError(error_msg)
+
+
 class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
     def __init__(self):
@@ -162,6 +233,7 @@ class ScriptedObjectMixin:
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
+        # TODO use ProxyGameObject
         return self.engine.handler(game_world, action)(self, sender_obj, action_args)
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
@@ -203,26 +275,15 @@ class ScriptedObjectMixin:
         buff = io.StringIO(with_header)
         stop = False
         result = None
-        aeval = asteval.Interpreter(
-            use_numpy=False,
-            max_time=1000000.0,
-            usersyms={
-                'split_args': split_args,
-                'ScriptEngine': ScriptEngine,
-                'ensure_obj_data': lambda data: self._ensure_data(data)})
+        wi = WitchInterpreter(self)
         while not stop:
             try:
                 tree = hy.read(buff)
                 witch_ast = hy_compile(tree, '__main__')
-                result = aeval(witch_ast)
-                if aeval.error_msg:
-                    error_msg = aeval.error_msg
-                    if 'in expr' in error_msg:
-                        error_msg = ERROR_CLEANUP_RE.sub('', error_msg)
-                    raise WitchError(error_msg)
+                wi.evaluate_ast(witch_ast)
             except EOFError:
                 stop = True
-        return result
+        return wi.script_engine
 
     def _ensure_data(self, data_mapping):
         """Given the default values for some gameobject's script, initialize
