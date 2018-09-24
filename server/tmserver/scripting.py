@@ -1,5 +1,4 @@
 import io
-import os
 import re
 
 import asteval
@@ -58,7 +57,7 @@ class ProxyGameObject:
 
 class WitchInterpreter:
     def __init__(self, receiver_model):
-        script_engine = ScriptEngine()
+        script_engine = ScriptEngine(receiver_model)
         def add_handler(action, callback):
             nonlocal script_engine
             script_engine.add_handler(action, callback)
@@ -121,7 +120,8 @@ class WitchInterpreter:
 
 class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
-    def __init__(self):
+    def __init__(self, receiver_model):
+        self.receiver_model = receiver_model
         self.handlers = {'debug': self._debug_handler,
                          'contain': self._contain_handler,
                          'say': self._say_handler,
@@ -140,6 +140,7 @@ class ScriptEngine:
         return '{} <- {} with {}'.format(receiver, sender, action_args)
 
     def _contain_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
         contain_type = action_args
         if contain_type not in self.CONTAIN_TYPES:
             raise ClientError('Bad container relation: {}'.format(contain_type))
@@ -151,17 +152,20 @@ class ScriptEngine:
             # client_state payload is sent.
 
     def _announce_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
         if receiver.user_account:
             msg = "The very air around you seems to shake as {}'s booming voice says {}".format(
                 sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
     def _say_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
         if receiver.user_account:
             msg = '{} says, \"{}\"'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
     def _whisper_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
         if receiver.user_account:
             msg = '{} whispers so only you can hear: {}'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
@@ -220,7 +224,7 @@ class ScriptedObjectMixin:
 
     def init_scripting(self):
         if self.script_revision is None:
-            self._engine = ScriptEngine()
+            self._engine = ScriptEngine(self)
         else:
             try:
                 self._engine = self._execute_script(self.script_revision.code)
@@ -233,8 +237,7 @@ class ScriptedObjectMixin:
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        # TODO use ProxyGameObject
-        return self.engine.handler(game_world, action)(self, sender_obj, action_args)
+        return self.engine.handler(game_world, action)(ProxyGameObject(self), ProxyGameObject(sender_obj), action_args)
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
     # API. that should probably be explicit somehow?

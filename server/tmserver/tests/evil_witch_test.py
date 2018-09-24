@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 from ..errors import WitchError
 from ..models import GameObject, Script, ScriptRevision, UserAccount, Permission
+from ..world import GameWorld
 from .tm_test_case import TildemushTestCase
 
 class EvilWitchTest(TildemushTestCase):
@@ -36,7 +37,7 @@ class EvilWitchTest(TildemushTestCase):
 
         with self.assertRaisesRegex(NotImplementedError, 'ImportFrom') as cm:
             game_obj.init_scripting()
-            game_obj.engine.handlers['lol'](MagicMock(), MagicMock(), MagicMock())
+            game_obj.handle_action(GameWorld, game_obj, 'lol', '')
 
     # TODO
     # For this, I wonder if the solution is not passing an instance of a Model
@@ -50,6 +51,15 @@ class EvilWitchTest(TildemushTestCase):
                 (says ua.username))))"""
         game_obj = self.create_obj_with_code(code)
 
-        with self.assertRaisesRegex(NotImplementedError, 'ImportFrom') as cm:
+        with self.assertRaisesRegex(AttributeError, 'author') as cm:
             game_obj.init_scripting()
-            game_obj.engine.handlers['lol'](MagicMock(), MagicMock(), MagicMock())
+            game_obj.handle_action(GameWorld, game_obj, 'lol', '')
+
+
+    def test_prevents_malicious_introspection(self):
+        # TODO
+        pass
+
+    def test_prevents_opening_files(self):
+        # TODO
+        pass
