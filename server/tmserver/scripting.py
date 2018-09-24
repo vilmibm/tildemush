@@ -112,7 +112,7 @@ class WitchInterpreter:
     def evaluate_ast(self, witch_ast):
         self.interpreter(witch_ast)
         if self.interpreter.error_msg:
-            error_msg = aeval.error_msg
+            error_msg = self.interpreter.error_msg
             if 'in expr' in error_msg:
                 error_msg = ERROR_CLEANUP_RE.sub('', error_msg)
             raise WitchError(error_msg)
@@ -137,6 +137,8 @@ class ScriptEngine:
             self.game_world = game_world
 
     def _debug_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
         return '{} <- {} with {}'.format(receiver, sender, action_args)
 
     def _contain_handler(self, receiver, sender, action_args):
@@ -153,6 +155,7 @@ class ScriptEngine:
 
     def _announce_handler(self, receiver, sender, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
             msg = "The very air around you seems to shake as {}'s booming voice says {}".format(
                 sender.name, action_args)
@@ -160,12 +163,14 @@ class ScriptEngine:
 
     def _say_handler(self, receiver, sender, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
             msg = '{} says, \"{}\"'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
     def _whisper_handler(self, receiver, sender, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
             msg = '{} whispers so only you can hear: {}'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)

@@ -201,7 +201,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
             script_revision=self.script_rev)
 
     def test_no_script_revision(self):
-        result = self.vil.handle_action(GameWorld, self.snoozy, 'kick', [])
+        result = self.vil.handle_action(GameWorld, self.snoozy, 'kick', '')
         assert result is None
 
     def test_engine_is_created(self):
@@ -219,17 +219,17 @@ class GameObjectScriptEngineTest(TildemushTestCase):
             mock_say.assert_called_once_with('neigh neigh neigh i am horse')
 
     def test_debug_handler(self):
-        result = self.snoozy.handle_action(GameWorld, self.vil, 'debug', [])
-        assert result == '{} <- {} with []'.format(self.snoozy, self.vil)
+        result = self.snoozy.handle_action(GameWorld, self.vil, 'debug', 'foobar')
+        assert result == '{} <- {} with foobar'.format(self.snoozy, self.vil)
 
     def test_bad_witch(self):
         self.script_rev.code = '''(witch)'''
         self.script_rev.save()
         with self.assertRaises(WitchError):
-            self.snoozy.handle_action(GameWorld, self.vil, 'pet', [])
+            self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
 
     def test_unhandled_action(self):
-        assert None == self.snoozy.handle_action(GameWorld, 'poke', self.vil, [])
+        assert None == self.snoozy.handle_action(GameWorld, self.vil, 'poke', '')
         with mock.patch('tmserver.scripting.ScriptEngine.noop') as mock_noop:
-            self.snoozy.handle_action(GameWorld, 'poke', self.vil, [])
+            self.snoozy.handle_action(GameWorld, self.vil, 'poke', [])
             assert mock_noop.called
