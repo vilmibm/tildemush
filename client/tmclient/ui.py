@@ -499,7 +499,7 @@ class GameView(GameTab):
 
         for direction in exits.keys():
             target = exits.get(direction)
-            node = urwid.LineBox(urwid.Text(target.get("room_name", "(somewhere)"), align='center'))
+            node = urwid.LineBox(ColorText(target.get("room_name", "(somewhere)"), align='center'))
             map_nodes.update({direction: node})
 
         map_grid = [
@@ -510,7 +510,7 @@ class GameView(GameTab):
                     ]),
                 urwid.Columns([
                     map_nodes.get("west"),
-                    urwid.LineBox(urwid.Text(room.get("name", "somewhere"), align='center')),
+                    urwid.LineBox(ColorText(room.get("name", "somewhere"), align='center')),
                     map_nodes.get("east")
                     ]),
                 urwid.Columns([
