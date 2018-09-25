@@ -1,13 +1,16 @@
 import io
-import os
+import re
 
+import asteval
 import hy
+from hy.compiler import hy_compile
 
 from .config import get_db
 from .errors import ClientError, WitchError
 from .util import split_args
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
+ERROR_CLEANUP_RE = re.compile(r' in expr=.*$')
 
 # Note an awful thing here; since we call .format on the script templates, we
 # have to escape the WITCH macro's {}. {{}} is not the Hy that we want, but we
@@ -44,9 +47,85 @@ SCRIPT_TEMPLATES = {
         (teleport-sender (get-data "target"))))
     '''}
 
+class ProxyGameObject:
+    def __init__(self, game_object):
+        self.id = game_object.id
+        self.shortname = game_object.shortname
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+class WitchInterpreter:
+    def __init__(self, receiver_model):
+        script_engine = ScriptEngine(receiver_model)
+        def add_handler(action, callback):
+            nonlocal script_engine
+            script_engine.add_handler(action, callback)
+
+        def set_data(key, value):
+            nonlocal receiver_model
+            receiver_model.set_data(key, value)
+
+        def get_data(key):
+            nonlocal receiver_model
+            return receiver_model.get_data(key)
+
+        def says(message):
+            nonlocal receiver_model
+            receiver_model.say(message)
+
+        def tell_sender(sender_obj, action, args):
+            nonlocal receiver_model
+            sender_obj = receiver_model.get_by_id(sender_obj.id)
+            receiver_model.tell_sender(sender_obj, action, args)
+
+        def move_sender(sender_obj, target_room_name):
+            nonlocal receiver_model
+            sender_obj = receiver_model.get_by_id(sender_obj.id)
+            receiver_model.move_sender(sender_obj, target_room_name)
+
+        def teleport_sender(sender_obj, target_room_name):
+            """Given a ProxyGameObject, find the actual gameobject and move it."""
+            nonlocal receiver_model
+            sender_obj = receiver_model.get_by_id(sender_obj.id)
+            receiver_model.teleport_sender(sender_obj, target_room_name)
+
+        def ensure_obj_data(data):
+            nonlocal receiver_model
+            receiver_model._ensure_data(data)
+
+        def witch_open(*args, **kwargs):
+            raise NotImplementedError("No file access in WITCH")
+
+        self.script_engine = script_engine
+        self.interpreter = asteval.Interpreter(
+            use_numpy=False,
+            max_time=100000.0,  # there's a bug with this and setting it arbitrarily high avoids it
+            usersyms=dict(
+                open=witch_open,
+                split_args=split_args,
+                add_handler=add_handler,
+                set_data=set_data,
+                get_data=get_data,
+                says=says,
+                witch_tell_sender=tell_sender,
+                witch_move_sender=move_sender,
+                witch_teleport_sender=teleport_sender,
+                ensure_obj_data=ensure_obj_data))
+
+    def evaluate_ast(self, witch_ast):
+        self.interpreter(witch_ast)
+        if self.interpreter.error_msg:
+            error_msg = self.interpreter.error_msg
+            if 'in expr' in error_msg:
+                error_msg = ERROR_CLEANUP_RE.sub('', error_msg)
+            raise WitchError(error_msg)
+
+
 class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
-    def __init__(self):
+    def __init__(self, receiver_model):
+        self.receiver_model = receiver_model
         self.handlers = {'debug': self._debug_handler,
                          'contain': self._contain_handler,
                          'say': self._say_handler,
@@ -62,9 +141,12 @@ class ScriptEngine:
             self.game_world = game_world
 
     def _debug_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
         return '{} <- {} with {}'.format(receiver, sender, action_args)
 
     def _contain_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
         contain_type = action_args
         if contain_type not in self.CONTAIN_TYPES:
             raise ClientError('Bad container relation: {}'.format(contain_type))
@@ -76,17 +158,23 @@ class ScriptEngine:
             # client_state payload is sent.
 
     def _announce_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
             msg = "The very air around you seems to shake as {}'s booming voice says {}".format(
                 sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
     def _say_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
             msg = '{} says, \"{}\"'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
     def _whisper_handler(self, receiver, sender, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
             msg = '{} whispers so only you can hear: {}'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
@@ -145,7 +233,7 @@ class ScriptedObjectMixin:
 
     def init_scripting(self):
         if self.script_revision is None:
-            self._engine = ScriptEngine()
+            self._engine = ScriptEngine(self)
         else:
             try:
                 self._engine = self._execute_script(self.script_revision.code)
@@ -158,7 +246,7 @@ class ScriptedObjectMixin:
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        return self.engine.handler(game_world, action)(self, sender_obj, action_args)
+        return self.engine.handler(game_world, action)(ProxyGameObject(self), ProxyGameObject(sender_obj), action_args)
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
     # API. that should probably be explicit somehow?
@@ -191,9 +279,6 @@ class ScriptedObjectMixin:
     def teleport_sender(self, sender_obj, target_room_name):
         self.game_world.move_obj(sender_obj, target_room_name)
 
-    def get_split_args(self, action_args):
-        return split_args(action_args)
-
     def _execute_script(self, witch_code):
         """Given a pile of script revision code, this function prepends the
         (witch) macro definition and then reads and evals the combined code."""
@@ -202,15 +287,15 @@ class ScriptedObjectMixin:
         buff = io.StringIO(with_header)
         stop = False
         result = None
+        wi = WitchInterpreter(self)
         while not stop:
             try:
                 tree = hy.read(buff)
-                result = hy.eval(tree,
-                                 namespace={'ScriptEngine': ScriptEngine,
-                                            'ensure_obj_data': lambda data: self._ensure_data(data)})
+                witch_ast = hy_compile(tree, '__main__')
+                wi.evaluate_ast(witch_ast)
             except EOFError:
                 stop = True
-        return result
+        return wi.script_engine
 
     def _ensure_data(self, data_mapping):
         """Given the default values for some gameobject's script, initialize

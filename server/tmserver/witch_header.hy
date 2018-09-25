@@ -1,31 +1,23 @@
-(defmacro set-data [key value] `(.set-data receiver ~key ~value))
-(defmacro get-data [key] `(.get-data receiver ~key))
-(defmacro says [message] `(.say receiver ~message))
 #_("TODO support additional args, here. right now, they have to be one big string.")
-(defmacro tell-sender [action args] `(.tell-sender receiver sender ~action ~args))
-(defmacro move-sender [direction] `(.move-sender receiver sender ~direction))
-(defmacro teleport-sender [target_room_name] `(.teleport-sender receiver sender ~target_room_name))
+(defmacro tell-sender [action args] `(witch-tell-sender sender ~action ~args))
+(defmacro move-sender [direction] `(witch-move-sender sender ~direction))
+(defmacro teleport-sender [target-room-name] `(witch-teleport-sender sender ~target-room-name))
 
 #_("TODO eventually decide on cmd-args handling")
 
 (defmacro witch
   [script_name data &rest actions]
-  (setv se (gensym))
   (setv hp (gensym))
   `(do
-     (setv ~se (ScriptEngine))
      ~@(map
-         (fn [hp] `(.add-handler
-                     ~se
+         (fn [hp] `(add-handler
                      ~(get hp 1)
                      (fn [receiver sender arg]
-                       (setv args (.get-split-args receiver arg))
+                       (setv args (split-args arg))
                        (setv from-me? (= receiver sender))
                        ~@(cut hp 2))) )
          actions)
-     (ensure-obj-data ~(get data 1))
-     ~se))
-
+     (ensure-obj-data ~(get data 1))))
 
 
 #_(setv hmm (witch "horse"
