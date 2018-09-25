@@ -24,7 +24,6 @@ class EvilWitchTest(TildemushTestCase):
             shortname='something nasty',
             script_revision=scriptrev)
 
-
     def test_prevents_import(self):
         code = """
         (witch "foo"
@@ -39,9 +38,6 @@ class EvilWitchTest(TildemushTestCase):
             game_obj.init_scripting()
             game_obj.handle_action(GameWorld, game_obj, 'lol', '')
 
-    # TODO
-    # For this, I wonder if the solution is not passing an instance of a Model
-    # but a proxy object without the model functions?
     def test_prevents_db_access_via_model(self):
         code = """
         (witch "foo"
@@ -57,9 +53,27 @@ class EvilWitchTest(TildemushTestCase):
 
 
     def test_prevents_malicious_introspection(self):
-        # TODO
-        pass
+        code = """
+        (witch "foo"
+          (has {"foo" "bar"})
+          (hears "lol"
+            ((get (.__subclasses__ (get print.__class__.__bases__ 0)) 323) "bash")))
+        """
+        game_obj = self.create_obj_with_code(code)
+
+        with self.assertRaisesRegex(AttributeError, '__class__') as cm:
+            game_obj.init_scripting()
+            game_obj.handle_action(GameWorld, game_obj, 'lol', '')
 
     def test_prevents_opening_files(self):
-        # TODO
-        pass
+        code = """
+        (witch "foo"
+          (has {"foo" "bar"})
+          (hears "lol"
+            (says (.readlines (open "/tmp/foo")))))
+        """
+        game_obj = self.create_obj_with_code(code)
+
+        with self.assertRaisesRegex(NotImplementedError, 'witch_open') as cm:
+            game_obj.init_scripting()
+            game_obj.handle_action(GameWorld, game_obj, 'lol', '')

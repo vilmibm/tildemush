@@ -94,11 +94,15 @@ class WitchInterpreter:
             nonlocal receiver_model
             receiver_model._ensure_data(data)
 
+        def witch_open(*args, **kwargs):
+            raise NotImplementedError("No file access in WITCH")
+
         self.script_engine = script_engine
         self.interpreter = asteval.Interpreter(
             use_numpy=False,
             max_time=100000.0,  # there's a bug with this and setting it arbitrarily high avoids it
             usersyms=dict(
+                open=witch_open,
                 split_args=split_args,
                 add_handler=add_handler,
                 set_data=set_data,
