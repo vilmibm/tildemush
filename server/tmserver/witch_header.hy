@@ -29,7 +29,7 @@
                            (says "neigh neigh neigh :)")))))
 
 #_(what follows is a maximalist example of all the features i'd like witch to have)
-#_(witch by vilmibm
+(witch by vilmibm
        "This script defines a silly, kind of evil book. It is intended to
        illustrate every feature that WITCH offers."
        (has {"name" "necronomicon"
@@ -52,12 +52,12 @@
                 (set-data "log" [])))
        (idling
          (if (< 5 (random-number 10))
-             (does "glows ominously")))
+             (does "glows odiously")))
        (hears "*"
               (append-data "log" heard))
        (hears "fire"
-              (does "grumbles quietly"))
-       (provides "fear"
+              (does "seems to clench its pages more tightly"))
+       (provides intransitive "fear"
                  (world-says "the aura about the necronomicon seems more vibrant"))
        (provides transitive "read"
                  (says "welcome to undeath. i now have your soul.")
@@ -74,9 +74,14 @@
        (provides transitive "punch"
                  (world-says "the necronomicon punches you back, sending you flying!")
                  (move-sender (random-direction)))
-       (provides transitive "throw" (target (args 1))
+       (provides transitive "throw"
+                 "/throw necronomicon at vilmibm"
+                 (target (args 1))
                  (world-says "the necronomicon flaps like a bird, dives at"
                              (target-data "name")
                              "and flaps noisily around"
                              (get (target-data "pronouns") 2)
-                             "head")))
+                             "head"))
+       (provides transitive "rip"
+                 (creates {"name" "yellowed page"
+                           "description" "a page, seemingly quite ancient, ripped from the necronomicon"})))
