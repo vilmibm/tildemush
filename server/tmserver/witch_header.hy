@@ -98,6 +98,6 @@
                              (get (target-data "pronouns") 2)
                              "head"))
 
-       (provides "rip $this"
+       (provides "rip page from $this"
                  (creates {"name" "yellowed page"
                            "description" "a page, seemingly quite ancient, ripped from" (get-data "name")})))
