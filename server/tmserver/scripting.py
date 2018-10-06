@@ -74,6 +74,10 @@ class WitchInterpreter:
             nonlocal receiver_model
             receiver_model.say(message)
 
+        def add_docstring(docstring):
+            nonlocal receiver_model
+            pass
+
         def tell_sender(sender_obj, action, args):
             nonlocal receiver_model
             sender_obj = receiver_model.get_by_id(sender_obj.id)
@@ -108,6 +112,7 @@ class WitchInterpreter:
                 set_data=set_data,
                 get_data=get_data,
                 says=says,
+                add_docstring=add_docstring,
                 witch_tell_sender=tell_sender,
                 witch_move_sender=move_sender,
                 witch_teleport_sender=teleport_sender,

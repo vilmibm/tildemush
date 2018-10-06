@@ -5,6 +5,13 @@
 
 #_("TODO eventually decide on cmd-args handling")
 
+(defmacro about [docstring]
+  `(add-docstring ~docstring))
+
+(defmacro incantation
+  [_ author-username &rest directives]
+  directives)
+
 (defmacro witch
   [script_name data &rest actions]
   (setv hp (gensym))
@@ -30,9 +37,9 @@
 
 #_(what follows is a maximalist example of all the features i'd like witch to have)
 #_(N.B. tell-sender in this draft sends a whisper to the sender. the current version of tell-sender in the code is being deleted.)
-(incantation by vilmibm
-       "This script defines a silly, kind of evil book. It is intended to
-       illustrate every feature that WITCH offers."
+#_(incantation by vilmibm
+       (about "This script defines a silly, kind of evil book. It is intended to
+       illustrate every feature that WITCH offers.")
        (has {"name" "the necronomicon"
              "description" "a book bound in flesh seething with undead energy."
              "pronouns" ["it" "it" "its"]

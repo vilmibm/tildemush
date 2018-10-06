@@ -208,6 +208,21 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         eng = self.snoozy.engine
         assert isinstance(eng, ScriptEngine)
 
+    def test_new_witch(self):
+        # TODO this is just to get going; eventually the (witch) invocations
+        # will be ported to the new (incantation)
+        code = '''
+        (incantation by vilmibm
+           (about "foobarbaz")
+           (about "foof"))
+        '''
+        script_rev = ScriptRevision.create(
+            script=self.script,
+            code=code.lstrip().rstrip())
+        self.snoozy.script_revision = script_rev
+        self.snoozy.save()
+        self.snoozy.init_scripting()
+
     def test_handler_works(self):
         self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
         assert self.snoozy.get_data('num-pets') == 1
