@@ -214,7 +214,8 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         code = '''
         (incantation by vilmibm
            (about "foobarbaz")
-           (about "foof"))
+           (has {"name" "chair"
+                 "description" "a weird kneeling chair. you have the feeling you might fall off it."}))
         '''
         script_rev = ScriptRevision.create(
             script=self.script,
@@ -222,6 +223,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         self.snoozy.script_revision = script_rev
         self.snoozy.save()
         self.snoozy.init_scripting()
+        self.assertEqual(self.snoozy.data["name"], "chair")
 
     def test_handler_works(self):
         self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')

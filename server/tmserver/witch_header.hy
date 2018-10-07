@@ -8,6 +8,9 @@
 (defmacro about [docstring]
   `(add-docstring ~docstring))
 
+(defmacro has [data]
+  `(ensure-obj-data ~data))
+
 (defmacro incantation
   [_ author-username &rest directives]
   directives)
