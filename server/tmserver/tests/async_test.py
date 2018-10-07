@@ -1033,3 +1033,40 @@ async def test_handle_mode(event_loop):
         await eclient.send('COMMAND mode cat carry world', [
             '{red}you lack the authority to mess'])
 
+@pytest.mark.asyncio
+async def test_hears_handler(client):
+    vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
+    spaghetti = GameObject.create_scripted_object(
+        vil, 'vilmibm/spaghetti', 'item', {
+            'name': 'spaghetti',
+            'description': 'a plate of spaghetti'})
+    spaghetti.save()
+    GameWorld.put_into(foyer, spaghetti)
+
+    await client.assert_next('STATE', 'STATE')
+
+    new_code = '''
+        (incantation by vilmibm
+          (has {"name" "spaghetti"
+                "description" "a plate of spaghetti"})
+          (hears "*eat*"
+            (does "squirms nervously")))
+    '''.rstrip().lstrip()
+
+    revision_payload = dict(
+        shortname='vilmibm/spaghetti',
+        code=new_code,
+        current_rev=spaghetti.script_revision.id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
+
+    # TODO it's kind of weird that the emote happens before the say but i'm too
+    # tired to think that through
+    await client.send("COMMAND say i'm so hungry i could eat some delicious pasta", [
+        'COMMAND OK',
+        '{magenta}spaghetti squirms nervously{/}',
+        'vilmibm says',
+    ])
+

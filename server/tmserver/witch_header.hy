@@ -39,7 +39,7 @@
   (setv noop (gensym))
   `(add-hears-handler
      ~hear-string
-     (fn [heard from-me?]
+     (fn [this sender heard]
        (setv noop 0)
        ~@actions)))
 

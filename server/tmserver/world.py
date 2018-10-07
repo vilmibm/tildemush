@@ -17,7 +17,7 @@ CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
 CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*)$')
 PUT_ARGS_RE = re.compile(r'^(.+) in (.+)$')
 REMOVE_ARGS_RE = re.compile(r'^(.+) from (.+)$')
-SPECIAL_HANDLING = {'say'} # TODO i thought there were others but for now it's just say. might not need a set in the end.
+SPECIAL_HANDLING = {'say', 'emote'} # TODO i thought there were others but for now it's just say. might not need a set in the end.
 
 
 class GameWorld:

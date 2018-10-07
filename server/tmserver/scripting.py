@@ -1,3 +1,4 @@
+from fnmatch import fnmatch
 import io
 import re
 
@@ -47,6 +48,13 @@ SCRIPT_TEMPLATES = {
         (teleport-sender (get-data "target"))))
     '''}
 
+
+def wildcard_match(pattern, string):
+    """This is pretty silly, but it's a small wrapper around fnmatch for
+    matching wildcarded strings (as opposed to regexes). For now just using
+    fnmatch seems fine even if we aren't actually matching filenames. lulz."""
+    return fnmatch(string, pattern)
+
 class ProxyGameObject:
     def __init__(self, game_object):
         self.id = game_object.id
@@ -85,6 +93,10 @@ class WitchInterpreter:
         def says(message):
             nonlocal receiver_model
             receiver_model.say(message)
+
+        def does(message):
+            nonlocal receiver_model
+            receiver_model.emote(message)
 
         def add_docstring(docstring):
             pass
@@ -128,6 +140,7 @@ class WitchInterpreter:
                 set_data=set_data,
                 get_data=get_data,
                 says=says,
+                does=does,
                 set_permissions=set_permissions,
                 add_docstring=add_docstring,
                 witch_tell_sender=tell_sender,
@@ -152,6 +165,7 @@ class ScriptEngine:
         self.provides = {'debug': self._debug_handler,
                          'contain': self._contain_handler,
                          'say': self._say_handler,
+                         'emote': self._emote_handler,
                          'announce': self._announce_handler,
                          'whisper': self._whisper_handler}
 
@@ -188,12 +202,33 @@ class ScriptEngine:
                 sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
+    def _emote_handler(self, receiver, sender, _, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
+        if receiver.user_account:
+            msg = '{{magenta}}{} {}{{/}}'.format(sender.name, action_args)
+            self.game_world.user_hears(receiver, sender, msg)
+        elif receiver != sender:
+            # TODO allow objects to respond to emote; either special case here
+            # like we're doing in say handler or just expect objects to
+            # override the emote handler
+            pass
+
+
     def _say_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
+            # TODO pick a color for spoken things
             msg = '{} says, \"{}\"'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
+        elif receiver != sender:
+            for hear_pattern, callback in self.hears.items():
+                if wildcard_match(hear_pattern, action_args):
+                    callback(
+                        ProxyGameObject(receiver),
+                        ProxyGameObject(sender),
+                        action_args)
 
     def _whisper_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
@@ -210,9 +245,6 @@ class ScriptEngine:
         says "i'm eating spaghetti", this callback would trigger.
         """
         self.hears[hear_string] = fn
-
-    def add_handler(self, action, fn):
-        self.handlers[action] = fn
 
     def add_provides_handler(self, action, fn):
         self.provides[action] = fn
@@ -301,6 +333,9 @@ class ScriptedObjectMixin:
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
     # API. that should probably be explicit somehow?
+
+    def emote(self, message):
+        self.game_world.dispatch_action(self, 'emote', message)
 
     def say(self, message):
         self.game_world.dispatch_action(self, 'say', message)
