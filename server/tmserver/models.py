@@ -183,8 +183,10 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         if format_dict is None:
             format_dict = {
                 'name': 'an object',
-                'description': 'a perfect gray sphere'
+                'description': 'a perfect gray sphere',
             }
+
+        format_dict['author'] = author.username
 
         if 'description' in format_dict:
             format_dict['description'] = collapse_whitespace(format_dict['description'])

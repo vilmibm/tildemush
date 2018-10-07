@@ -186,11 +186,17 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         self.script_rev = ScriptRevision.create(
             script=self.script,
             code='''
-            (witch "horse"
+            (incantation by vilmibm
               (has {"num-pets" 0
                     "name" "snoozy"
                     "description" "a horse"})
-              (hears "pet"
+              (allows {
+                 "read" "world"
+                 "write" "world"
+                 "carry" "world"
+                 "execute" "world"})
+              (hears "*sit*" (does "stamps at the ground"))
+              (provides "pet"
                 (set-data "num-pets" (+ 1 (get-data "num-pets")))
                   (if (= 0 (% (get-data "num-pets") 5))
                     (says "neigh neigh neigh i am horse"))))''')
@@ -208,37 +214,13 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         eng = self.snoozy.engine
         assert isinstance(eng, ScriptEngine)
 
-    def test_new_witch(self):
-        # TODO this is just to get going; eventually the (witch) invocations
-        # will be ported to the new (incantation)
-        code = '''
-        (incantation by vilmibm
-           (about "foobarbaz")
-           (has {"name" "chair"
-                 "description" "a weird kneeling chair. you have the feeling you might fall off it."})
-           (allows {
-              "read" "world"
-              "write" "world"
-              "carry" "world"
-              "execute" "world"})
-           (hears "*sit*"
-             (says "please take care when sitting upon me."))
-           (provides "tired"
-             (says "if you are tired you could sit on me; i am a chair.")))
-        '''
-        script_rev = ScriptRevision.create(
-            script=self.script,
-            code=code.lstrip().rstrip())
-        self.snoozy.script_revision = script_rev
-        self.snoozy.save()
+    def test_sets_permissions(self):
         self.snoozy.init_scripting()
-        self.assertEqual(self.snoozy.data["name"], "chair")
         for p in ['read', 'write', 'carry', 'execute']:
             self.assertEqual(getattr(self.snoozy.perms, p), Permission.WORLD)
+
+    def test_creates_hear_handler(self):
         self.assertIsNotNone(self.snoozy.engine.hears.get("*sit*"))
-        with mock.patch('tmserver.models.GameObject.say') as mock_say:
-            self.snoozy.handle_action(GameWorld, self.vil, 'tired', '')
-            mock_say.assert_called_once_with('if you are tired you could sit on me; i am a chair.')
 
     def test_handler_works(self):
         self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
@@ -255,7 +237,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         assert result == '{} <- {} with foobar'.format(self.snoozy, self.vil)
 
     def test_bad_witch(self):
-        self.script_rev.code = '''(witch)'''
+        self.script_rev.code = '''(some garbage)'''
         self.script_rev.save()
         with self.assertRaises(WitchError):
             self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')

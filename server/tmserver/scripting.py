@@ -5,7 +5,7 @@ import asteval
 import hy
 from hy.compiler import hy_compile
 
-from .config import get_db, FLAGS
+from .config import get_db
 from .errors import ClientError, WitchError
 from .util import split_args
 
@@ -18,32 +18,32 @@ ERROR_CLEANUP_RE = re.compile(r' in expr=.*$')
 # TODO consider using shortname instead of name for the string passed to (witch)
 SCRIPT_TEMPLATES = {
     'item': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'player': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'room': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'exit': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"}})
-      (hears "go" (move-sender arg))),
+      (provides "go" (move-sender arg))),
     ''',
     'portkey': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
-      (hears "touch"
+      (provides "touch"
         (teleport-sender (get-data "target"))))
     '''}
 
@@ -155,7 +155,11 @@ class ScriptEngine:
     def __init__(self, receiver_model):
         self.receiver_model = receiver_model
         self.hears = {}
-        self.provides = {}
+        self.provides = {'debug': self._debug_handler,
+                         'contain': self._contain_handler,
+                         'say': self._say_handler,
+                         'announce': self._announce_handler,
+                         'whisper': self._whisper_handler}
         self.handlers = {'debug': self._debug_handler,
                          'contain': self._contain_handler,
                          'say': self._say_handler,
@@ -170,12 +174,12 @@ class ScriptEngine:
         if not hasattr(self, 'game_world'):
             self.game_world = game_world
 
-    def _debug_handler(self, receiver, sender, action_args):
+    def _debug_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         return '{} <- {} with {}'.format(receiver, sender, action_args)
 
-    def _contain_handler(self, receiver, sender, action_args):
+    def _contain_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         contain_type = action_args
         if contain_type not in self.CONTAIN_TYPES:
@@ -187,7 +191,7 @@ class ScriptEngine:
             # movement and inventory commands. until then we just care that the
             # client_state payload is sent.
 
-    def _announce_handler(self, receiver, sender, action_args):
+    def _announce_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
@@ -195,14 +199,14 @@ class ScriptEngine:
                 sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
-    def _say_handler(self, receiver, sender, action_args):
+    def _say_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
             msg = '{} says, \"{}\"'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
-    def _whisper_handler(self, receiver, sender, action_args):
+    def _whisper_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
@@ -226,12 +230,8 @@ class ScriptEngine:
 
     def handler(self, game_world, action):
         self._ensure_game_world(game_world)
-        if FLAGS['USE_PROVIDES']:
-            handler_dict = self.provides
-        else:
-            handler_dict = self.handlers
 
-        return handler_dict.get(action, self.noop)
+        return self.provides.get(action, self.noop)
 
 class ScriptedObjectMixin:
     """This database-less class implements the runtime behavior of a tildemush
@@ -288,21 +288,27 @@ class ScriptedObjectMixin:
                 raise WitchError(
                     ';_; There is a problem with your witch script: {}'.format(e))
 
-    def handle_action(self, game_world, sender_obj, action, action_args):
+    def handle_action(self, game_world, sender_obj, action, action_args, targets=None):
         self._ensure_world(game_world)
+        # TODO to support bindings like $object, the game world has to do:
+        # - fuzzy name resolution
+        # - mapping of each $ form to a game object
+        # - send them to this function via a dict
+
+        if targets is None:
+            # TODO unfuck this
+            targets = {}
+
+        # TODO wrap each v in targets in a ProxyGameObject
+
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        result = None
-        if FLAGS.get('USE_PROVIDES'):
-            result = self.engine.handler(game_world, action)(
+        return self.engine.handler(game_world, action)(
                 ProxyGameObject(self),
                 ProxyGameObject(sender_obj),
                 action,
                 action_args)
-        else:
-            result = self.engine.handler(game_world, action)(ProxyGameObject(self), ProxyGameObject(sender_obj), action_args)
-        return result
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
     # API. that should probably be explicit somehow?

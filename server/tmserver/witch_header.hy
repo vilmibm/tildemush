@@ -24,6 +24,12 @@
   `(add-provides-handler
      ~command-string #_(Potentially with $this or $object)
      (fn [this sender command-string arg-string]
+       #_(TODO figure out how to handle the dynamic object naming from command string)
+       #_(binding from kwargs at runtime is a no go unless i want to fall back
+        on eval; but that would be prevented by asteval at runtime. my earlier
+        approach might work? it's breaking my brain some, but if i can produce
+        the simple case of a metaprogrammed setv i might get it to work?)
+       (setv arg arg-string)
        (setv args (split-args arg-string))
        (setv from-me? (= this sender))
        ~@actions)))
@@ -126,11 +132,10 @@
                      (tell-sender "the book squirms and tries to throw itself at the floor")))
 
        (provides "throw $this at $object"
-                 (target (args 1))
                  (room-says "the necronomicon flaps like a bird, dives at"
-                             (target-data "name")
+                             (get-data object "name")
                              "and flaps noisily around"
-                             (get (target-data "pronouns") 2)
+                             (get (get-data object "pronouns") 2)
                              "head"))
 
        (provides "rip page from $this"

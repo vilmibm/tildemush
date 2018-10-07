@@ -162,14 +162,15 @@ async def test_witch_script(client):
     script_rev = ScriptRevision.create(
     script=horse_script,
     code='''
-        (witch "horse"
-          (has {"num-pets" 0
-                "name" "snoozy"
-                "description" "a horse"})
-          (hears "pet"
-            (set-data "num-pets" (+ 1 (get-data "num-pets")))
-              (if (= 0 (% (get-data "num-pets") 5))
-                (says "neigh neigh neigh i am horse"))))''')
+    (incantation by vilmibm
+      (has {"num-pets" 0
+            "name" "snoozy"
+            "description" "a horse"})
+      (provides "pet"
+         (set-data "num-pets" (+ 1 (get-data "num-pets")))
+         (if (= 0 (% (get-data "num-pets") 5))
+           (says "neigh neigh neigh i am horse"))))
+    ''')
     snoozy = GameObject.create(
         author=vil,
         shortname='snoozy',
@@ -716,11 +717,11 @@ async def test_revision(client):
     # still compiled -- it resulted in None. very weird. need better checking
     # on code quality.
     new_code = """
-    (witch "cigar"
+    (incantation by vilmibm
       (has {"name" "A fresh cigar"
             "description" "An untouched black and mild with a wood tip"
             "smoked" False})
-      (hears "smoke"
+      (provides "smoke"
         (says "i'm cancer")))""".rstrip().lstrip()
 
     revision_payload = dict(
@@ -844,11 +845,13 @@ async def test_transitive_command(client):
 
     lemongrab = GameObject.get(GameObject.shortname=='vilmibm/lemongrab')
 
+    # TODO this should be tweaked to use the $this thing
+
     new_code = """
-    (witch "lemongrab"
+    (incantation by vilmibm
       (has {"name" "lemongrab"
             "description" "a high strung lemon man"})
-      (hears "touch"
+      (provides "touch"
         (says "UNACCEPTABLE")))""".rstrip().lstrip()
 
     revision_payload = dict(
@@ -867,10 +870,10 @@ async def test_transitive_command(client):
     cat = GameObject.get(GameObject.shortname=='vilmibm/cat')
 
     new_code = """
-    (witch "cat"
+    (incantation "cat"
       (has {"name" "cat"
             "description" "it is a cat"})
-      (hears "touch"
+      (provides "touch"
         (says "purr")))""".rstrip().lstrip()
 
     revision_payload = dict(
@@ -934,10 +937,10 @@ async def test_witch_argument_string(client):
     await client.setup_user('vilmibm')
     await client.assert_next('STATE', 'STATE')
     echo_code = """
-    (witch "Cave Echo"
+    (incantation "Cave Echo"
       (has {"name" "Cave Echo"
             "description" "A creepy echo from the back of this cave"})
-      (hears "say"
+      (provides "say"
         (unless from-me?
           (says (+ arg " but spookily")))))
     """.rstrip().lstrip()
@@ -962,10 +965,10 @@ async def test_witch_arguments_split(client):
     await client.assert_next('STATE', 'STATE')
 
     vending_code = """
-    (witch "Vending Machine"
+    (incantation "Vending Machine"
       (has {"name" "Vending Machine"
             "description" "A Japanese-style vending machine."})
-      (hears "give"
+      (provides "give"
         (if (= "yen" (get args 1))
           (if (<= 100 (int (get args 0)))
             (says "have a pocari sweat. enjoy.")
