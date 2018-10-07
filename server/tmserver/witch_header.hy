@@ -14,16 +14,25 @@
 (defmacro allows [perm-dict]
   `(set-permissions ~perm-dict))
 
+#_(You'll note the weird (setv noop) in the next two macros. This is a hideous
+ hack. If given only a single form, Hy's (fn) uses a Lambda AST node. Given
+ multiple forms, it creates a named function. asteval doesn't support Lambda at
+ all, so we do a noop setv to trick Hy into making a named function. If you
+ think this is brittle and likely to fail as Hy changes you'd be right!)
+
+(defmacro provides [command-string &rest actions]
+  `(add-provides-handler
+     ~command-string #_(Potentially with $this or $object)
+     (fn [receiver sender command-string arg-string]
+       (setv args (split-args arg-string))
+       (setv from-me? (= receiver sender))
+       ~@actions)))
+
 (defmacro hears [hear-string &rest actions]
   (setv noop (gensym))
   `(add-hears-handler
      ~hear-string
-     (fn [heard-string]
-       #_(This is a hideous hack. If given only a single form, Hy's (fn) uses a
-        Lambda AST node. Given multiple forms, it creates a named function.
-        asteval doesn't support Lambda at all, so we do a noop setv to trick Hy
-        into making a named function. If you think this is brittle and likely to
-        fail as Hy changes you'd be right!)
+     (fn [heard from-me?]
        (setv noop 0)
        ~@actions)))
 

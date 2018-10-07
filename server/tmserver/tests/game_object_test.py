@@ -222,7 +222,9 @@ class GameObjectScriptEngineTest(TildemushTestCase):
               "carry" "world"
               "execute" "world"})
            (hears "*sit*"
-             (says "please take care when sitting upon me.")))
+             (says "please take care when sitting upon me."))
+           (provides "tired"
+             (says "if you are tired you could sit on me; i am a chair.")))
         '''
         script_rev = ScriptRevision.create(
             script=self.script,
@@ -234,6 +236,9 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         for p in ['read', 'write', 'carry', 'execute']:
             self.assertEqual(getattr(self.snoozy.perms, p), Permission.WORLD)
         self.assertIsNotNone(self.snoozy.engine.hears.get("*sit*"))
+        with mock.patch('tmserver.models.GameObject.say') as mock_say:
+            self.snoozy.handle_action(GameWorld, self.vil, 'tired', '')
+            mock_say.assert_called_once_with('if you are tired you could sit on me; i am a chair.')
 
     def test_handler_works(self):
         self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')

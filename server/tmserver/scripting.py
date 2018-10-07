@@ -5,7 +5,7 @@ import asteval
 import hy
 from hy.compiler import hy_compile
 
-from .config import get_db
+from .config import get_db, FLAGS
 from .errors import ClientError, WitchError
 from .util import split_args
 
@@ -74,6 +74,10 @@ class WitchInterpreter:
             nonlocal script_engine
             script_engine.add_handler(action, callback)
 
+        def add_provides_handler(action, callback):
+            nonlocal script_engine
+            script_engine.add_provides_handler(action, callback)
+
         def set_data(key, value):
             nonlocal receiver_model
             receiver_model.set_data(key, value)
@@ -123,7 +127,9 @@ class WitchInterpreter:
             usersyms=dict(
                 open=witch_open,
                 split_args=split_args,
+                # TODO retire this once (incantation) is passing in the test suite
                 add_handler=add_handler,
+                add_provides_handler=add_provides_handler,
                 add_hears_handler=add_hears_handler,
                 set_data=set_data,
                 get_data=get_data,
@@ -149,6 +155,7 @@ class ScriptEngine:
     def __init__(self, receiver_model):
         self.receiver_model = receiver_model
         self.hears = {}
+        self.provides = {}
         self.handlers = {'debug': self._debug_handler,
                          'contain': self._contain_handler,
                          'say': self._say_handler,
@@ -214,9 +221,17 @@ class ScriptEngine:
     def add_handler(self, action, fn):
         self.handlers[action] = fn
 
+    def add_provides_handler(self, action, fn):
+        self.provides[action] = fn
+
     def handler(self, game_world, action):
         self._ensure_game_world(game_world)
-        return self.handlers.get(action, self.noop)
+        if FLAGS['USE_PROVIDES']:
+            handler_dict = self.provides
+        else:
+            handler_dict = self.handlers
+
+        return handler_dict.get(action, self.noop)
 
 class ScriptedObjectMixin:
     """This database-less class implements the runtime behavior of a tildemush
@@ -278,7 +293,16 @@ class ScriptedObjectMixin:
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        return self.engine.handler(game_world, action)(ProxyGameObject(self), ProxyGameObject(sender_obj), action_args)
+        result = None
+        if FLAGS.get('USE_PROVIDES'):
+            result = self.engine.handler(game_world, action)(
+                ProxyGameObject(self),
+                ProxyGameObject(sender_obj),
+                action,
+                action_args)
+        else:
+            result = self.engine.handler(game_world, action)(ProxyGameObject(self), ProxyGameObject(sender_obj), action_args)
+        return result
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
     # API. that should probably be explicit somehow?
