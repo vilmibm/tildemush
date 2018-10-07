@@ -9,6 +9,10 @@ DB_PW = environ.get('PGPASSWORD', 'tildemush')
 DB_NAME = environ.get('PGDATABASE', 'tildemush')
 TEST_DB_NAME = DB_NAME + '_test'
 
+FLAGS = {
+    'USE_PROVIDES': True if environ.get('USE_PROVIDES') == '1' else False
+}
+
 env = environ.get('TILDEMUSH_ENV', 'live')
 
 def get_db():
