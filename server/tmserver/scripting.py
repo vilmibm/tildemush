@@ -70,10 +70,6 @@ class WitchInterpreter:
             # TODO extend support for this into GameWorld
             script_engine.add_hears_handler(hear_string, callback)
 
-        def add_handler(action, callback):
-            nonlocal script_engine
-            script_engine.add_handler(action, callback)
-
         def add_provides_handler(action, callback):
             nonlocal script_engine
             script_engine.add_provides_handler(action, callback)
@@ -127,8 +123,6 @@ class WitchInterpreter:
             usersyms=dict(
                 open=witch_open,
                 split_args=split_args,
-                # TODO retire this once (incantation) is passing in the test suite
-                add_handler=add_handler,
                 add_provides_handler=add_provides_handler,
                 add_hears_handler=add_hears_handler,
                 set_data=set_data,
@@ -156,11 +150,6 @@ class ScriptEngine:
         self.receiver_model = receiver_model
         self.hears = {}
         self.provides = {'debug': self._debug_handler,
-                         'contain': self._contain_handler,
-                         'say': self._say_handler,
-                         'announce': self._announce_handler,
-                         'whisper': self._whisper_handler}
-        self.handlers = {'debug': self._debug_handler,
                          'contain': self._contain_handler,
                          'say': self._say_handler,
                          'announce': self._announce_handler,
