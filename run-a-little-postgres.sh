@@ -24,7 +24,7 @@ while getopts "xh" opt; do
 			destroy_existing=1
 			;;
 		\?)
-			heptext
+			helptext
 			;;
 		h)
 			helptext
