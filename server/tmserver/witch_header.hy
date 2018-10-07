@@ -23,9 +23,9 @@
 (defmacro provides [command-string &rest actions]
   `(add-provides-handler
      ~command-string #_(Potentially with $this or $object)
-     (fn [receiver sender command-string arg-string]
+     (fn [this sender command-string arg-string]
        (setv args (split-args arg-string))
-       (setv from-me? (= receiver sender))
+       (setv from-me? (= this sender))
        ~@actions)))
 
 (defmacro hears [hear-string &rest actions]
