@@ -175,10 +175,10 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
 
     def test_success(self):
         new_code = """
-        (witch "snoozy"
+        (incantation "snoozy"
           (has {"name" "snoozy"
                 "description" "just a horse"})
-          (hears "pet"
+          (provides "pet"
              (says "neigh")))
         """.rstrip().lstrip()
         result = GameWorld.handle_revision(
@@ -240,10 +240,10 @@ class GameObjectRevisionUpdateTest(TildemushTestCase):
     def test_success(self):
         assert self.snoozy._engine
         new_code = """
-        (witch "snoozy"
+        (incantation "snoozy"
           (has {"name" "snoozy"
                 "description" "just a horse"})
-          (hears "pet"
+          (provides "pet"
              (says "neigh")))
         """.rstrip().lstrip()
         current_rev = self.snoozy.script_revision
