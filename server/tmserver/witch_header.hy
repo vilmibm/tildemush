@@ -36,6 +36,11 @@
        ~@actions)))
 
 (defmacro hears [hear-string &rest actions]
+  #_(Astute readers might notice that you could implement this as a provides
+   handler for "say" and then do the wildcarding in the witch code. I chose to
+   go this route purely because it's conceptually easier to think about things
+   this way. An advanced programmer who wants regex-based matching can always
+   add a provides handler for say and totally do that.)
   (setv noop (gensym))
   `(add-hears-handler
      ~hear-string
