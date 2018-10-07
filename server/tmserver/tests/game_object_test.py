@@ -220,7 +220,9 @@ class GameObjectScriptEngineTest(TildemushTestCase):
               "read" "world"
               "write" "world"
               "carry" "world"
-              "execute" "world"}))
+              "execute" "world"})
+           (hears "*sit*"
+             (says "please take care when sitting upon me.")))
         '''
         script_rev = ScriptRevision.create(
             script=self.script,
@@ -231,6 +233,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         self.assertEqual(self.snoozy.data["name"], "chair")
         for p in ['read', 'write', 'carry', 'execute']:
             self.assertEqual(getattr(self.snoozy.perms, p), Permission.WORLD)
+        self.assertIsNotNone(self.snoozy.engine.hears.get("*sit*"))
 
     def test_handler_works(self):
         self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')

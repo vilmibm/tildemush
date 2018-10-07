@@ -14,6 +14,19 @@
 (defmacro allows [perm-dict]
   `(set-permissions ~perm-dict))
 
+(defmacro hears [hear-string &rest actions]
+  (setv noop (gensym))
+  `(add-hears-handler
+     ~hear-string
+     (fn [heard-string]
+       #_(This is a hideous hack. If given only a single form, Hy's (fn) uses a
+        Lambda AST node. Given multiple forms, it creates a named function.
+        asteval doesn't support Lambda at all, so we do a noop setv to trick Hy
+        into making a named function. If you think this is brittle and likely to
+        fail as Hy changes you'd be right!)
+       (setv noop 0)
+       ~@actions)))
+
 (defmacro incantation
   [_ author-username &rest directives]
   directives)

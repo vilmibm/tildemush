@@ -58,6 +58,18 @@ class ProxyGameObject:
 class WitchInterpreter:
     def __init__(self, receiver_model):
         script_engine = ScriptEngine(receiver_model)
+        # TODO we are expanding to different kinds of handlers:
+        # - "hear" handlers, actions taken when an object just hears someone say some wildcarded string.
+        # - transitive "provides", actions that occur when people invoke a
+        #   command that matches some pattern where the pattern includes
+        #   "$this"
+        # - intransitive "provides", actions that occur when someone just invokes an untargeted command.
+
+        def add_hears_handler(hear_string, callback):
+            nonlocal script_engine
+            # TODO extend support for this into GameWorld
+            script_engine.add_hears_handler(hear_string, callback)
+
         def add_handler(action, callback):
             nonlocal script_engine
             script_engine.add_handler(action, callback)
@@ -112,6 +124,7 @@ class WitchInterpreter:
                 open=witch_open,
                 split_args=split_args,
                 add_handler=add_handler,
+                add_hears_handler=add_hears_handler,
                 set_data=set_data,
                 get_data=get_data,
                 says=says,
@@ -135,6 +148,7 @@ class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
     def __init__(self, receiver_model):
         self.receiver_model = receiver_model
+        self.hears = {}
         self.handlers = {'debug': self._debug_handler,
                          'contain': self._contain_handler,
                          'say': self._say_handler,
@@ -187,6 +201,15 @@ class ScriptEngine:
         if receiver.user_account:
             msg = '{} whispers so only you can hear: {}'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
+
+    def add_hears_handler(self, hear_string, fn):
+        """This function adds a listener for phrases uttered by mush users (ie,
+        not commands).
+
+        For example, if there's a hear handler set up for "*eat*" and a user
+        says "i'm eating spaghetti", this callback would trigger.
+        """
+        self.hears[hear_string] = fn
 
     def add_handler(self, action, fn):
         self.handlers[action] = fn
