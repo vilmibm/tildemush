@@ -1,7 +1,7 @@
 from unittest import mock
 from .. import models
 from ..errors import WitchError
-from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision
+from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision, Permission
 from ..scripting import ScriptEngine
 from ..world import GameWorld
 
@@ -215,7 +215,12 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         (incantation by vilmibm
            (about "foobarbaz")
            (has {"name" "chair"
-                 "description" "a weird kneeling chair. you have the feeling you might fall off it."}))
+                 "description" "a weird kneeling chair. you have the feeling you might fall off it."})
+           (allows {
+              "read" "world"
+              "write" "world"
+              "carry" "world"
+              "execute" "world"}))
         '''
         script_rev = ScriptRevision.create(
             script=self.script,
@@ -224,6 +229,8 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         self.snoozy.save()
         self.snoozy.init_scripting()
         self.assertEqual(self.snoozy.data["name"], "chair")
+        for p in ['read', 'write', 'carry', 'execute']:
+            self.assertEqual(getattr(self.snoozy.perms, p), Permission.WORLD)
 
     def test_handler_works(self):
         self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')

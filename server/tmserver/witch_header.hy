@@ -11,6 +11,9 @@
 (defmacro has [data]
   `(ensure-obj-data ~data))
 
+(defmacro allows [perm-dict]
+  `(set-permissions ~perm-dict))
+
 (defmacro incantation
   [_ author-username &rest directives]
   directives)

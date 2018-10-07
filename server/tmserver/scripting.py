@@ -75,7 +75,6 @@ class WitchInterpreter:
             receiver_model.say(message)
 
         def add_docstring(docstring):
-            nonlocal receiver_model
             pass
 
         def tell_sender(sender_obj, action, args):
@@ -98,6 +97,10 @@ class WitchInterpreter:
             nonlocal receiver_model
             receiver_model._ensure_data(data)
 
+        def set_permissions(perm_dict):
+            nonlocal receiver_model
+            receiver_model.set_perms(**perm_dict)
+
         def witch_open(*args, **kwargs):
             raise NotImplementedError("No file access in WITCH")
 
@@ -112,6 +115,7 @@ class WitchInterpreter:
                 set_data=set_data,
                 get_data=get_data,
                 says=says,
+                set_permissions=set_permissions,
                 add_docstring=add_docstring,
                 witch_tell_sender=tell_sender,
                 witch_move_sender=move_sender,
