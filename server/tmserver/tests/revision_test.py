@@ -254,4 +254,4 @@ class GameObjectRevisionUpdateTest(TildemushTestCase):
             self.snoozy.script_revision.id)
         e = self.snoozy.engine
         assert self.snoozy.script_revision.id != current_rev.id
-        assert 'pet' in e.handlers
+        assert 'pet' in e.provides
