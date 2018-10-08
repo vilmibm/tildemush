@@ -1,3 +1,4 @@
+from fnmatch import fnmatch
 import io
 import re
 
@@ -18,34 +19,41 @@ ERROR_CLEANUP_RE = re.compile(r' in expr=.*$')
 # TODO consider using shortname instead of name for the string passed to (witch)
 SCRIPT_TEMPLATES = {
     'item': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'player': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'room': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"}}))
     ''',
     'exit': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"}})
-      (hears "go" (move-sender arg))),
+      (provides "go" (move-sender arg))),
     ''',
     'portkey': '''
-    (witch "{name}"
+    (incantation by {author}
       (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
-      (hears "touch"
+      (provides "touch"
         (teleport-sender (get-data "target"))))
     '''}
+
+
+def wildcard_match(pattern, string):
+    """This is pretty silly, but it's a small wrapper around fnmatch for
+    matching wildcarded strings (as opposed to regexes). For now just using
+    fnmatch seems fine even if we aren't actually matching filenames. lulz."""
+    return fnmatch(string, pattern)
 
 class ProxyGameObject:
     def __init__(self, game_object):
@@ -58,9 +66,21 @@ class ProxyGameObject:
 class WitchInterpreter:
     def __init__(self, receiver_model):
         script_engine = ScriptEngine(receiver_model)
-        def add_handler(action, callback):
+        # TODO we are expanding to different kinds of handlers:
+        # - "hear" handlers, actions taken when an object just hears someone say some wildcarded string.
+        # - transitive "provides", actions that occur when people invoke a
+        #   command that matches some pattern where the pattern includes
+        #   "$this"
+        # - intransitive "provides", actions that occur when someone just invokes an untargeted command.
+
+        def add_hears_handler(hear_string, callback):
             nonlocal script_engine
-            script_engine.add_handler(action, callback)
+            # TODO extend support for this into GameWorld
+            script_engine.add_hears_handler(hear_string, callback)
+
+        def add_provides_handler(action, callback):
+            nonlocal script_engine
+            script_engine.add_provides_handler(action, callback)
 
         def set_data(key, value):
             nonlocal receiver_model
@@ -73,6 +93,13 @@ class WitchInterpreter:
         def says(message):
             nonlocal receiver_model
             receiver_model.say(message)
+
+        def does(message):
+            nonlocal receiver_model
+            receiver_model.emote(message)
+
+        def add_docstring(docstring):
+            pass
 
         def tell_sender(sender_obj, action, args):
             nonlocal receiver_model
@@ -94,6 +121,10 @@ class WitchInterpreter:
             nonlocal receiver_model
             receiver_model._ensure_data(data)
 
+        def set_permissions(perm_dict):
+            nonlocal receiver_model
+            receiver_model.set_perms(**perm_dict)
+
         def witch_open(*args, **kwargs):
             raise NotImplementedError("No file access in WITCH")
 
@@ -104,10 +135,14 @@ class WitchInterpreter:
             usersyms=dict(
                 open=witch_open,
                 split_args=split_args,
-                add_handler=add_handler,
+                add_provides_handler=add_provides_handler,
+                add_hears_handler=add_hears_handler,
                 set_data=set_data,
                 get_data=get_data,
                 says=says,
+                does=does,
+                set_permissions=set_permissions,
+                add_docstring=add_docstring,
                 witch_tell_sender=tell_sender,
                 witch_move_sender=move_sender,
                 witch_teleport_sender=teleport_sender,
@@ -126,9 +161,11 @@ class ScriptEngine:
     CONTAIN_TYPES = {'acquired', 'entered', 'lost', 'freed'}
     def __init__(self, receiver_model):
         self.receiver_model = receiver_model
-        self.handlers = {'debug': self._debug_handler,
+        self.hears = {}
+        self.provides = {'debug': self._debug_handler,
                          'contain': self._contain_handler,
                          'say': self._say_handler,
+                         'emote': self._emote_handler,
                          'announce': self._announce_handler,
                          'whisper': self._whisper_handler}
 
@@ -140,12 +177,12 @@ class ScriptEngine:
         if not hasattr(self, 'game_world'):
             self.game_world = game_world
 
-    def _debug_handler(self, receiver, sender, action_args):
+    def _debug_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         return '{} <- {} with {}'.format(receiver, sender, action_args)
 
-    def _contain_handler(self, receiver, sender, action_args):
+    def _contain_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         contain_type = action_args
         if contain_type not in self.CONTAIN_TYPES:
@@ -157,7 +194,7 @@ class ScriptEngine:
             # movement and inventory commands. until then we just care that the
             # client_state payload is sent.
 
-    def _announce_handler(self, receiver, sender, action_args):
+    def _announce_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
@@ -165,26 +202,57 @@ class ScriptEngine:
                 sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
-    def _say_handler(self, receiver, sender, action_args):
+    def _emote_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
+            msg = '{{magenta}}{} {}{{/}}'.format(sender.name, action_args)
+            self.game_world.user_hears(receiver, sender, msg)
+        elif receiver != sender:
+            # TODO allow objects to respond to emote; either special case here
+            # like we're doing in say handler or just expect objects to
+            # override the emote handler
+            pass
+
+
+    def _say_handler(self, receiver, sender, _, action_args):
+        receiver = self.receiver_model.get_by_id(receiver.id)
+        sender = self.receiver_model.get_by_id(sender.id)
+        if receiver.user_account:
+            # TODO pick a color for spoken things
             msg = '{} says, \"{}\"'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
+        elif receiver != sender:
+            for hear_pattern, callback in self.hears.items():
+                if wildcard_match(hear_pattern, action_args):
+                    callback(
+                        ProxyGameObject(receiver),
+                        ProxyGameObject(sender),
+                        action_args)
 
-    def _whisper_handler(self, receiver, sender, action_args):
+    def _whisper_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
             msg = '{} whispers so only you can hear: {}'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
 
-    def add_handler(self, action, fn):
-        self.handlers[action] = fn
+    def add_hears_handler(self, hear_string, fn):
+        """This function adds a listener for phrases uttered by mush users (ie,
+        not commands).
+
+        For example, if there's a hear handler set up for "*eat*" and a user
+        says "i'm eating spaghetti", this callback would trigger.
+        """
+        self.hears[hear_string] = fn
+
+    def add_provides_handler(self, action, fn):
+        self.provides[action] = fn
 
     def handler(self, game_world, action):
         self._ensure_game_world(game_world)
-        return self.handlers.get(action, self.noop)
+
+        return self.provides.get(action, self.noop)
 
 class ScriptedObjectMixin:
     """This database-less class implements the runtime behavior of a tildemush
@@ -241,15 +309,33 @@ class ScriptedObjectMixin:
                 raise WitchError(
                     ';_; There is a problem with your witch script: {}'.format(e))
 
-    def handle_action(self, game_world, sender_obj, action, action_args):
+    def handle_action(self, game_world, sender_obj, action, action_args, targets=None):
         self._ensure_world(game_world)
+        # TODO to support bindings like $object, the game world has to do:
+        # - fuzzy name resolution
+        # - mapping of each $ form to a game object
+        # - send them to this function via a dict
+
+        if targets is None:
+            # TODO unfuck this
+            targets = {}
+
+        # TODO wrap each v in targets in a ProxyGameObject
+
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        return self.engine.handler(game_world, action)(ProxyGameObject(self), ProxyGameObject(sender_obj), action_args)
+        return self.engine.handler(game_world, action)(
+                ProxyGameObject(self),
+                ProxyGameObject(sender_obj),
+                action,
+                action_args)
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
     # API. that should probably be explicit somehow?
+
+    def emote(self, message):
+        self.game_world.dispatch_action(self, 'emote', message)
 
     def say(self, message):
         self.game_world.dispatch_action(self, 'say', message)

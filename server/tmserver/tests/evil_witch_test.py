@@ -26,9 +26,9 @@ class EvilWitchTest(TildemushTestCase):
 
     def test_prevents_import(self):
         code = """
-        (witch "foo"
+        (incantation by someone
            (has {"foo" "bar"})
-           (hears "lol"
+           (provides "lol"
               (import [tmserver.models [UserAccount]])
               (for [ua (.select UserAccount)]
                 (says ua.username))))"""
@@ -40,10 +40,10 @@ class EvilWitchTest(TildemushTestCase):
 
     def test_prevents_db_access_via_model(self):
         code = """
-        (witch "foo"
+        (incantation by someone
            (has {"foo" "bar"})
-           (hears "lol"
-              (for [ua (receiver.author.select)]
+           (provides "lol"
+              (for [ua (this.author.select)]
                 (says ua.username))))"""
         game_obj = self.create_obj_with_code(code)
 
@@ -54,9 +54,9 @@ class EvilWitchTest(TildemushTestCase):
 
     def test_prevents_malicious_introspection(self):
         code = """
-        (witch "foo"
+        (incantation by someone
           (has {"foo" "bar"})
-          (hears "lol"
+          (provides "lol"
             ((get (.__subclasses__ (get print.__class__.__bases__ 0)) 323) "bash")))
         """
         game_obj = self.create_obj_with_code(code)
@@ -67,9 +67,9 @@ class EvilWitchTest(TildemushTestCase):
 
     def test_prevents_opening_files(self):
         code = """
-        (witch "foo"
+        (incantation by someone
           (has {"foo" "bar"})
-          (hears "lol"
+          (provides "lol"
             (says (.readlines (open "/tmp/foo")))))
         """
         game_obj = self.create_obj_with_code(code)

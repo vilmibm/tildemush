@@ -1,7 +1,7 @@
 from unittest import mock
 from .. import models
 from ..errors import WitchError
-from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision
+from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision, Permission
 from ..scripting import ScriptEngine
 from ..world import GameWorld
 
@@ -186,11 +186,17 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         self.script_rev = ScriptRevision.create(
             script=self.script,
             code='''
-            (witch "horse"
+            (incantation by vilmibm
               (has {"num-pets" 0
                     "name" "snoozy"
                     "description" "a horse"})
-              (hears "pet"
+              (allows {
+                 "read" "world"
+                 "write" "world"
+                 "carry" "world"
+                 "execute" "world"})
+              (hears "*sit*" (does "stamps at the ground"))
+              (provides "pet"
                 (set-data "num-pets" (+ 1 (get-data "num-pets")))
                   (if (= 0 (% (get-data "num-pets") 5))
                     (says "neigh neigh neigh i am horse"))))''')
@@ -208,6 +214,14 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         eng = self.snoozy.engine
         assert isinstance(eng, ScriptEngine)
 
+    def test_sets_permissions(self):
+        self.snoozy.init_scripting()
+        for p in ['read', 'write', 'carry', 'execute']:
+            self.assertEqual(getattr(self.snoozy.perms, p), Permission.WORLD)
+
+    def test_creates_hear_handler(self):
+        self.assertIsNotNone(self.snoozy.engine.hears.get("*sit*"))
+
     def test_handler_works(self):
         self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
         assert self.snoozy.get_data('num-pets') == 1
@@ -223,7 +237,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         assert result == '{} <- {} with foobar'.format(self.snoozy, self.vil)
 
     def test_bad_witch(self):
-        self.script_rev.code = '''(witch)'''
+        self.script_rev.code = '''(some garbage)'''
         self.script_rev.save()
         with self.assertRaises(WitchError):
             self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
