@@ -66,16 +66,9 @@ class ProxyGameObject:
 class WitchInterpreter:
     def __init__(self, receiver_model):
         script_engine = ScriptEngine(receiver_model)
-        # TODO we are expanding to different kinds of handlers:
-        # - "hear" handlers, actions taken when an object just hears someone say some wildcarded string.
-        # - transitive "provides", actions that occur when people invoke a
-        #   command that matches some pattern where the pattern includes
-        #   "$this"
-        # - intransitive "provides", actions that occur when someone just invokes an untargeted command.
 
         def add_hears_handler(hear_string, callback):
             nonlocal script_engine
-            # TODO extend support for this into GameWorld
             script_engine.add_hears_handler(hear_string, callback)
 
         def add_provides_handler(action, callback):
