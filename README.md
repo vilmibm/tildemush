@@ -7,6 +7,16 @@
 - [Client design](docs/client.md)
 - [The WITCH in-game scripting language](docs/scripting.md)
 
+## dev instance
+
+the town is running a development version of tildemush. you can connect from tilde.town:
+
+    mkdir ~/.config/tildemush
+    echo '{"server_port": 10014, "server_host": "mush.tilde.town"}' > ~/.config/tildemush/config.json
+    tmclient
+
+This instance is volatile (ie it's liable to go down or have its database wiped ⚠️ **at any time** ⚠️ so use at your own risk. it's also completely undocumented; if you want to know how things work, you'll have to look at tildemush's code.
+
 ## requirements
 
 * `python 3.6+`
