@@ -336,14 +336,12 @@ class ScriptedObjectMixin:
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        handler, halt =  self.engine.handler(game_world, self, action, action_args)
+        handler =  self.engine.handler(game_world, self, action, action_args)
 
-        handler(ProxyGameObject(self),
-                ProxyGameObject(sender_obj),
-                action,
-                action_args)
-
-        return halt
+        return handler(ProxyGameObject(self),
+                       ProxyGameObject(sender_obj),
+                       action,
+                       action_args)
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
     # API. that should probably be explicit somehow?

@@ -968,9 +968,9 @@ async def test_witch_arguments_split(client):
     (incantation "Vending Machine"
       (has {"name" "Vending Machine"
             "description" "A Japanese-style vending machine."})
-      (provides "give"
-        (if (= "yen" (get args 1))
-          (if (<= 100 (int (get args 0)))
+      (provides "give $this"
+        (if (= "yen" (get args 2))
+          (if (<= 100 (int (get args 1)))
             (says "have a pocari sweat. enjoy.")
             (says "need more yen"))
           (says "i only take yen sorry"))))

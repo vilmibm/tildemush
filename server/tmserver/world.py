@@ -186,8 +186,7 @@ class GameWorld:
             pass
 
         # if we make it here it means we've encountered a command that objects
-        # in the area should have a chance to respond. If we hit a transitive
-        # command, halt will be True and we'll stop parsing.
+        # in the area should have a chance to respond.
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
             o.handle_action(cls, sender_obj, action, action_args)
