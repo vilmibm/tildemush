@@ -1,6 +1,7 @@
 import re
 
-ARG_RE = re.compile(r'(\'[^\']+?\'|"[^"]+?"|[^"\' ]+)')
+ARG_RE_RAW = '(\'[^\']+?\'|"[^"]+?"|[^"\' ]+)'
+ARG_RE = re.compile(ARG_RE_RAW)
 COLLAPSE_WHITESPACE_RE = re.compile(r'\s+')
 QUOTED_RE = re.compile(r'^["\'](.*)["\']$')
 STRIP_COLOR_RE = re.compile(r'{[^}]+}')
@@ -37,5 +38,3 @@ def split_args(arg_str):
             for s
             in ARG_RE.split(arg_str)
             if not (is_whitespace(s) or s in ('"', "'"))]
-
-

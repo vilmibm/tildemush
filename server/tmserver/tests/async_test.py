@@ -845,13 +845,11 @@ async def test_transitive_command(client):
 
     lemongrab = GameObject.get(GameObject.shortname=='vilmibm/lemongrab')
 
-    # TODO this should be tweaked to use the $this thing
-
     new_code = """
     (incantation by vilmibm
       (has {"name" "lemongrab"
             "description" "a high strung lemon man"})
-      (provides "touch"
+      (provides "touch $this"
         (says "UNACCEPTABLE")))""".rstrip().lstrip()
 
     revision_payload = dict(
@@ -873,8 +871,10 @@ async def test_transitive_command(client):
     (incantation "cat"
       (has {"name" "cat"
             "description" "it is a cat"})
+      (provides "touch $this"
+        (says "purr"))
       (provides "touch"
-        (says "purr")))""".rstrip().lstrip()
+        (says "meow meow why not touch me instead")))""".rstrip().lstrip()
 
     revision_payload = dict(
         shortname='vilmibm/cat',
@@ -884,17 +884,17 @@ async def test_transitive_command(client):
     await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
 
     # ensure non-transitive works
-    await client.send('COMMAND touch', ['COMMAND OK'])
-    await client.assert_set({'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'})
+    await client.send('COMMAND touch', ['COMMAND OK', 'cat says, "meow meow why not touch me instead"'])
 
     # target found
-    await client.send('COMMAND touch lemongrab', ['COMMAND OK', 'lemongrab says, "UNACCEPTABLE"'])
+    await client.send('COMMAND touch lemongrab', ['COMMAND OK'])
+    await client.assert_set({'lemongrab says, "UNACCEPTABLE"', 'cat says, "meow meow why not touch me instead"'})
 
-    # TODO support for transitive-only commands
+    await client.send('COMMAND touch cat', ['COMMAND OK', 'cat says, "purr"'])
 
     # target not found
     await client.send('COMMAND touch contrivance', ['COMMAND OK'])
-    await client.assert_set({'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'})
+    await client.assert_next('cat says, "meow meow why not touch me instead"')
 
 
 @pytest.mark.asyncio

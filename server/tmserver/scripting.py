@@ -8,7 +8,7 @@ from hy.compiler import hy_compile
 
 from .config import get_db
 from .errors import ClientError, WitchError
-from .util import split_args
+from .util import split_args, ARG_RE_RAW, clean_str
 
 WITCH_HEADER = '(require [tmserver.witch_header [*]])'
 ERROR_CLEANUP_RE = re.compile(r' in expr=.*$')
@@ -249,9 +249,31 @@ class ScriptEngine:
     def add_provides_handler(self, action, fn):
         self.provides[action] = fn
 
-    def handler(self, game_world, action):
+    def handler(self, game_world, receiver, action, action_args):
+        # TODO docstring because it's confusing as hell
         self._ensure_game_world(game_world)
 
+        # Look for transitive handling
+
+        found = None
+        for provides_str in self.provides.keys():
+            if provides_str.startswith(action) and '$this' in provides_str:
+                found = provides_str
+                break
+
+        if found:
+            # TODO memoize
+            as_regex = re.compile(found.replace('$this', ARG_RE_RAW))
+
+            to_match = '{} {}'.format(action, action_args)
+
+            obj_name_match = as_regex.match(to_match)
+
+            if obj_name_match is not None:
+                if receiver.fuzzy_match(clean_str(obj_name_match[1])):
+                    return self.provides[found]
+
+        # fall back on intransitive handling
         return self.provides.get(action, self.noop)
 
 class ScriptedObjectMixin:
@@ -309,27 +331,19 @@ class ScriptedObjectMixin:
                 raise WitchError(
                     ';_; There is a problem with your witch script: {}'.format(e))
 
-    def handle_action(self, game_world, sender_obj, action, action_args, targets=None):
+    def handle_action(self, game_world, sender_obj, action, action_args):
         self._ensure_world(game_world)
-        # TODO to support bindings like $object, the game world has to do:
-        # - fuzzy name resolution
-        # - mapping of each $ form to a game object
-        # - send them to this function via a dict
-
-        if targets is None:
-            # TODO unfuck this
-            targets = {}
-
-        # TODO wrap each v in targets in a ProxyGameObject
-
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        return self.engine.handler(game_world, action)(
-                ProxyGameObject(self),
+        handler, halt =  self.engine.handler(game_world, self, action, action_args)
+
+        handler(ProxyGameObject(self),
                 ProxyGameObject(sender_obj),
                 action,
                 action_args)
+
+        return halt
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
     # API. that should probably be explicit somehow?
