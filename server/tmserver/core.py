@@ -50,7 +50,6 @@ class UserSession:
             loop=self.loop)
 
     def handle_client_update(self, client_state):
-        self.logger.info('sending client_update to {}'.format(self.user_account.username))
         asyncio.ensure_future(
             self.client_send('STATE {}'.format(json.dumps(client_state))),
             loop=self.loop)
@@ -61,6 +60,7 @@ class UserSession:
             loop=self.loop)
 
     async def client_send(self, message):
+        self.logger.info("-> '{}' to {}".format(message, self))
         await self.websocket.send(message)
 
     def dispatch_action(self, action, action_args):
@@ -141,7 +141,7 @@ class GameServer:
             self.connections.remove(websocket)
 
     async def handle_message(self, user_session, message):
-        self.logger.info("Handling message '{}' for {}".format(
+        self.logger.info("<- '{}' from {}".format(
             message, user_session))
         try:
             if message.startswith('LOGIN'):
