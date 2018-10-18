@@ -44,7 +44,7 @@ SCRIPT_TEMPLATES = {
       (has {{"name" "{name}"
             "description" "{description}"
             "target" "{target_room_name}"}})
-      (provides "touch"
+      (provides "touch $this"
         (teleport-sender (get-data "target"))))
     '''}
 
