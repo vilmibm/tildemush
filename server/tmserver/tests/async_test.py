@@ -1065,8 +1065,10 @@ async def test_hears_handler(client):
     # TODO it's kind of weird that the emote happens before the say but i'm too
     # tired to think that through
     await client.send("COMMAND say i'm so hungry i could eat some delicious pasta", [
-        'COMMAND OK',
+        'COMMAND OK'])
+
+    await client.assert_set({
         '{magenta}spaghetti squirms nervously{/}',
-        'vilmibm says',
-    ])
+        'vilmibm says, "i\'m so hungry i could eat some delicious pasta"',
+    })
 
