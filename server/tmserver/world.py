@@ -184,20 +184,9 @@ class GameWorld:
             # cased in this if/else chain. we have this artificial check just
             # to avoid falling into the transitive branch. i hate it.
             pass
-        else:
-            # it's not a pre-defined action. we now want to see if it's
-            # targeted at some object.
-            args = split_args(action_args)
-            if len(args) > 0:
-                target_search_str = args[0]
-                target = cls.resolve_obj(cls.area_of_effect(sender_obj), target_search_str)
-                without_target = ARG_RE.sub('', action_args, count=1).rstrip().lstrip()
-                if target:
-                    target.handle_action(cls, sender_obj, action, without_target)
-                    return
 
         # if we make it here it means we've encountered a command that objects
-        # in the area should all "hear"
+        # in the area should have a chance to respond.
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
             o.handle_action(cls, sender_obj, action, action_args)

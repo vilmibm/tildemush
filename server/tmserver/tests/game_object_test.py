@@ -247,3 +247,31 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         with mock.patch('tmserver.scripting.ScriptEngine.noop') as mock_noop:
             self.snoozy.handle_action(GameWorld, self.vil, 'poke', [])
             assert mock_noop.called
+
+    def test_transitive_matching(self):
+        SIGIL = 'lol hi'
+        self.snoozy._engine = ScriptEngine(self.snoozy)
+        self.snoozy._engine.add_provides_handler('give hay to $this', SIGIL)
+
+        should_match = [
+            'hay to snoozy',
+            'hay to "snoozy"',
+            "hay to 'snoozy'",
+            'hay to snoo'
+        ]
+
+        for arg_str in should_match:
+            assert SIGIL == self.snoozy._engine.handler(None, self.snoozy, 'give', arg_str)
+
+        should_not_match = [
+            'hay to fred',
+            'hay to someone',
+            'hey to snoozy',
+            'hai to snoozy',
+            'hay to yzoons',
+            'hay',
+            'hay to'
+        ]
+
+        for arg_str in should_not_match:
+            assert ScriptEngine.noop == self.snoozy._engine.handler(None, self.snoozy, 'give', arg_str), arg_str

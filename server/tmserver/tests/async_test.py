@@ -845,13 +845,11 @@ async def test_transitive_command(client):
 
     lemongrab = GameObject.get(GameObject.shortname=='vilmibm/lemongrab')
 
-    # TODO this should be tweaked to use the $this thing
-
     new_code = """
     (incantation by vilmibm
       (has {"name" "lemongrab"
             "description" "a high strung lemon man"})
-      (provides "touch"
+      (provides "touch $this"
         (says "UNACCEPTABLE")))""".rstrip().lstrip()
 
     revision_payload = dict(
@@ -873,8 +871,10 @@ async def test_transitive_command(client):
     (incantation "cat"
       (has {"name" "cat"
             "description" "it is a cat"})
+      (provides "touch $this"
+        (says "purr"))
       (provides "touch"
-        (says "purr")))""".rstrip().lstrip()
+        (says "meow meow why not touch me instead")))""".rstrip().lstrip()
 
     revision_payload = dict(
         shortname='vilmibm/cat',
@@ -884,17 +884,17 @@ async def test_transitive_command(client):
     await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
 
     # ensure non-transitive works
-    await client.send('COMMAND touch', ['COMMAND OK'])
-    await client.assert_set({'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'})
+    await client.send('COMMAND touch', ['COMMAND OK', 'cat says, "meow meow why not touch me instead"'])
 
     # target found
-    await client.send('COMMAND touch lemongrab', ['COMMAND OK', 'lemongrab says, "UNACCEPTABLE"'])
+    await client.send('COMMAND touch lemongrab', ['COMMAND OK'])
+    await client.assert_set({'lemongrab says, "UNACCEPTABLE"', 'cat says, "meow meow why not touch me instead"'})
 
-    # TODO support for transitive-only commands
+    await client.send('COMMAND touch cat', ['COMMAND OK', 'cat says, "purr"'])
 
     # target not found
     await client.send('COMMAND touch contrivance', ['COMMAND OK'])
-    await client.assert_set({'cat says, "purr"', 'lemongrab says, "UNACCEPTABLE"'})
+    await client.assert_next('cat says, "meow meow why not touch me instead"')
 
 
 @pytest.mark.asyncio
@@ -968,9 +968,9 @@ async def test_witch_arguments_split(client):
     (incantation "Vending Machine"
       (has {"name" "Vending Machine"
             "description" "A Japanese-style vending machine."})
-      (provides "give"
-        (if (= "yen" (get args 1))
-          (if (<= 100 (int (get args 0)))
+      (provides "give $this"
+        (if (= "yen" (get args 2))
+          (if (<= 100 (int (get args 1)))
             (says "have a pocari sweat. enjoy.")
             (says "need more yen"))
           (says "i only take yen sorry"))))
@@ -1065,8 +1065,10 @@ async def test_hears_handler(client):
     # TODO it's kind of weird that the emote happens before the say but i'm too
     # tired to think that through
     await client.send("COMMAND say i'm so hungry i could eat some delicious pasta", [
-        'COMMAND OK',
+        'COMMAND OK'])
+
+    await client.assert_set({
         '{magenta}spaghetti squirms nervously{/}',
-        'vilmibm says',
-    ])
+        'vilmibm says, "i\'m so hungry i could eat some delicious pasta"',
+    })
 
