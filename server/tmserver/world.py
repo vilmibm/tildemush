@@ -793,7 +793,8 @@ class GameWorld:
 
     @classmethod
     def user_hears(cls, receiver_obj, sender_obj, msg):
-        cls.get_session(receiver_obj.user_account.id).handle_hears(sender_obj, msg)
+        if user_account.id in cls._sessions:
+            cls.get_session(receiver_obj.user_account.id).handle_hears(sender_obj, msg)
 
     @classmethod
     def object_state(cls, game_obj):
