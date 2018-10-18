@@ -33,9 +33,15 @@ class GameWorld:
         if user_account.id in cls._sessions:
             raise ClientError('User {} already logged in.'.format(user_account))
 
+
         cls._sessions[user_account.id] = user_session
 
         player_obj = user_account.player_obj
+        # We try to clean up orphaned player objects on disconnect, but
+        # sometimes exceptions still leave orphaned players. Ideally this next
+        # line wouldn't be here but it's going to make development easier:
+        Contains.delete().where(Contains.inner_obj==player_obj).execute()
+
         ls = LastSeen.get_or_none(user_account=user_account)
         room = None
         if ls is None:

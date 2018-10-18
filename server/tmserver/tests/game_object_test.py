@@ -154,19 +154,14 @@ class GameObjectComparisonTest(TildemushTestCase):
     def test_eq_operations(self):
         snoozy = GameObject.get_by_id(self.snoozy.id)
         assert snoozy == self.snoozy
-
-        revision = ScriptRevision.create(code='(witch)', script=self.snoozy.script_revision.script)
-        snoozy = GameObject.get_by_id(self.snoozy.id)
-        snoozy.script_revision = revision
+        snoozy.shortname =  'lol'
         assert snoozy != self.snoozy
 
     def test_hash_operations(self):
         snoozy = GameObject.get_by_id(self.snoozy.id)
         assert snoozy.__hash__() == self.snoozy.__hash__()
+        snoozy.shortname =  'lol'
 
-        revision = ScriptRevision.create(code='(witch)', script=self.snoozy.script_revision.script)
-        snoozy = GameObject.get_by_id(self.snoozy.id)
-        snoozy.script_revision = revision
         assert snoozy.__hash__() != self.snoozy.__hash__()
 
 

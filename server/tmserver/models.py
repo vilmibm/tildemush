@@ -335,26 +335,13 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         return 'GameObject<{}>'.format(self.shortname)
 
     def __eq__(self, other):
-        script_revision = -1
-        other_revision = -1
-        if self.script_revision:
-            script_revision = self.script_revision.id
-        if other.script_revision:
-            other_revision = other.script_revision.id
-
-        return self.author.username == other.author.username\
-            and self.shortname == other.shortname\
-            and script_revision == other_revision
+        return self.shortname == other.shortname
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __hash__(self):
-        script_revision = -1
-        if self.script_revision:
-            script_revision = self.script_revision.id
-
-        return hash((self.author.username, self.shortname, script_revision))
+        return hash((self.author.username, self.shortname))
 
 
 @post_save(sender=GameObject)

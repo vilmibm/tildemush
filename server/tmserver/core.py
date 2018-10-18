@@ -60,7 +60,7 @@ class UserSession:
             loop=self.loop)
 
     async def client_send(self, message):
-        self.logger.info("-> '{}' to {}".format(message, self))
+        self.logger.info("-> '{}' to {}".format(message[0:100], self))
         await self.websocket.send(message)
 
     def dispatch_action(self, action, action_args):
