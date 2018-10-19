@@ -114,7 +114,7 @@ class ScriptRevision(BaseModel):
 
 @pre_save(sender=ScriptRevision)
 def pre_scriptrev_save(cls, instance, created):
-    instance.code = instance.code.lstrip().rstrip()
+    instance.code = instance.code.strip()
 
 
 class Permission(BaseModel):

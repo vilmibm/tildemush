@@ -59,6 +59,7 @@ class ProxyGameObject:
     def __init__(self, game_object):
         self.id = game_object.id
         self.shortname = game_object.shortname
+        self.name = game_object.name
 
     def __eq__(self, other):
         return self.id == other.id
@@ -373,8 +374,7 @@ class ScriptedObjectMixin:
     def _execute_script(self, witch_code):
         """Given a pile of script revision code, this function prepends the
         (witch) macro definition and then reads and evals the combined code."""
-        script_text = self.script_revision.code
-        with_header = '{}\n{}'.format(WITCH_HEADER, script_text)
+        with_header = '{}\n{}'.format(WITCH_HEADER, witch_code)
         buff = io.StringIO(with_header)
         stop = False
         result = None
