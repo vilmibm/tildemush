@@ -263,7 +263,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             .order_by(ScriptRevision.created_at.desc())\
             .limit(1)[0]
 
-    def get_code(use_db_data=True):
+    def get_code(self, use_db_data=True):
         code = None
         if use_db_data:
             code = self.latest_script_rev.code
