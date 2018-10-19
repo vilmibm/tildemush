@@ -78,7 +78,8 @@ class WitchInterpreter:
 
         def set_data(key, value):
             nonlocal receiver_model
-            receiver_model.set_data(key, value)
+            if len(receiver_model.editing_set) == 0:
+                receiver_model.set_data(key, value)
 
         def get_data(key):
             nonlocal receiver_model
@@ -315,12 +316,12 @@ class ScriptedObjectMixin:
                         self.save()
         return self._engine
 
-    def init_scripting(self):
+    def init_scripting(self, use_db_data=True):
         if self.script_revision is None:
             self._engine = ScriptEngine(self)
         else:
             try:
-                self._engine = self._execute_script(self.script_revision.code)
+                self._engine = self._execute_script(self.get_code(use_db_data))
             except Exception as e:
                 raise WitchError(
                     ';_; There is a problem with your witch script: {}'.format(e))
@@ -346,13 +347,10 @@ class ScriptedObjectMixin:
     def say(self, message):
         self.game_world.dispatch_action(self, 'say', message)
 
-    # TODO I may want to forbid getting/setting things not originally declared
-    # via ensure_data. This might help newer programmers catch typos in WITCH
-    # scripts. For now, eh.
-    # lol this would have saved me some debugging earlier when i mixed up - and _
     def set_data(self, key, value):
-        self.data[key] = value
-        self.save()
+        hm = self.get_by_id(self.id)
+        hm.data[key] = value
+        hm.save()
 
     def get_data(self, key, default=None):
         return self.get_by_id(self.id).data.get(key, default)
@@ -389,14 +387,9 @@ class ScriptedObjectMixin:
         return wi.script_engine
 
     def _ensure_data(self, data_mapping):
-        """Given the default values for some gameobject's script, initialize
-        this object's data column to those defaults. Saves the instance."""
-        if data_mapping == {}:
-            return
-
-        for k,v in data_mapping.items():
-            if k not in self.data:
-                self.data[k] = v
+        """Given the kv values from some gameobject's script, (re)initialize
+        this object's data column to those values. Saves the instance."""
+        self.data = data_mapping
 
         self.save()
 

@@ -4,6 +4,7 @@ import re
 
 import bcrypt
 import peewee as pw
+from hy.contrib.hy_repr import hy_repr
 from playhouse.signals import Model, pre_save, post_save
 from playhouse.postgres_ext import JSONField
 
@@ -13,6 +14,7 @@ from .scripting import ScriptedObjectMixin
 from .util import strip_color_codes, collapse_whitespace
 
 
+HAS_RE = re.compile(r'\(has .+?\)', re.S)
 BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
 MIN_PASSWORD_LEN = 12
 
@@ -260,6 +262,17 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             .where(ScriptRevision.script==current_rev.script)\
             .order_by(ScriptRevision.created_at.desc())\
             .limit(1)[0]
+
+    def get_code(use_db_data=True):
+        code = None
+        if use_db_data:
+            code = self.latest_script_rev.code
+            as_hy = '(has {})'.format(hy_repr(self.data))
+            code = HAS_RE.sub(as_hy, code)
+        else:
+            code = self.latest_script_rev.code
+
+        return code
 
     def set_perm(self, perm, setting):
         """Given a perm defined in Permission and either 'owner' or 'world',

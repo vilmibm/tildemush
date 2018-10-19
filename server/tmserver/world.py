@@ -798,12 +798,13 @@ class GameWorld:
 
     @classmethod
     def object_state(cls, game_obj):
+        code = game_obj.get_code()
         return {
             'shortname': game_obj.shortname,
             'data': game_obj.data,
             'permissions': game_obj.perms.as_dict(),
             'current_rev': game_obj.script_revision.id,
-            'code': game_obj.script_revision.code}
+            'code': code}
 
     @classmethod
     def handle_revision(cls, owner_obj, shortname, code, current_rev):
@@ -851,7 +852,7 @@ class GameWorld:
             witch_errors = []
 
             try:
-                obj.init_scripting()
+                obj.init_scripting(use_db_data=False)
             except WitchError as e:
                 # TODO i don't actually have a good reason for errors being a
                 # list yet
