@@ -16,9 +16,7 @@ class GameServerRevisionHandlingTest(TildemushUnitTestCase):
 
     def test_require_auth(self):
         self.sess.associated = False
-        with self.assertRaisesRegex(
-                ClientError,
-                'not logged in'):
+        with self.assertRaisesRegex(ClientError, 'not logged in'):
             self.gs.handle_revision(self.sess, 'REVISION {}')
 
     def test_malformed_payload(self):
@@ -109,7 +107,7 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
                             'read': 'world',
                             'write': 'owner'},
             'current_rev': self.book.script_revision.id,
-            'code': self.book.script_revision.code}
+            'code': self.book.get_code()}
 
     def test_revision_mismatch(self):
         cm = None
@@ -130,14 +128,17 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
                             'read': 'world',
                             'write': 'owner'},
             'current_rev': self.snoozy.script_revision.id,
-            'code': self.snoozy.script_revision.code}
+            'code': self.snoozy.get_code()}
 
     def test_no_change(self):
         result = GameWorld.handle_revision(
             self.vil.player_obj,
             'vilmibm/snoozy',
-            self.snoozy.script_revision.code,
+            self.snoozy.get_code(),
             self.snoozy.script_revision.id)
+
+        # TODO what to do here? this is failing as expected. how to have a
+        # meaningful code equivalency test?
 
         assert result == {
             'shortname': 'vilmibm/snoozy',
@@ -147,7 +148,7 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
                             'read': 'world',
                             'write': 'owner'},
             'current_rev': self.snoozy.script_revision.id,
-            'code': self.snoozy.script_revision.code}
+            'code': self.snoozy.get_code()}
 
     def test_witch_error(self):
         bad_code = '(lol)'
@@ -165,7 +166,7 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
                             'read': 'world',
                             'write': 'owner'},
             'current_rev': latest_rev.id,
-            'code': latest_rev.code,
+            'code': bad_code,
             'errors': [";_; There is a problem with your witch script: name 'lol' is not defined"]}
 
         assert latest_rev.code == bad_code
@@ -176,8 +177,7 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
     def test_success(self):
         new_code = """
         (incantation "snoozy"
-          (has {"name" "snoozy"
-                "description" "just a horse"})
+          (has {"name" "snoozy"  "description" "just a horse"})
           (provides "pet"
              (says "neigh")))
         """.rstrip().lstrip()
@@ -195,7 +195,7 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
                             'read': 'world',
                             'write': 'owner'},
             'current_rev': latest_rev.id,
-            'code': latest_rev.code,
+            'code': new_code,
             'errors': []}
 
         assert latest_rev.code == new_code
@@ -229,12 +229,12 @@ class GameObjectRevisionUpdateTest(TildemushTestCase):
         assert self.snoozy._engine
         new_code = "(lol)".rstrip().lstrip()
         current_rev = self.snoozy.script_revision
-        result = GameWorld.handle_revision(
+        GameWorld.handle_revision(
             self.vil.player_obj,
             'vilmibm/snoozy',
             new_code,
             self.snoozy.script_revision.id)
-        e = self.snoozy.engine
+        self.snoozy.engine
         assert self.snoozy.script_revision.id == current_rev.id
 
     def test_success(self):
@@ -247,7 +247,7 @@ class GameObjectRevisionUpdateTest(TildemushTestCase):
              (says "neigh")))
         """.rstrip().lstrip()
         current_rev = self.snoozy.script_revision
-        result = GameWorld.handle_revision(
+        GameWorld.handle_revision(
             self.vil.player_obj,
             'vilmibm/snoozy',
             new_code,
