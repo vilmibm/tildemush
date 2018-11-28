@@ -1,7 +1,9 @@
+from ..migrations import bust_ghosts
 from ..models import UserAccount, GameObject, Contains
 from ..world import GameWorld
 
 from .tm_test_case import TildemushTestCase
+
 
 class ContainTest(TildemushTestCase):
     def setUp(self):
@@ -19,6 +21,20 @@ class ContainTest(TildemushTestCase):
         self.app = GameObject.create_scripted_object(
             author=self.vil,
             shortname='signal')
+
+    def test_ghost_busting(self):
+        player_obj = self.vil.player_obj
+        GameWorld.put_into(self.room, player_obj)
+        GameWorld.put_into(player_obj, self.phone)
+        GameWorld.put_into(self.phone, self.app)
+        assert player_obj in self.room.contains
+        assert self.phone in player_obj.contains
+        assert self.app in self.phone.contains
+        import ipdb; ipdb.set_trace()
+        bust_ghosts()
+        assert player_obj not in self.room.contains
+        assert self.phone in player_obj.contains
+        assert self.app in self.phone.contains
 
     def test_player_obj(self):
         player_obj = self.vil.player_obj
