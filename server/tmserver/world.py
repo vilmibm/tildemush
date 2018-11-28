@@ -191,8 +191,8 @@ class GameWorld:
             # to avoid falling into the transitive branch. i hate it.
             pass
 
-        # if we make it here it means we've encountered a command that objects
-        # in the area should have a chance to respond.
+        # if we make it here it means we've encountered a command to which
+        # objects in the area should have a chance to respond.
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
             o.handle_action(cls, sender_obj, action, action_args)
@@ -798,12 +798,13 @@ class GameWorld:
 
     @classmethod
     def object_state(cls, game_obj):
+        code = game_obj.get_code()
         return {
             'shortname': game_obj.shortname,
             'data': game_obj.data,
             'permissions': game_obj.perms.as_dict(),
             'current_rev': game_obj.script_revision.id,
-            'code': game_obj.script_revision.code}
+            'code': code}
 
     @classmethod
     def handle_revision(cls, owner_obj, shortname, code, current_rev):
@@ -821,7 +822,9 @@ class GameWorld:
             # case, we can add another verb like UNLOCK.
             Editing.delete().where(Editing.user_account==owner_obj.user_account).execute()
 
-            if obj.script_revision.code == code.lstrip().rstrip():
+            # TODO this is probably wonky now with the live data change and not
+            # worth it, but it shouldn't break anything really:
+            if obj.script_revision.code == code.strip():
                 #  this was originally an error, but it felt weird.
                 return cls.object_state(obj)
 
@@ -849,7 +852,7 @@ class GameWorld:
             witch_errors = []
 
             try:
-                obj.init_scripting()
+                obj.init_scripting(use_db_data=False)
             except WitchError as e:
                 # TODO i don't actually have a good reason for errors being a
                 # list yet

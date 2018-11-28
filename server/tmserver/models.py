@@ -4,6 +4,7 @@ import re
 
 import bcrypt
 import peewee as pw
+from hy.contrib.hy_repr import hy_repr
 from playhouse.signals import Model, pre_save, post_save
 from playhouse.postgres_ext import JSONField
 
@@ -13,6 +14,7 @@ from .scripting import ScriptedObjectMixin
 from .util import strip_color_codes, collapse_whitespace
 
 
+HAS_RE = re.compile(r'\(has .+?\)', re.S)
 BAD_USERNAME_CHARS_RE = re.compile(r'[\:\'";%]')
 MIN_PASSWORD_LEN = 12
 
@@ -114,7 +116,7 @@ class ScriptRevision(BaseModel):
 
 @pre_save(sender=ScriptRevision)
 def pre_scriptrev_save(cls, instance, created):
-    instance.code = instance.code.lstrip().rstrip()
+    instance.code = instance.code.strip()
 
 
 class Permission(BaseModel):
@@ -204,7 +206,7 @@ class GameObject(BaseModel, ScriptedObjectMixin):
                 author=author,
                 shortname=shortname,
                 script_revision=scriptrev)
-            game_obj.init_scripting()
+            game_obj.init_scripting(use_db_data=False)
 
         return game_obj
 
@@ -260,6 +262,22 @@ class GameObject(BaseModel, ScriptedObjectMixin):
             .where(ScriptRevision.script==current_rev.script)\
             .order_by(ScriptRevision.created_at.desc())\
             .limit(1)[0]
+
+    def get_code(self, use_db_data=True):
+        code = None
+        if use_db_data:
+            code = self.latest_script_rev.code
+            # TODO The only idea I have for helping preserve original
+            # formatting here is to iterate over over the keys and data in
+            # self.data and print each pair via hy_repr. The problem that I
+            # keep running back into is having to preserve indentation level,
+            # which I'm loath to do.
+            as_hy = '(has {})'.format(hy_repr(self.data))
+            code = HAS_RE.sub(as_hy, code)
+        else:
+            code = self.latest_script_rev.code
+
+        return code
 
     def set_perm(self, perm, setting):
         """Given a perm defined in Permission and either 'owner' or 'world',

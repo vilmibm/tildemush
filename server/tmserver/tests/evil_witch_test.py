@@ -35,7 +35,7 @@ class EvilWitchTest(TildemushTestCase):
         game_obj = self.create_obj_with_code(code)
 
         with self.assertRaisesRegex(NotImplementedError, 'ImportFrom') as cm:
-            game_obj.init_scripting()
+            game_obj.init_scripting(use_db_data=False)
             game_obj.handle_action(GameWorld, game_obj, 'lol', '')
 
     def test_prevents_db_access_via_model(self):
@@ -48,9 +48,8 @@ class EvilWitchTest(TildemushTestCase):
         game_obj = self.create_obj_with_code(code)
 
         with self.assertRaisesRegex(AttributeError, 'author') as cm:
-            game_obj.init_scripting()
+            game_obj.init_scripting(use_db_data=False)
             game_obj.handle_action(GameWorld, game_obj, 'lol', '')
-
 
     def test_prevents_malicious_introspection(self):
         code = """

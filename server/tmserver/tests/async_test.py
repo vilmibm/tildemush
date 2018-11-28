@@ -156,28 +156,35 @@ async def test_announce(event_loop):
 async def test_witch_script(client):
     vil = await client.setup_user('vilmibm', god=True)
     await client.assert_next('STATE', 'STATE')
-    horse_script = Script.create(
-        name='horse',
-        author=vil)
-    script_rev = ScriptRevision.create(
-    script=horse_script,
-    code='''
-    (incantation by vilmibm
-      (has {"num-pets" 0
-            "name" "snoozy"
-            "description" "a horse"})
-      (provides "pet"
-         (set-data "num-pets" (+ 1 (get-data "num-pets")))
-         (if (= 0 (% (get-data "num-pets") 5))
-           (says "neigh neigh neigh i am horse"))))
-    ''')
-    snoozy = GameObject.create(
-        author=vil,
-        shortname='snoozy',
-        script_revision=script_rev)
     foyer = GameObject.get(GameObject.shortname=='god/foyer')
+    snoozy = GameObject.create_scripted_object(
+            vil,
+            'vilmibm/snoozy',
+            'item', {
+                'name': 'snoozy',
+                'description': 'a horse'})
+
+    snoozy.save()
     GameWorld.put_into(foyer, snoozy)
-    await client.assert_next('STATE', 'STATE')
+
+    new_code = '''
+      (incantation by vilmibm
+        (has {"num-pets" 0
+              "name" "snoozy"
+              "description" "a horse"})
+        (provides "pet"
+           (set-data "num-pets" (+ 1 (get-data "num-pets")))
+           (if (= 0 (% (get-data "num-pets") 5))
+             (says "neigh neigh neigh i am horse"))))
+    '''.strip()
+
+    revision_payload = dict(
+            shortname='vilmibm/snoozy',
+            code=new_code,
+            current_rev=snoozy.script_revision_id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'STATE', 'OBJECT'])
+
     for _ in range(0, 4):
         await client.send('COMMAND pet', ['COMMAND OK'])
     await client.send('COMMAND pet', [
@@ -718,9 +725,7 @@ async def test_revision(client):
     # on code quality.
     new_code = """
     (incantation by vilmibm
-      (has {"name" "A fresh cigar"
-            "description" "An untouched black and mild with a wood tip"
-            "smoked" False})
+      (has {"name" "A fresh cigar"  "description" "An untouched black and mild with a wood tip"  "smoked" False})
       (provides "smoke"
         (says "i'm cancer")))""".rstrip().lstrip()
 
@@ -801,7 +806,7 @@ async def test_edit(event_loop):
             shortname=cigar.shortname,
             data=cigar.data,
             permissions=cigar.perms.as_dict(),
-            code=cigar.script_revision.code,
+            code=cigar.get_code(),
             current_rev=cigar.script_revision.id)
 
         # already being edited
