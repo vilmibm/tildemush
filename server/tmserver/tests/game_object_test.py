@@ -83,12 +83,6 @@ class GameObjectDataTest(TildemushTestCase):
     def test_data_default(self):
         assert {} == GameObject.get_by_id(self.snoozy.id).data
 
-    def test_ensure_data_ignores_empty_mapping(self):
-        with mock.patch('tmserver.models.GameObject.save') as save_m:
-            self.snoozy._ensure_data({})
-
-        assert not save_m.called
-
     def test_ensure_data(self):
         some_data = {
             'stuff': 'here',
@@ -114,24 +108,6 @@ class GameObjectDataTest(TildemushTestCase):
         self.snoozy._ensure_data(some_data)
         self.snoozy.set_data('num_pets', self.snoozy.get_data('num_pets') + 1)
         assert 1 == GameObject.get_by_id(self.snoozy.id).get_data('num_pets')
-
-    def test_handles_new_default_keys(self):
-        some_data = {
-            'smoked': False,
-            'length': 4
-        }
-        self.snoozy._ensure_data(some_data)
-        assert False == self.snoozy.get_data('smoked')
-        assert 4 == self.snoozy.get_data('length')
-        new_data = {
-            'smoked': True,
-            'length': 20,
-            'wrapper': 'brown',
-        }
-        self.snoozy._ensure_data(new_data)
-        assert False == self.snoozy.get_data('smoked')
-        assert 4 == self.snoozy.get_data('length')
-        assert 'brown' == self.snoozy.get_data('wrapper')
 
 
 class GameObjectComparisonTest(TildemushTestCase):
@@ -173,13 +149,13 @@ class GameObjectScriptEngineTest(TildemushTestCase):
             password='foobarbazquux')
         self.vil = vil_ua.player_obj
 
-        self.script = Script.create(
-            name='horse',
-            author=vil_ua
-        )
+        self.snoozy = GameObject.create_scripted_object(
+                vil_ua, 'vilmibm/snoozy', 'item', {
+                    'name': 'snoozy',
+                    'description': 'a horse'})
 
-        self.script_rev = ScriptRevision.create(
-            script=self.script,
+        script_rev = ScriptRevision.create(
+            script=self.snoozy.script_revision.script,
             code='''
             (incantation by vilmibm
               (has {"num-pets" 0
@@ -195,11 +171,9 @@ class GameObjectScriptEngineTest(TildemushTestCase):
                 (set-data "num-pets" (+ 1 (get-data "num-pets")))
                   (if (= 0 (% (get-data "num-pets") 5))
                     (says "neigh neigh neigh i am horse"))))''')
-
-        self.snoozy = GameObject.create(
-            author=vil_ua,
-            shortname='snoozy',
-            script_revision=self.script_rev)
+        self.snoozy.script_revision = script_rev
+        self.snoozy.save()
+        self.snoozy.init_scripting(use_db_data=False)
 
     def test_no_script_revision(self):
         result = self.vil.handle_action(GameWorld, self.snoozy, 'kick', '')
@@ -230,12 +204,6 @@ class GameObjectScriptEngineTest(TildemushTestCase):
     def test_debug_handler(self):
         result = self.snoozy.handle_action(GameWorld, self.vil, 'debug', 'foobar')
         assert result == '{} <- {} with foobar'.format(self.snoozy, self.vil)
-
-    def test_bad_witch(self):
-        self.script_rev.code = '''(some garbage)'''
-        self.script_rev.save()
-        with self.assertRaises(WitchError):
-            self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
 
     def test_unhandled_action(self):
         assert None == self.snoozy.handle_action(GameWorld, self.vil, 'poke', '')

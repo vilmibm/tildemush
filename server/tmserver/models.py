@@ -267,6 +267,11 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         code = None
         if use_db_data:
             code = self.latest_script_rev.code
+            # TODO The only idea I have for helping preserve original
+            # formatting here is to iterate over over the keys and data in
+            # self.data and print each pair via hy_repr. The problem that I
+            # keep running back into is having to preserve indentation level,
+            # which I'm loath to do.
             as_hy = '(has {})'.format(hy_repr(self.data))
             code = HAS_RE.sub(as_hy, code)
         else:
