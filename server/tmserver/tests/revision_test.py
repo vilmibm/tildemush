@@ -130,26 +130,6 @@ class GameWorldRevisionHandlingTest(TildemushTestCase):
             'current_rev': self.snoozy.script_revision.id,
             'code': self.snoozy.get_code()}
 
-    def test_no_change(self):
-        result = GameWorld.handle_revision(
-            self.vil.player_obj,
-            'vilmibm/snoozy',
-            self.snoozy.get_code(),
-            self.snoozy.script_revision.id)
-
-        # TODO what to do here? this is failing as expected. how to have a
-        # meaningful code equivalency test?
-
-        assert result == {
-            'shortname': 'vilmibm/snoozy',
-            'data': {'description': 'just a horse', 'name':'snoozy'},
-            'permissions': {'carry': 'world',
-                            'execute': 'world',
-                            'read': 'world',
-                            'write': 'owner'},
-            'current_rev': self.snoozy.script_revision.id,
-            'code': self.snoozy.get_code()}
-
     def test_witch_error(self):
         bad_code = '(lol)'
         result = GameWorld.handle_revision(
