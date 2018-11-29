@@ -30,7 +30,6 @@ class ContainTest(TildemushTestCase):
         assert player_obj in self.room.contains
         assert self.phone in player_obj.contains
         assert self.app in self.phone.contains
-        import ipdb; ipdb.set_trace()
         bust_ghosts()
         assert player_obj not in self.room.contains
         assert self.phone in player_obj.contains
