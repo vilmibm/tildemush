@@ -162,13 +162,6 @@ class GameWorld:
             cls.handle_create(sender_obj, action_args)
         elif action == 'edit':
             cls.handle_edit(sender_obj, action_args)
-            aoe = cls.area_of_effect(sender_obj)
-            for o in aoe:
-                if o.is_player_obj:
-                    cls.send_client_update(o.user_account)
-            # TODO this doesn't seem to result in the updated data being sent in
-            # client state, but my reading of that method is that it would send
-            # fresh db data
             return
         elif action == 'mode':
             cls.handle_mode(sender_obj, action_args)
@@ -891,6 +884,12 @@ class GameWorld:
 
             result = cls.object_state(obj)
             result['errors'] = witch_errors
+
+        if not result['errors']:
+            aoe = cls.area_of_effect(owner_obj)
+            for o in aoe:
+                if o.is_player_obj:
+                    cls.send_client_update(o.user_account)
 
         return result
 
