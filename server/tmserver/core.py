@@ -85,7 +85,7 @@ class UserSession:
         return return_payload, revision_exception
 
     def handle_map(self):
-        return self.game_world.render_map(self.user_account.player_obj)
+        return self.game_world.handle_map(self.user_account.player_obj)
 
     def handle_disconnect(self):
         if not self.associated:
