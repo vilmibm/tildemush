@@ -363,13 +363,14 @@ class WorldmapView(GameTab):
         self.prompt = urwid.Edit()
         self.config = config
         # TODO be able to render scrollable text; what urwid thing to use?
-        self.view = urwid.Filler(ColorText("worldmap coming soon", align='center'), valign='middle')
+        self.rendered_map = 'something should show here...'
+        self.view = urwid.Filler(ColorText(self.rendered_map, align='center'), valign='middle')
         super().__init__(self.view, TabHeader("F3 WORLDMAP"), self.prompt)
 
     def update_map(self, rendered_map):
         self.rendered_map = rendered_map
-        self.view = urwid.Filler(ColorText("{green}{}".format(self.rendered_map)))
-        # TODO tell view to re-render
+        self.view.original_widget = ColorText(self.rendered_map, align='center')
+
 
 class SettingsView(GameTab):
     def __init__(self, config):
