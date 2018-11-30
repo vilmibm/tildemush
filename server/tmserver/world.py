@@ -197,6 +197,12 @@ class GameWorld:
         for o in aoe:
             o.handle_action(cls, sender_obj, action, action_args)
 
+        # this is going to often be redundant and in the future we should be
+        # smarter, but too many cases weren't triggering a client update.
+        for o in aoe:
+            if o.is_player_obj:
+                cls.send_client_update(o.user_account)
+
     @classmethod
     def resolve_obj(cls, scope, search_str, ignore=lambda o: False):
         """Given a list of GameObjects as scope, a search string, and an
@@ -270,6 +276,10 @@ class GameWorld:
 
         cls.put_into(sender_obj, found)
         cls.user_hears(sender_obj, sender_obj, 'You grab {}.'.format(found.name))
+        aoe = cls.area_of_effect(sender_obj)
+        for o in aoe:
+            if o.is_player_obj and o != sender_obj:
+                cls.user_hears(o, o, '{} picks up {}'.format(sender_obj.name, found.name))
 
     @classmethod
     def handle_drop(cls, sender_obj, action_args):
@@ -283,6 +293,10 @@ class GameWorld:
 
         cls.put_into(list(sender_obj.contained_by)[0], found)
         cls.user_hears(sender_obj, sender_obj, 'You drop {}.'.format(found.name))
+        aoe = cls.area_of_effect(sender_obj)
+        for o in aoe:
+            if o.is_player_obj and o != sender_obj:
+                cls.user_hears(o, o, '{} drops {}'.format(sender_obj.name, found.name))
 
     @classmethod
     def handle_put(cls, sender_obj, action_args):
@@ -331,6 +345,11 @@ class GameWorld:
 
         cls.user_hears(sender_obj, sender_obj, 'You put {} in {}'.format(target_obj.name, container_obj.name))
 
+        aoe = cls.area_of_effect(sender_obj)
+        for o in aoe:
+            if o.is_player_obj and o != sender_obj:
+                cls.user_hears(o, o, '{} puts {} into {}'.format(sender_obj.name, target_obj.name, container_obj.name))
+
     @classmethod
     def handle_remove(cls, sender_obj, action_args):
         """Called like:
@@ -376,6 +395,11 @@ class GameWorld:
         cls.user_hears(sender_obj, sender_obj, 'You remove {} from {} and carry it with you.'.format(
             target_obj.name,
             container_obj.name))
+
+        aoe = cls.area_of_effect(sender_obj)
+        for o in aoe:
+            if o.is_player_obj and o != sender_obj:
+                cls.user_hears(o, o, '{} puts {} into {}'.format(sender_obj.name, target_obj.name, container_obj.name))
 
     @classmethod
     def handle_edit(cls, sender_obj, action_args):
@@ -860,6 +884,12 @@ class GameWorld:
 
             result = cls.object_state(obj)
             result['errors'] = witch_errors
+
+        if not result['errors']:
+            aoe = cls.area_of_effect(owner_obj)
+            for o in aoe:
+                if o.is_player_obj:
+                    cls.send_client_update(o.user_account)
 
         return result
 

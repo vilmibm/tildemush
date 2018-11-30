@@ -47,6 +47,16 @@ class Client:
             recvd.add(await self.recv())
         assert recvd == expected_set
 
+    async def assert_any_order(self, expected_list):
+        recvd = []
+        for _ in expected_list:
+            recvd.append(await self.recv())
+
+        for e in expected_list:
+            matches = [m for m in recvd if m.startswith(e)]
+            assert matches
+            recvd.remove(matches[0])
+
     async def login(self, username, password='foobarbazquux'):
         await self.send('LOGIN {}:foobarbazquux'.format(username))
         # once for LOGIN OK
@@ -183,12 +193,15 @@ async def test_witch_script(client):
             code=new_code,
             current_rev=snoozy.script_revision_id)
 
-    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'STATE', 'OBJECT'])
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), [
+      'STATE', 'STATE', 'STATE', 'OBJECT'])
 
-    for _ in range(0, 4):
-        await client.send('COMMAND pet', ['COMMAND OK'])
-    await client.send('COMMAND pet', [
-        'COMMAND OK',  'snoozy says, "neigh neigh neigh i am horse"'])
+    await client.send('COMMAND pet', ['COMMAND OK', 'STATE'])
+    await client.send('COMMAND pet', ['COMMAND OK', 'STATE'])
+    await client.send('COMMAND pet', ['COMMAND OK', 'STATE'])
+    await client.send('COMMAND pet', ['COMMAND OK', 'STATE'])
+    await client.send('COMMAND pet', ['COMMAND OK',
+                                      'snoozy says, "neigh neigh neigh i am horse"'])
 
 
 @pytest.mark.asyncio
@@ -417,7 +430,8 @@ async def test_create_item(client):
     await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
         'COMMAND OK',
         'STATE',
-        'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar'])
+        'You breathed light into a whole new item. Its true name is vilmibm/a-fresh-cigar',
+        'STATE'])
 
     # create a dupe
     await client.send('COMMAND create item "A fresh cigar" An untouched black and mild with a wood tip', [
@@ -454,7 +468,7 @@ async def test_create_room(client):
     await client.assert_next('STATE', 'STATE', 'STATE')
 
     await client.send('COMMAND touch stone', [
-        'COMMAND OK', 'STATE', 'STATE', 'STATE',
+        'STATE', 'COMMAND OK', 'STATE', 'STATE', 'STATE',
         'You materialize'])
 
 
@@ -475,6 +489,7 @@ async def test_create_oneway_exit(client):
         'STATE',
         'You breathed light into a whole new exit'])
     await client.send('COMMAND go east', [
+        'STATE',
         'COMMAND OK',
         'STATE',
         'STATE',
@@ -508,12 +523,14 @@ async def test_create_twoway_exit_between_owned_rooms(client):
 
     await client.send(
         'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname), [
+            'STATE',
             'COMMAND OK',
             'STATE',
             'STATE',
             'You breathed light into a whole new exit'])
 
     await client.send('COMMAND go east', [
+        'STATE',
         'COMMAND OK',
         'STATE',
         'STATE',
@@ -581,6 +598,7 @@ async def test_handle_get_denied(client):
     await client.send('COMMAND get phaser', [
         '{red}You grab a hold of a phaser but no matter how hard you pull it stays rooted in place.'])
 
+# TODO test that other players see inventory changes (drops, puts, removes, gets)
 
 @pytest.mark.asyncio
 async def test_handle_drop(client):
@@ -602,6 +620,7 @@ async def test_handle_drop(client):
         'You grab a phaser.'])
 
     await client.send('COMMAND drop phaser', [
+        'STATE',
         'COMMAND OK',
         'STATE',
         'STATE',
@@ -681,12 +700,14 @@ async def test_create_twoway_exit_via_world_perms(client):
 
     await client.send(
         'COMMAND create exit "Rusty Door" east {} A rusted, metal door'.format(cube.shortname), [
+            'STATE',
             'COMMAND OK',
             'STATE',
             'STATE',
             'You breathed light into a whole new exit'])
 
     await client.send('COMMAND go east', [
+        'STATE',
         'COMMAND OK',
         'STATE',
         'STATE',
@@ -736,6 +757,8 @@ async def test_revision(client):
 
     await client.send('REVISION {}'.format(json.dumps(revision_payload)))
 
+    await client.assert_next('STATE', 'STATE')
+
     msg = await client.assert_recv('OBJECT')
     payload = json.loads(msg.split(' ', maxsplit=1)[1])
 
@@ -777,10 +800,12 @@ async def test_edit(event_loop):
 
         # create obj for snoozy
         await sclient.send('COMMAND create item "A stick" Seems to be maple.', [
+            'STATE',
             'COMMAND OK',
             'STATE',
             'You breathed light into a whole new item. Its true name is snoozy/a-stick'])
         await sclient.send('COMMAND drop stick', [
+            'STATE',
             'COMMAND OK',
             'STATE',
             'STATE',
@@ -789,6 +814,10 @@ async def test_edit(event_loop):
         # obj not found
         await vclient.send('COMMAND edit fart', [
             'STATE',
+            'STATE',
+            'STATE',
+            'STATE',
+            'snoozy drops A stick',
             'STATE',
             '{red}You look in vain for fart.{/}'])
 
@@ -862,7 +891,7 @@ async def test_transitive_command(client):
         code=new_code,
         current_rev=lemongrab.script_revision.id)
 
-    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'STATE', 'OBJECT'])
 
     ### create an object for accepting whatever commands
     await client.send('COMMAND create item "cat" it is a cat', [
@@ -886,19 +915,19 @@ async def test_transitive_command(client):
         code=new_code,
         current_rev=cat.script_revision.id)
 
-    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'STATE', 'OBJECT'])
 
     # ensure non-transitive works
     await client.send('COMMAND touch', ['COMMAND OK', 'cat says, "meow meow why not touch me instead"'])
 
     # target found
-    await client.send('COMMAND touch lemongrab', ['COMMAND OK'])
-    await client.assert_set({'lemongrab says, "UNACCEPTABLE"', 'cat says, "meow meow why not touch me instead"'})
+    await client.send('COMMAND touch lemongrab', ['STATE', 'STATE', 'COMMAND OK'])
+    await client.assert_any_order(['lemongrab says', 'STATE', 'cat says'])
 
-    await client.send('COMMAND touch cat', ['COMMAND OK', 'cat says, "purr"'])
+    await client.send('COMMAND touch cat', ['STATE', 'STATE', 'COMMAND OK', 'cat says, "purr"'])
 
     # target not found
-    await client.send('COMMAND touch contrivance', ['COMMAND OK'])
+    await client.send('COMMAND touch contrivance', ['STATE', 'STATE', 'COMMAND OK'])
     await client.assert_next('cat says, "meow meow why not touch me instead"')
 
 
@@ -925,7 +954,7 @@ async def test_session_handling(event_loop):
             GameWorld.put_into(cube, endo.player_obj)
             await vclient.quit_game()
 
-        await eclient.assert_next('STATE', 'STATE', 'STATE', 'STATE', 'vilmibm fades out')
+        await eclient.assert_next('STATE', 'STATE', 'STATE', 'STATE', 'STATE', 'vilmibm fades out')
         assert vil.player_obj not in cube.contains
         assert vil not in GameWorld._sessions
         ls = LastSeen.get_or_none(LastSeen.user_account==vil)
@@ -958,11 +987,12 @@ async def test_witch_argument_string(client):
         code=echo_code,
         current_rev=echo.script_revision.id)
 
-    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'STATE', 'OBJECT'])
     await client.send('COMMAND say hello there how are you')
-    await client.assert_set({'COMMAND OK',
-                             'vilmibm says, "hello there how are you"',
-                             'Cave Echo says, "hello there how are you but spookily"'})
+    await client.assert_any_order(['COMMAND OK',
+                                   'STATE',
+                                   'vilmibm says, "hello there how are you"',
+                                   'Cave Echo says, "hello there how are you but spookily"'])
 
 @pytest.mark.asyncio
 async def test_witch_arguments_split(client):
@@ -979,7 +1009,7 @@ async def test_witch_arguments_split(client):
             (says "have a pocari sweat. enjoy.")
             (says "need more yen"))
           (says "i only take yen sorry"))))
-    """.lstrip().rstrip()
+    """.strip()
 
     await client.send('COMMAND create item "Vending Machine" A Japanese-style vending machine',
                       ['COMMAND OK', 'STATE', 'You breathed'])
@@ -990,12 +1020,12 @@ async def test_witch_arguments_split(client):
         code=vending_code,
         current_rev=vending_machine.script_revision.id)
 
-    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'STATE', 'OBJECT'])
     await client.send('COMMAND give machine 100 dollars', ['COMMAND OK'])
     await client.assert_next('Vending Machine says, "i only take yen sorry"')
-    await client.send('COMMAND give machine 99 yen', ['COMMAND OK'])
+    await client.send('COMMAND give machine 99 yen', ['STATE', 'STATE', 'COMMAND OK'])
     await client.assert_next('Vending Machine says, "need more yen"')
-    await client.send('COMMAND give machine 100 yen', ['COMMAND OK'])
+    await client.send('COMMAND give machine 100 yen', ['STATE', 'STATE', 'COMMAND OK'])
     await client.assert_next('Vending Machine says, "have a pocari sweat. enjoy."')
 
 
@@ -1007,7 +1037,7 @@ async def test_teleport(client):
     await client.send('COMMAND home', ['COMMAND OK', 'STATE', 'STATE', 'STATE', 'You materialize'])
     assert vil.player_obj.room.shortname == 'vilmibm/sanctum'
 
-    await client.send('COMMAND foyer', ['COMMAND OK', 'STATE', 'STATE', 'STATE', 'You materialize'])
+    await client.send('COMMAND foyer', ['STATE', 'COMMAND OK', 'STATE', 'STATE', 'STATE', 'You materialize'])
     assert vil.player_obj.room.shortname == 'god/foyer'
 
 
@@ -1027,6 +1057,7 @@ async def test_handle_mode(event_loop):
             'You breathed light into a whole new item. Its true name is vilmibm/cat'])
 
         await vclient.send('COMMAND mode cat carry owner', [
+            'STATE',
             'COMMAND OK',
             'The world seems to gently vibrate around you. You have updated the carry permission to owner.'])
 
@@ -1036,6 +1067,8 @@ async def test_handle_mode(event_loop):
         await vclient.send('COMMAND drop cat')
 
         await eclient.send('COMMAND mode cat carry world', [
+            'STATE',
+            'STATE',
             '{red}you lack the authority to mess'])
 
 @pytest.mark.asyncio
@@ -1065,15 +1098,16 @@ async def test_hears_handler(client):
         code=new_code,
         current_rev=spaghetti.script_revision.id)
 
-    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'OBJECT'])
 
     # TODO it's kind of weird that the emote happens before the say but i'm too
     # tired to think that through
     await client.send("COMMAND say i'm so hungry i could eat some delicious pasta", [
         'COMMAND OK'])
 
-    await client.assert_set({
+    await client.assert_any_order([
         '{magenta}spaghetti squirms nervously{/}',
+        'STATE',
         'vilmibm says, "i\'m so hungry i could eat some delicious pasta"',
-    })
+    ])
 
