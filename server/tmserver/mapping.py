@@ -35,7 +35,7 @@ def graph_easy(mapfile_content):
     completed = subprocess.run([boxgraph_path],
                                input=mapfile_content,
                                stdout=subprocess.PIPE,
-                               text=True)
+                               encoding='utf-8')
     # TODO error handling
     return completed.stdout
 
