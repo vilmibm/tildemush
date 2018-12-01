@@ -31,9 +31,10 @@ def graph_easy(mapfile_content):
     # TODO use when we can have py37: with resources.path(__package__, 'boxgraph') as p:
     tmserver_install_path = path.dirname(sys.modules['tmserver'].__file__)
     boxgraph_path = path.join(tmserver_install_path, 'boxgraph')
+    # TODO can use capture_stdout once on py37
     completed = subprocess.run([boxgraph_path],
                                input=mapfile_content,
-                               capture_output=True,
+                               stdout=subprocess.PIPE,
                                text=True)
     # TODO error handling
     return completed.stdout
