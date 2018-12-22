@@ -166,6 +166,8 @@ class GameServer:
                     # in that it tells the client "yes, i saw you; if you don't
                     # get a response it's not because i didn't see you."
                     await user_session.client_send('COMMAND OK')
+            elif message.startswith('REFRESH'):
+                self.handle_refresh(user_session)
             elif message.startswith('REVISION'):
                 revision_result, revision_exception = self.handle_revision(user_session, message)
                 if revision_exception:
@@ -203,6 +205,11 @@ class GameServer:
         if match is None:
             raise ClientError('malformed command message: {}'.format(message))
         return match.groups()
+
+    def handle_refresh(self, user_session):
+        if not user_session.associated:
+            raise ClientError('can only refresh if logged in')
+        user_session.handle_client_update(self.game_world.client_state(user_session.user_account))
 
     def handle_login(self, user_session, message):
         if user_session.associated:

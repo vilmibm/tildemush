@@ -55,8 +55,13 @@ class Client:
         if response == 'LOGIN OK':
             self.authenticated = True
             self.ui.base = GameMain(self, self.loop, self.ui.loop, self.config)
+            await self.start_listen_loop()
+            await self.refresh()
         else:
             self.ui.base.message(response, 'error')
+
+    async def refresh(self):
+        await self.connection.send('REFRESH')
 
     async def register(self, username, password):
         await self.connection.send('REGISTER {}:{}'.format(username, password))
