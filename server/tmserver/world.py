@@ -33,7 +33,6 @@ class GameWorld:
         if user_account.id in cls._sessions:
             raise ClientError('User {} already logged in.'.format(user_account))
 
-
         cls._sessions[user_account.id] = user_session
 
         player_obj = user_account.player_obj
