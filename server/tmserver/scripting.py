@@ -248,6 +248,8 @@ class ScriptEngine:
         # TODO docstring because it's confusing as hell
         self._ensure_game_world(game_world)
 
+        transitively_handled = False
+
         # Look for transitive handling
 
         found = None
@@ -266,10 +268,11 @@ class ScriptEngine:
 
             if obj_name_match is not None:
                 if receiver.fuzzy_match(clean_str(obj_name_match[1])):
-                    return self.provides[found]
+                    transitively_handled = True
+                    return transitively_handled, self.provides[found]
 
         # fall back on intransitive handling
-        return self.provides.get(action, self.noop)
+        return transitively_handled, self.provides.get(action, self.noop)
 
 class ScriptedObjectMixin:
     """This database-less class implements the runtime behavior of a tildemush
@@ -331,12 +334,12 @@ class ScriptedObjectMixin:
         # TODO there are *horrifying* race conditions going on here if set_data
         # and get_data are used in separate transactions. Call handler inside
         # of a transaction:
-        handler =  self.engine.handler(game_world, self, action, action_args)
+        is_transitive, handler = self.engine.handler(game_world, self, action, action_args)
 
-        return handler(ProxyGameObject(self),
-                       ProxyGameObject(sender_obj),
-                       action,
-                       action_args)
+        return is_transitive, handler(ProxyGameObject(self),
+                                      ProxyGameObject(sender_obj),
+                                      action,
+                                      action_args)
 
     # say, set_data, get_data, and tell_sender are part of the WITCH scripting
     # API. that should probably be explicit somehow?

@@ -177,7 +177,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
 
     def test_no_script_revision(self):
         result = self.vil.handle_action(GameWorld, self.snoozy, 'kick', '')
-        assert result is None
+        assert result == (False, None)
 
     def test_engine_is_created(self):
         eng = self.snoozy.engine
@@ -203,10 +203,10 @@ class GameObjectScriptEngineTest(TildemushTestCase):
 
     def test_debug_handler(self):
         result = self.snoozy.handle_action(GameWorld, self.vil, 'debug', 'foobar')
-        assert result == '{} <- {} with foobar'.format(self.snoozy, self.vil)
+        assert result == (False, '{} <- {} with foobar'.format(self.snoozy, self.vil))
 
     def test_unhandled_action(self):
-        assert None == self.snoozy.handle_action(GameWorld, self.vil, 'poke', '')
+        assert (False, None) == self.snoozy.handle_action(GameWorld, self.vil, 'poke', '')
         with mock.patch('tmserver.scripting.ScriptEngine.noop') as mock_noop:
             self.snoozy.handle_action(GameWorld, self.vil, 'poke', [])
             assert mock_noop.called
@@ -224,7 +224,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         ]
 
         for arg_str in should_match:
-            assert SIGIL == self.snoozy._engine.handler(None, self.snoozy, 'give', arg_str)
+            assert (True, SIGIL) == self.snoozy._engine.handler(None, self.snoozy, 'give', arg_str)
 
         should_not_match = [
             'hay to fred',
@@ -237,4 +237,4 @@ class GameObjectScriptEngineTest(TildemushTestCase):
         ]
 
         for arg_str in should_not_match:
-            assert ScriptEngine.noop == self.snoozy._engine.handler(None, self.snoozy, 'give', arg_str), arg_str
+            assert (False, ScriptEngine.noop) == self.snoozy._engine.handler(None, self.snoozy, 'give', arg_str), arg_str

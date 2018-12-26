@@ -194,7 +194,11 @@ class GameWorld:
         # objects in the area should have a chance to respond.
         aoe = cls.area_of_effect(sender_obj)
         for o in aoe:
-            o.handle_action(cls, sender_obj, action, action_args)
+            is_transitive, _ = o.handle_action(cls, sender_obj, action, action_args)
+            if is_transitive:
+                # If a user just wanted to interact with a single object, don't
+                # continue allowing other objects to respond to the action.
+                break
 
         # this is going to often be redundant and in the future we should be
         # smarter, but too many cases weren't triggering a client update.
