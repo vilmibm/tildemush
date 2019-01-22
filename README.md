@@ -1,5 +1,9 @@
 # tildemush
 
+## disclaimer
+
+**THIS PROJECT IS STILL IN ALPHA! any docs you find here (with the exception for the `setup` section) are purely hypothetical are not guaranteed to describe any actual state of the system. the only source of truth right now is the code, but you're welcome to peruse the docs to get a sense of the spirit and direction of the project.**
+
 ## TOC
 
 - This document: background, purpose, and high level information
