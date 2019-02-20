@@ -1,10 +1,8 @@
 #_("TODO support additional args, here. right now, they have to be one big string.")
-#_("TODO rewrite tell-sender to be whispering")
+#_("TODO #195 rewrite tell-sender to be whispering")
 (defmacro tell-sender [action args] `(witch-tell-sender sender ~action ~args))
 (defmacro move-sender [direction] `(witch-move-sender sender ~direction))
 (defmacro teleport-sender [target-room-name] `(witch-teleport-sender sender ~target-room-name))
-
-#_("TODO eventually decide on cmd-args handling")
 
 (defmacro about [docstring]
   `(add-docstring ~docstring))

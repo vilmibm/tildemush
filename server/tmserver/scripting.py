@@ -16,7 +16,6 @@ ERROR_CLEANUP_RE = re.compile(r' in expr=.*$')
 # Note an awful thing here; since we call .format on the script templates, we
 # have to escape the WITCH macro's {}. {{}} is not the Hy that we want, but we
 # need it in the templates.
-# TODO consider using shortname instead of name for the string passed to (witch)
 SCRIPT_TEMPLATES = {
     'item': '''
     (incantation by {author}
@@ -184,10 +183,6 @@ class ScriptEngine:
             raise ClientError('Bad container relation: {}'.format(contain_type))
         if receiver.user_account:
             self.game_world.send_client_update(receiver.user_account)
-            # TODO we actually want the client to show messages about these
-            # events, i think. we can implement that once we actually implement
-            # movement and inventory commands. until then we just care that the
-            # client_state payload is sent.
 
     def _announce_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
@@ -204,9 +199,7 @@ class ScriptEngine:
             msg = '{{magenta}}{} {}{{/}}'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
         elif receiver != sender:
-            # TODO allow objects to respond to emote; either special case here
-            # like we're doing in say handler or just expect objects to
-            # override the emote handler
+            # TODO #189
             pass
 
 
@@ -214,7 +207,6 @@ class ScriptEngine:
         receiver = self.receiver_model.get_by_id(receiver.id)
         sender = self.receiver_model.get_by_id(sender.id)
         if receiver.user_account:
-            # TODO pick a color for spoken things
             msg = '{} says, \"{}\"'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
         elif receiver != sender:
@@ -245,7 +237,13 @@ class ScriptEngine:
         self.provides[action] = fn
 
     def handler(self, game_world, receiver, action, action_args):
-        # TODO docstring because it's confusing as hell
+        """
+        This method is confusing. Its purpose is to map from a given action and arguments to a
+        callable, additionally noting if the callable is acting transitively.
+
+        Part of this process is parsing the $this placeholder in action handler definitions in WITCH
+        code (how we determine if a given handler is transitive).
+        """
         self._ensure_game_world(game_world)
 
         transitively_handled = False
@@ -259,7 +257,7 @@ class ScriptEngine:
                 break
 
         if found:
-            # TODO memoize
+            # This can and probably should be memoized.
             as_regex = re.compile(found.replace('$this', ARG_RE_RAW))
 
             to_match = '{} {}'.format(action, action_args)
@@ -292,7 +290,7 @@ class ScriptedObjectMixin:
 
     @property
     def engine(self):
-        # TODO sadness, a circular dependency got introduced here
+        # TODO #191 sadness, a circular dependency got introduced here
         # as it is this module is a hack to just save on lines in models.py.
         # models.py should probably just be refactored into a hierarchy of
         # smaller files; until then i'm going to be disgusting and add a
@@ -301,11 +299,6 @@ class ScriptedObjectMixin:
             self.init_scripting()
         else:
             with get_db().atomic():
-                # TODO this looks stupid and weird. Consider some kind of
-                # 'live_script_rev' that is probably just an alias for
-                # GameObject.script_revision; alternatively, change
-                # latest_script_rev to like get_latested_script_rev() or
-                # something.
                 current_rev = self.script_revision
                 latest_rev = self.latest_script_rev
                 if latest_rev.id != current_rev.id:
@@ -314,7 +307,7 @@ class ScriptedObjectMixin:
                         self.init_scripting()
                     except WitchError as e:
                         self.script_revision = current_rev
-                        # TODO log
+                        # TODO #180 log
                     else:
                         self.save()
         return self._engine
@@ -331,9 +324,6 @@ class ScriptedObjectMixin:
 
     def handle_action(self, game_world, sender_obj, action, action_args):
         self._ensure_world(game_world)
-        # TODO there are *horrifying* race conditions going on here if set_data
-        # and get_data are used in separate transactions. Call handler inside
-        # of a transaction:
         is_transitive, handler = self.engine.handler(game_world, self, action, action_args)
 
         return is_transitive, handler(ProxyGameObject(self),

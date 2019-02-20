@@ -362,7 +362,6 @@ class WorldmapView(GameTab):
     def __init__(self, config):
         self.prompt = urwid.Edit()
         self.config = config
-        # TODO be able to render scrollable text; what urwid thing to use?
         self.rendered_map = 'something should show here...'
         self.view = urwid.Filler(ColorText(self.rendered_map, align='center'), valign='middle')
         super().__init__(self.view, TabHeader("F3 WORLDMAP"), self.prompt)
@@ -421,7 +420,7 @@ class GameView(GameTab):
         self.user_text.contents.clear()
         self.minimap_grid.contents.clear()
 
-        # TODO: this is kind of hardcoded for the current three-widget
+        # this is kind of hardcoded for the current three-widget
         # here_info(), two-widget user_info(), three-widget generate_minimap()
 
         self.here_text.contents.extend(list(
@@ -543,7 +542,7 @@ class ExternalEditor(urwid.Terminal):
         self.terminated = False
         self.path = path
         self.callback = callback
-        # TODO: hardcoded nano as default editor; make this more flexible in the future
+        # TODO #100 user-configable editor in settings
         editor = os.environ.get("EDITOR", "/bin/nano")
         command = ["bash", "-c", "{} {}; echo Press any key to kill this window...".format(
             editor, self.path)]

@@ -210,7 +210,6 @@ class GameMain(urwid.Frame):
 
 
     def handle_game_input(self, text):
-        # TODO handle any validation of text
         self.prompt.add_line(text)
 
         if not self.client_state.listening:
@@ -219,7 +218,6 @@ class GameMain(urwid.Frame):
         if text.startswith('/quit'):
             quit_client(self)
         elif text.startswith('/edit'):
-            #TODO check for active witch editor
             text = text[1:]
         elif text.startswith('/'):
             text = text[1:]
@@ -259,7 +257,7 @@ class GameMain(urwid.Frame):
         self.body.focus()
         self.focus_prompt()
         self.refresh_tabs()
-        # TODO this is obviously very bad style but I'm at a loss:
+        # this is obviously very bad style but I'm at a loss:
         if new_tab == self.worldmap_tab:
             asyncio.ensure_future(self.client_state.send('MAP'), loop=self.loop)
 

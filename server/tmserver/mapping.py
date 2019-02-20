@@ -11,9 +11,7 @@
 # To save visual space on the map, we don't mark return edges; ie, if room A is
 # connected to the east to room B, we only map the eastern connection: not the
 # corresponding western direction.
-#
-# TODO This code is pretty slow right now and should have plenty of room for
-# optimization
+
 from os import path
 import subprocess
 import sys
@@ -28,15 +26,14 @@ def render_map(world, room, distance=2):
 
 
 def graph_easy(mapfile_content):
-    # TODO use when we can have py37: with resources.path(__package__, 'boxgraph') as p:
+    # this works for now, but when we're solidly on py37 we can: with resources.path(__package__, 'boxgraph') as p:
     tmserver_install_path = path.dirname(sys.modules['tmserver'].__file__)
     boxgraph_path = path.join(tmserver_install_path, 'boxgraph')
-    # TODO can use capture_stdout once on py37
+    # this works for now, but can use capture_stdout once on py37
     completed = subprocess.run([boxgraph_path],
                                input=mapfile_content,
                                stdout=subprocess.PIPE,
                                encoding='utf-8')
-    # TODO error handling
     return completed.stdout
 
 def mapfile_for_room(world, mapped, room):
