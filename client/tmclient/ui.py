@@ -542,10 +542,8 @@ class ExternalEditor(urwid.Terminal):
         self.terminated = False
         self.path = path
         self.callback = callback
-        editor = os.environ["EDITOR"]
-        if not editor:
-            # TODO #100 user-configurable editor from settings
-            editor = "nano"
+        # TODO #100 user-configable editor in settings
+        editor = os.environ.get("EDITOR", "/bin/nano")
         command = ["bash", "-c", "{} {}; echo Press any key to kill this window...".format(
             editor, self.path)]
         super(ExternalEditor, self).__init__(command, os.environ, loop, "ctrl z")

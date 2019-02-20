@@ -116,13 +116,13 @@ Thus, the goals of _tildemush_:
 > reality--worlds in which we can extend, amplify, and enrich our own capacities
 > to think, feel, and act.
 
--> -- <cite>Brenda Laurel, _Computers as Theatre_</cite
+> -- <cite>Brenda Laurel, _Computers as Theatre_</cite>
 
 > Let's have a little thought experiment here. All right, you're playing in a virtual world. And it's got these pictures, they're looking pretty good. And you think, "Oh, that's pretty good." And you think, "I like these pictures and that's pretty good." And it's a--and it's a 3D world, but I'm only seeing it in 2D on a screen so maybe if I got like a little headset on and put it on, now I can see it in 3D. But if I move my head a bit too much--oh well, maybe if we put little sensors on, so I can move my head. Yes, now, I can see it properly, yes. It's all here. But I'm still only seeing things and maybe I could have maybe some feeling as well. So I put a little data glove on and, "Oh, yes. Oh, it feels warm. Oh, that's good." But I'm still--I'm not hearing things. I'll put some goggles on. And I haven't got this sense of being in a place. I maybe--I want to be able to move. So I say, "Well, let's get these big like-coffin things and fill them full of these gels. And I'll take off all my clothes and put on all of these different devices and I'll lie down on it and it pull it--these electric currents through and make it feel hard or soft. So, it gives me the impression that I'm actually walking through grass because it's generating. And now, I'm beginning to feel I'm really in one of these places. But of course, really what's all that's happening here is that my senses are being fooled into this. What would happen if I was maybe cut out the whole business with the fingers and they stick a little jack in the back of your head and it goes right into the spinal cord and then you're talking straight to the brain there? All the senses that come into your brain, they're all filtered and they're used to create a world model inside your head and your imagination. But if you could talk straight to that imagination and cut out all the senses, then you would--it would be impossible to ignore it. You couldn't say, "Oh, that's just an image of a dragon." That would be a dragon. And if there was some kind of technology which could enable you to talk straight to the imagination, well, there is. 
 >
 > **It's called text.**
 >
-> -- <cite>Richard Bartle, as interviewed in Get Lamp (emphasis added)
+> -- <cite>Richard Bartle, as interviewed in Get Lamp (emphasis added)</cite>
 
 > The future is already here--it's just not very evenly distributed.
 >
