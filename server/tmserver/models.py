@@ -44,8 +44,6 @@ class UserAccount(BaseModel):
             pw = self.password.encode('utf-8')
         return bcrypt.checkpw(plaintext_password.encode('utf-8'), pw)
 
-    # TODO should this be a class method?
-    # TODO should this just run in pre_save?
     def validate(self):
         if 0 != len(UserAccount.select().where(UserAccount.username == self.username)):
             raise UserValidationError('username taken: {}'.format(self.username))
@@ -168,7 +166,6 @@ class Permission(BaseModel):
 
 class GameObject(BaseModel, ScriptedObjectMixin):
     author = pw.ForeignKeyField(UserAccount)
-    # TODO index?
     shortname = pw.CharField(null=False, unique=True)
     script_revision = pw.ForeignKeyField(ScriptRevision, null=True)
     is_player_obj = pw.BooleanField(default=False)
@@ -253,9 +250,6 @@ class GameObject(BaseModel, ScriptedObjectMixin):
 
     @property
     def latest_script_rev(self):
-        # TODO this barfs for objects without script revisions. ultimately
-        # objects probably shouldn't lack script revisions so i'll let it blow
-        # up as a reminder.
         current_rev = self.script_revision
         return ScriptRevision\
             .select()\
@@ -267,11 +261,6 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         code = None
         if use_db_data:
             code = self.latest_script_rev.code
-            # TODO The only idea I have for helping preserve original
-            # formatting here is to iterate over over the keys and data in
-            # self.data and print each pair via hy_repr. The problem that I
-            # keep running back into is having to preserve indentation level,
-            # which I'm loath to do.
             as_hy = '(has {})'.format(hy_repr(self.data))
             code = HAS_RE.sub(as_hy, code)
         else:

@@ -12,14 +12,10 @@ LOGIN_RE = re.compile(r'^LOGIN ([^:\n]+?):(.+)$')
 REGISTER_RE = re.compile(r'^REGISTER ([^:\n]+?):(.+)$')
 COMMAND_RE = re.compile(r'^COMMAND ([^ ]+) ?(.*)$')
 REVISION_RE = re.compile(r'^REVISION (.+)$')
-# TODO ensure that object shortnames are ending up in the client state so they
-# can be sent in REVISION messages
 REVISION_KEYS = ('shortname', 'code', 'current_rev')
 
 LOOP = asyncio.get_event_loop()
 
-
-# TODO auth_required login for checking associated user_sessions
 
 class UserSession:
     """An instance of this class represents a user's session."""
@@ -41,10 +37,8 @@ class UserSession:
         self.game_world.register_session(user_account, self)
 
     def handle_hears(self, sender_obj, message):
-        # TODO delete sender_obj argument i think?
-        # we will need to support basic abuse control like blocking other
-        # users, so having a sender_obj here might be useful for interaction
-        # filtering. rn it's unused though.
+        # we will need to support basic abuse control like blocking other users, so having a
+        # sender_obj here might be useful for interaction filtering. rn it's unused though.
         asyncio.ensure_future(
             self.client_send(message),
             loop=self.loop)
@@ -161,17 +155,12 @@ class GameServer:
                 except UserError as e:
                     await user_session.client_send('{{red}}{}{{/}}'.format(e))
                 else:
-                    # TODO consider switching this to COMMAND ACK and sending
-                    # as soon as we get the command. This is really only useful
-                    # in that it tells the client "yes, i saw you; if you don't
-                    # get a response it's not because i didn't see you."
                     await user_session.client_send('COMMAND OK')
             elif message.startswith('REFRESH'):
                 self.handle_refresh(user_session)
             elif message.startswith('REVISION'):
                 revision_result, revision_exception = self.handle_revision(user_session, message)
                 if revision_exception:
-                    # TODO consider something more specific than ERROR
                     await user_session.client_send('ERROR: {}'.format(revision_exception))
                 user_session.send_object_state(revision_result)
             elif message.startswith('MAP'):
@@ -187,9 +176,6 @@ class GameServer:
             elif message.startswith('PING'):
                 await user_session.client_send('PONG')
             else:
-                # TODO clients should format said things (ie things a user
-                # types not prefixed with a / command) with "COMMAND SAY"
-                #await user_session.client_send('you said {}'.format(message))
                 raise ClientError('message not understood')
         except ClientError as e:
             await user_session.client_send('ERROR: {}'.format(e))
@@ -263,8 +249,6 @@ class GameServer:
             payload = json.loads(payload)
         except Exception as e:
             raise ClientError('failed to parse revision payload: {}'.format(payload))
-
-        # TODO ensure it's a dict, raise otherwise
 
         for k in REVISION_KEYS:
             if payload.get(k) is None:

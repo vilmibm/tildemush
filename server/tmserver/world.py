@@ -17,11 +17,9 @@ CREATE_RE = re.compile(r'^([^ ]+) "([^"]+)" (.*)$')
 CREATE_EXIT_ARGS_RE = re.compile(r'^([^ ]+) ([^ ]+) (.*)$')
 PUT_ARGS_RE = re.compile(r'^(.+) in (.+)$')
 REMOVE_ARGS_RE = re.compile(r'^(.+) from (.+)$')
-SPECIAL_HANDLING = {'say', 'emote'} # TODO i thought there were others but for now it's just say. might not need a set in the end.
 
 
 class GameWorld:
-    # TODO logging
     _sessions = {}
 
     @classmethod
@@ -99,7 +97,7 @@ class GameWorld:
                 'room_name': target_room.name}
 
         return {
-            'motd': 'welcome to tildemush',  # TODO
+            'motd': 'welcome to tildemush',
             'user': {
                 'username': user_account.username,
                 'display_name': player_obj.name,
@@ -139,12 +137,9 @@ class GameWorld:
 
     @classmethod
     def dispatch_action(cls, sender_obj, action, action_args):
-        # TODO this list is only going to grow. these are commands that have
-        # special meaning to the game (ie unlike something a game object merely
-        # listens for like "pet"). I'm considering generalizing this as a list
-        # of GAME_COMMANDS that map to a GameWorld handle_* method.
-
-        # TODO add destroy action
+        # The following are commands that have special meaning to the game. Some of them also get
+        # passed to objects in a player's scope; some don't. This is pretty ugly right now but it's
+        # not worth investing in refactoring until post-beta, I don't think.
 
         # admin
         if action == 'announce':
@@ -183,12 +178,6 @@ class GameWorld:
             cls.handle_put(sender_obj, action_args)
         elif action == 'remove':
             cls.handle_remove(sender_obj, action_args)
-        elif action in SPECIAL_HANDLING:
-            # TODO this is utterly filthy, but some commands definitely never
-            # need transitive parsing (ie say and contain) but aren't special
-            # cased in this if/else chain. we have this artificial check just
-            # to avoid falling into the transitive branch. i hate it.
-            pass
 
         # if we make it here it means we've encountered a command to which
         # objects in the area should have a chance to respond.
@@ -307,8 +296,7 @@ class GameWorld:
 
            /put phaser in bag
 
-        we (somewhat disconcertingly) split on ' in '. TODO support quoting
-        both object names in case a name ends up with ' in ' in it.
+        we (somewhat disconcertingly) split on ' in '.
 
         Moves the first object into second_obj.contains.
 
@@ -360,8 +348,6 @@ class GameWorld:
            /remove phaser from bag
 
         we (somewhat disconcertingly) split on ' from '.
-        TODO support quoting both object names in case a name ends up with '
-        from ' in it.
 
         Removes the first object into second_obj.contains and adds it to the
         player's inventory.
@@ -412,10 +398,6 @@ class GameWorld:
            - clears the editing property for anything still edited by user
            - sends an OBJECT payload to the client
         """
-        # TODO a lot of the editing stuff depends on people only being allowed
-        #      to have one active client at a time. i think that's an ok
-        #      limitation for now, but we should actually enforce it.
-
         # we use aoe here because we want to be able to target a current room.
         # usually when resolving (like grabbing stuff) we def don't want to
         # include the current room, just the stuff in it.
@@ -424,17 +406,13 @@ class GameWorld:
         if obj is None:
             raise UserError(OBJECT_NOT_FOUND.format(action_args))
 
-        # TODO if we're switching users to the WITCH tab when they run /edit,
-        # they might miss these errors. they can always switch back to the main
-        # tab though if nothing appears in the WITCH tab.
+        # TODO #87 these types of errors should appear in the witch error console
         if not sender_obj.can_write(obj):
             raise UserError('You lack the authority to edit {}'.format(obj.name))
 
         if Editing.select().where(Editing.game_obj==obj).count() > 0:
             raise UserError('That object is already being edited')
 
-        # TODO Ensure that part of disconnecting is clearing out Editing table.
-        # It should also be cleared out on server start.
         with get_db().atomic():
             Editing.delete().where(Editing.user_account==sender_obj.user_account).execute()
             Editing.create(
@@ -543,16 +521,16 @@ class GameWorld:
 
         return room
 
-    # TODO audit error handling for non-user execution paths. UserErrors and
-    # ClientErrors initiating from a script engine and not the server core are
-    # going to crash the server.
-
     @classmethod
     def create_exit(cls, owner_obj, name, additional_args):
-        # TODO consider having parse_create_exit that is called outside of this
-        # TODO currently the perms for adding exit to a room use write; should we use execute?
+        """
+        Create an exit in the room an actor is in that goes somewhere else. Requires write
+        permission in both the current and target rooms. Direction is relative to the current room;
+        ie, /create exit "a door" north god/foyer wooden door means "from the current room, make a
+        door that goes north to the foyer".
+        """
         if not owner_obj.is_player_obj:
-            # TODO log
+            # TODO #180 log
             return
         match = CREATE_EXIT_ARGS_RE.fullmatch(additional_args)
         if not match:
@@ -669,14 +647,14 @@ class GameWorld:
 
     @classmethod
     def handle_look(cls, sender_obj, action_args):
-        # TODO it's arguable that this should make use of a look action
-        # dispatched to a game object, but I kind of wanted reality fixed in
-        # place with /look.
-        #
-        # I'm imagining that I want object descriptions that depend on a
-        # GameObject's state, but I think that dynamism can go into an /examine
-        # command. /look is for getting a bearing on what's in front of you.
+        """
+        This command is handled by the server to allow a user to always have a fixed handle on
+        reality. it reports on every visible object (ie, not in a container) in the room the caller
+        is in.
 
+        Complementing this command is /examine (TODO #181) which is targeted at a single object and
+        can be scripted.
+        """
         if sender_obj.is_player_obj:
             msgs = []
             room = sender_obj.room
@@ -782,9 +760,6 @@ class GameWorld:
     def put_into(cls, outer_obj, inner_obj):
         if outer_obj == inner_obj:
             raise UserError('Cannot put something into itself.')
-        # TODO for exits, i need to be able to put them into two rooms at once.
-        # Right now i'm thinking of just doing a raw Contains call when detecting
-        # an exit.
 
         for old_outer_obj in inner_obj.contained_by:
             Contains.delete().where(Contains.inner_obj==inner_obj).execute()
@@ -837,19 +812,18 @@ class GameWorld:
     def handle_revision(cls, owner_obj, shortname, code, current_rev):
         result = None
         with get_db().atomic():
-            # TODO this is going to maybe create sadness; should be handled and
-            # user gently told
+            # TODO #87 should be caught and logged to witch error console
             obj = GameObject.get(GameObject.shortname==shortname)
             result = cls.object_state(obj)
 
-            # TODO this is probably bad, but for now we're assuming that
+            # this is probably bad, but for now we're assuming that
             # REVISION implies a user edited a witch script and closed their
             # editor, meaning they're done editing. In the future other things
             # might use REVISION and this assumption might be bad; in that
             # case, we can add another verb like UNLOCK.
             Editing.delete().where(Editing.user_account==owner_obj.user_account).execute()
 
-            # TODO this is probably wonky now with the live data change and not
+            # this is probably wonky now with the live data change and not
             # worth it, but it shouldn't break anything really:
             if obj.script_revision.code == code.strip():
                 #  this was originally an error, but it felt weird.
@@ -868,7 +842,7 @@ class GameWorld:
                 code=code,
                 script=obj.script_revision.script)
 
-            # TODO i may regret allowing broken code to be saved, but otherwise
+            # i may regret allowing broken code to be saved, but otherwise
             # you essentially can't save works in progress--your work is held
             # hostage in the WITCH pane until it works. There might be a more
             # elegant solution but for now I'm going with allowing buggy code
@@ -881,8 +855,7 @@ class GameWorld:
             try:
                 obj.init_scripting(use_db_data=False)
             except WitchError as e:
-                # TODO i don't actually have a good reason for errors being a
-                # list yet
+                # i don't actually have a good reason for errors being a list yet
                 witch_errors.append(str(e))
 
             result = cls.object_state(obj)
