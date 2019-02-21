@@ -71,6 +71,10 @@ class WitchInterpreter:
             nonlocal script_engine
             script_engine.add_hears_handler(hear_string, callback)
 
+        def add_sees_handler(see_string, callback):
+            nonlocal script_engine
+            script_engine.add_sees_handler(see_string, callback)
+
         def add_provides_handler(action, callback):
             nonlocal script_engine
             script_engine.add_provides_handler(action, callback)
@@ -131,6 +135,7 @@ class WitchInterpreter:
                 split_args=split_args,
                 add_provides_handler=add_provides_handler,
                 add_hears_handler=add_hears_handler,
+                add_sees_handler=add_sees_handler,
                 set_data=set_data,
                 get_data=get_data,
                 says=says,
@@ -156,6 +161,7 @@ class ScriptEngine:
     def __init__(self, receiver_model):
         self.receiver_model = receiver_model
         self.hears = {}
+        self.sees = {}
         self.provides = {'debug': self._debug_handler,
                          'contain': self._contain_handler,
                          'say': self._say_handler,
@@ -199,9 +205,12 @@ class ScriptEngine:
             msg = '{{magenta}}{} {}{{/}}'.format(sender.name, action_args)
             self.game_world.user_hears(receiver, sender, msg)
         elif receiver != sender:
-            # TODO #189
-            pass
-
+            for see_pattern, callback in self.sees.items():
+                if wildcard_match(see_pattern, action_args):
+                    callback(
+                        ProxyGameObject(receiver),
+                        ProxyGameObject(sender),
+                        action_args)
 
     def _say_handler(self, receiver, sender, _, action_args):
         receiver = self.receiver_model.get_by_id(receiver.id)
@@ -232,6 +241,19 @@ class ScriptEngine:
         says "i'm eating spaghetti", this callback would trigger.
         """
         self.hears[hear_string] = fn
+
+    def add_sees_handler(self, see_string, fn):
+        """
+        This function adds a listener for actions taken by users via the /emote command. For
+        example, if a user runs:
+
+        /emote dances wildly
+
+        then a magic cupboard might choose to dance along with them
+
+        Magic Cupboard dances along with vilmibm!
+        """
+        self.sees[see_string] = fn
 
     def add_provides_handler(self, action, fn):
         self.provides[action] = fn

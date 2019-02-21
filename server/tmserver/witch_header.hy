@@ -13,12 +13,6 @@
 (defmacro allows [perm-dict]
   `(set-permissions ~perm-dict))
 
-#_(You'll note the weird (setv noop) in the next two macros. This is a hideous
- hack. If given only a single form, Hy's (fn) uses a Lambda AST node. Given
- multiple forms, it creates a named function. asteval doesn't support Lambda at
- all, so we do a noop setv to trick Hy into making a named function. If you
- think this is brittle and likely to fail as Hy changes you'd be right!)
-
 (defmacro provides [command-string &rest actions]
   `(add-provides-handler
      ~command-string #_(Potentially with $this or $object)
@@ -33,6 +27,12 @@
        (setv from-me? (= this sender))
        ~@actions)))
 
+#_(You'll note the weird (setv noop) in the next two macros. This is a hideous
+ hack. If given only a single form, Hy's (fn) uses a Lambda AST node. Given
+ multiple forms, it creates a named function. asteval doesn't support Lambda at
+ all, so we do a noop setv to trick Hy into making a named function. If you
+ think this is brittle and likely to fail as Hy changes you'd be right!)
+
 (defmacro hears [hear-string &rest actions]
   #_(Astute readers might notice that you could implement this as a provides
    handler for "say" and then do the wildcarding in the witch code. I chose to
@@ -43,6 +43,19 @@
   `(add-hears-handler
      ~hear-string
      (fn [this sender heard]
+       (setv noop 0)
+       ~@actions)))
+
+(defmacro sees [see-string &rest actions]
+  #_(Astute readers might notice that you could implement this as a provides
+   handler for "emote" and then do the wildcarding in the witch code. I chose to
+   go this route purely because it's conceptually easier to think about things
+   this way. An advanced programmer who wants regex-based matching can always
+   add a provides handler for emote and totally do that.)
+   (setv noop (gensym))
+   `(add-sees-handler
+     ~see-string
+     (fn [this sender saw]
        (setv noop 0)
        ~@actions)))
 
