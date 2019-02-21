@@ -2,10 +2,10 @@ from unittest import mock
 from .. import models
 from ..errors import WitchError
 from ..models import UserAccount, GameObject, Contains, Script, ScriptRevision, Permission
-from ..scripting import ScriptEngine
+from ..scripting import ScriptEngine, random_number
 from ..world import GameWorld
 
-from .tm_test_case import TildemushTestCase
+from .tm_test_case import TildemushTestCase, TildemushUnitTestCase
 
 class FuzzyMatchTest(TildemushTestCase):
     def setUp(self):
@@ -167,6 +167,7 @@ class GameObjectScriptEngineTest(TildemushTestCase):
                  "carry" "world"
                  "execute" "world"})
               (hears "*sit*" (does "stamps at the ground"))
+              (sees "*extends hand*" (does "extends hoof"))
               (provides "pet"
                 (set-data "num-pets" (+ 1 (get-data "num-pets")))
                   (if (= 0 (% (get-data "num-pets") 5))
@@ -190,6 +191,9 @@ class GameObjectScriptEngineTest(TildemushTestCase):
 
     def test_creates_hear_handler(self):
         self.assertIsNotNone(self.snoozy.engine.hears.get("*sit*"))
+
+    def test_creates_see_handler(self):
+        self.assertIsNotNone(self.snoozy.engine.sees.get("*extends hand*"))
 
     def test_handler_works(self):
         self.snoozy.handle_action(GameWorld, self.vil, 'pet', '')
@@ -238,3 +242,25 @@ class GameObjectScriptEngineTest(TildemushTestCase):
 
         for arg_str in should_not_match:
             assert (False, ScriptEngine.noop) == self.snoozy._engine.handler(None, self.snoozy, 'give', arg_str), arg_str
+
+class TestRandomNumber(TildemushUnitTestCase):
+    def test_no_args(self):
+        result = None
+        for _ in range(100):
+            result = random_number()
+            assert result >= 1
+            assert result <= 10
+
+    def test_one_arg(self):
+        result = None
+        for _ in range(100):
+            result = random_number(20)
+            assert result >= 1
+            assert result <= 20
+
+    def test_two_args(self):
+        result = None
+        for _ in range(100):
+            result = random_number(30, 60)
+            assert result >= 30
+            assert result <= 60

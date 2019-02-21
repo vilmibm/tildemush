@@ -1148,3 +1148,42 @@ async def test_sees_handler(client):
         'STATE',
         '{magenta}spaghetti shivers nervously{/}',
     ])
+
+@pytest.mark.asyncio
+async def test_random_number(client):
+    vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
+    machine = GameObject.create_scripted_object(
+        vil, 'vilmibm/slot-machine', 'item', {
+            'name': 'slot machine',
+            'description': 'a vintage 1960s slot machine'})
+    machine.save()
+    GameWorld.put_into(foyer, machine)
+    new_code = '''
+        (incantation by vilmibm
+          (has {"name" "slot machine"
+                "description" "a vintage 1960s slot machine"})
+          (provides "pull $this"
+            (says "KA CHANK")
+            (says
+              (+ "you got "
+                 (str (random-number)) " "
+                 (str (random-number 5)) " "
+                 (str (random-number 90 100))))))
+    '''.rstrip().lstrip()
+
+    revision_payload = dict(
+        shortname='vilmibm/slot-machine',
+        code=new_code,
+        current_rev=machine.script_revision.id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'STATE', 'STATE','OBJECT'])
+    with mock.patch('random.randint', return_value=6):
+        await client.send("COMMAND pull machine", ['COMMAND OK'])
+
+    await client.assert_any_order([
+        'slot machine says, "KA CHANK"',
+        'STATE',
+        'slot machine says, "you got 6 6 6"',
+    ])

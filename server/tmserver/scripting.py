@@ -1,5 +1,6 @@
 from fnmatch import fnmatch
 import io
+import random
 import re
 
 import asteval
@@ -53,6 +54,22 @@ def wildcard_match(pattern, string):
     matching wildcarded strings (as opposed to regexes). For now just using
     fnmatch seems fine even if we aren't actually matching filenames. lulz."""
     return fnmatch(string, pattern)
+
+def random_number(a=None, b=None):
+    if a is None:
+        # nothing passed. use default bounds.
+        a = 1
+        b = 10
+    elif b is None:
+        # a was set but not b, that means we have a max and need a min
+        b = a
+        a = 1
+
+    if b < a:
+        # the user must be confused. just use the numbers as a range.
+        a,b = b,a
+
+    return random.randint(a, b)
 
 class ProxyGameObject:
     def __init__(self, game_object):
@@ -126,6 +143,18 @@ class WitchInterpreter:
         def witch_open(*args, **kwargs):
             raise NotImplementedError("No file access in WITCH")
 
+        # ADDING A NEW WITCH API FUNCTION?
+        # This is the place to start. usersyms is what is exposed to WITCH programmers. Be mindful
+        # what you expose here: it should only be functions that act as closures over sensitive
+        # objects.
+        #
+        # Not all of these are intended to be used directly; stuff like add_hears_handler is called
+        # from a convenience macro, (hears).
+        #
+        # Decide how you want to expose stuff to the user: can it just be a regular function defined
+        # here or is it a helper for a macro? If you are providing something that takes code from
+        # the user to be used as a callback, you're going to want to wrap it in a macro. If it's a
+        # simple function like (random-number), just define it as a function here.
         self.script_engine = script_engine
         self.interpreter = asteval.Interpreter(
             use_numpy=False,
@@ -133,6 +162,7 @@ class WitchInterpreter:
             usersyms=dict(
                 open=witch_open,
                 split_args=split_args,
+                random_number=random_number,
                 add_provides_handler=add_provides_handler,
                 add_hears_handler=add_hears_handler,
                 add_sees_handler=add_sees_handler,
