@@ -228,8 +228,6 @@ class GameMain(urwid.Frame):
 
         if text.startswith('/quit'):
             quit_client(self)
-        elif text.startswith('/edit'):
-            text = text[1:]
         elif text.startswith('/'):
             text = text[1:]
         else:
