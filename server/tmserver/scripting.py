@@ -80,6 +80,51 @@ class ProxyGameObject:
     def __eq__(self, other):
         return self.id == other.id
 
+# TODO
+# (every) macro
+# 
+# this macro is invoked like:
+# (every (random-number)
+#   (does "dances"))
+# 
+# when compiled, a helper (add-scheduled-callback) is called.
+# this helper is responsible for storing a row via the ScheduledCallback model as well as storing
+# the callback in memory with a generated callback_id.
+# if add-scheduled-callback sees that a row exists such that:
+# - the revision ID matches the current object revision
+# - the hash of the callback matches the current callback's hash
+# then it does nothing
+#
+# the row is something like:
+# - last_run timestamp
+# - callback_id
+# - callback hash
+# - object id
+# - interval in minutes
+# - revision_id
+# 
+# a scheduler loop runs every minute, looking for rows such that:
+#
+# last_run + interval <= now
+#
+# the scheduler then does some stuff.
+# - grabs the associated object
+# - compiles the witch code
+# - runs the callback ID'd by callback_id
+#
+# questsions / scenarios
+#
+# - what happens when the server restarts?
+#   - nothing, really. the scheduler is started and acts as normal. there will be a thundering herd
+#   of unrun tasks at first which might end up being a problem, but i can worry about that later;
+#   one tactic is to just set last_run to be the moment the scheduler starts.
+# - what about variable intervals?
+#  - TODO
+# - how will callback hashing work?
+#  - TODO
+# - TODO i'm sure there are more
+# ODOT
+
 class WitchInterpreter:
     def __init__(self, receiver_model):
         script_engine = ScriptEngine(receiver_model)
