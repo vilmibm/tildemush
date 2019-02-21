@@ -157,6 +157,9 @@ class GameWorld:
         elif action == 'edit':
             cls.handle_edit(sender_obj, action_args)
             return
+        elif action == 'read':
+            cls.handle_read(sender_obj, action_args)
+            return
         elif action == 'mode':
             cls.handle_mode(sender_obj, action_args)
 
@@ -422,11 +425,28 @@ class GameWorld:
         cls.send_object_state(sender_obj.user_account, obj, edit=True)
 
     @classmethod
-    def send_object_state(cls, user_account, game_obj, edit=False):
+    def handle_read(cls, sender_obj, action_args):
+        """
+        When a user runs /read, we take a similar approach as we do to /edit. We use the read perm
+        and don't worry about locking anything, though -- we just need to pass a readonly flag to
+        indicate that the client shouldn't bother opening a proper editor.
+        """
+        obj = cls.resolve_obj(cls.area_of_effect(sender_obj), action_args)
+        if obj is None:
+            raise UserError(OBJECT_NOT_FOUND.format(action_args))
+
+        # TODO #87 these types of errors should appear in the witch error console
+        if not sender_obj.can_read(obj):
+            raise UserError('You lack the authority to read {}'.format(obj.name))
+
+        cls.send_object_state(sender_obj.user_account, obj, read=True)
+
+    @classmethod
+    def send_object_state(cls, user_account, game_obj, edit=False, read=False):
         if user_account.id in cls._sessions:
             state = cls.object_state(game_obj)
-            if edit:
-                state['edit'] = True
+            state['edit'] = edit
+            state['read'] = read
             cls.get_session(user_account.id).send_object_state(state)
 
     @classmethod

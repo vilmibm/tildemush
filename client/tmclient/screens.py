@@ -158,12 +158,22 @@ class GameMain(urwid.Frame):
             object_state = json.loads(server_msg[7:])
             if object_state.get('edit'):
                 self.launch_witch(object_state)
+            elif object_state.get('read'):
+                self.launch_witch_readonly(object_state)
         elif server_msg.startswith('MAP'):
             self.worldmap_tab.update_map(server_msg[4:])
         else:
             self.game_tab.add_message(server_msg)
 
         self.focus_prompt()
+
+    def launch_witch_readonly(self, data):
+        self.witch_tab.editor.original_widget = urwid.BoxAdapter(
+                urwid.Filler(urwid.Text(data['code'])),
+                self.ui_loop.screen_size[1] // 2)
+        self.witch_tab.refresh(data, self.scope)
+
+        self.switch_tab(self.tabs.get('f2'))
 
     def launch_witch(self, data):
         tf = NamedTemporaryFile(delete=False, mode='w')
@@ -210,6 +220,7 @@ class GameMain(urwid.Frame):
 
 
     def handle_game_input(self, text):
+        """Entry point for user commands in MAIN"""
         self.prompt.add_line(text)
 
         if not self.client_state.listening:
