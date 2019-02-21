@@ -311,10 +311,16 @@ class ColorText(urwid.Text):
 class WitchView(GameTab):
 
     def __init__(self, object_data, scope, config):
+        # TODO
+        #
+        # I'd like to do some changes to the WITCH pane:
+        # - Remove "current object" pane
+        # - Move editor pane to the top
+        # - Put the new error console log (discussed in #188)
         self.scope = scope
         self.config = config
         self.info = {
-                "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here.",
+                "edit area": "NO OBJECT LOADED! /edit an object in the game view to work on it here.  you can also /read an object to look at its code if you have the permission.",
                 "data": "Current Object: <None>",
                 "perms": "Permissions: <unknown>",
                 "status": "WITCH STATUS: <unknown>"
