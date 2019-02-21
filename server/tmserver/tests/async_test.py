@@ -832,6 +832,7 @@ async def test_edit(event_loop):
         payload = json.loads(msg.split(' ', maxsplit=1)[1])
         assert payload == dict(
             edit=True,
+            read=False,
             shortname=cigar.shortname,
             data=cigar.data,
             permissions=cigar.perms.as_dict(),
@@ -863,6 +864,64 @@ async def test_edit(event_loop):
 
         await vclient.send('REVISION {}'.format(json.dumps(revision_payload)), ['OBJECT'])
         assert 0 == Editing.select().where(Editing.game_obj==stick).count()
+
+@pytest.mark.asyncio
+async def test_read_command(event_loop):
+    async with Client(event_loop) as vclient, Client(event_loop) as sclient:
+        vil = await vclient.setup_user('vilmibm')
+        await vclient.assert_next('STATE', 'STATE')
+        snoozy = await sclient.setup_user('snoozy')
+        await sclient.assert_next('STATE', 'STATE')
+
+        await vclient.assert_next('STATE', 'STATE', 'snoozy fades')
+
+
+        await vclient.send('COMMAND create item "music cd" a copy of some 90s rap on cd', [
+            'COMMAND OK',
+            'STATE',
+            'You breathed light into a whole new item. Its true name is vilmibm/music-cd'])
+
+        await vclient.send('COMMAND drop cd', [
+            'STATE',
+            'COMMAND OK',
+            'STATE',
+            'STATE',
+            'You drop music cd.'])
+
+        # obj not foud
+        await sclient.send('COMMAND read vinyl', [
+            'STATE',
+            'STATE',
+            'STATE',
+            'vilmibm drops music cd',
+            'STATE',
+            '{red}You look in vain for vinyl.{/}'])
+
+        # success
+        await sclient.send('COMMAND read cd', [
+            'COMMAND OK'])
+        msg = await sclient.assert_recv('OBJECT')
+        music_cd = GameObject.get(GameObject.shortname=='vilmibm/music-cd')
+        payload = json.loads(msg.split(' ', maxsplit=1)[1])
+        assert payload == dict(
+            edit=False,
+            read=True,
+            shortname=music_cd.shortname,
+            data=music_cd.data,
+            permissions=music_cd.perms.as_dict(),
+            code=music_cd.get_code(),
+            current_rev=music_cd.script_revision.id)
+
+        # perm denied
+        await vclient.send('COMMAND mode cd read owner', [
+            'STATE',
+            'COMMAND OK',
+            'The world seems to gently vibrate'])
+
+        await sclient.send('COMMAND read cd', [
+            'STATE',
+            '{red}You lack the authority to read music cd{/}'])
+
 
 # TODO witch exception when saving revision
 
