@@ -981,6 +981,7 @@ async def test_transitive_command(client):
 
     # target found
     await client.send('COMMAND touch lemongrab', ['STATE', 'STATE', 'COMMAND OK'])
+    # TODO this is flakey ;-;
     await client.assert_any_order(['lemongrab says', 'STATE', 'cat says'])
 
     await client.send('COMMAND touch cat', ['STATE', 'STATE', 'COMMAND OK', 'cat says, "purr"'])
