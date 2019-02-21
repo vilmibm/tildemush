@@ -1111,3 +1111,40 @@ async def test_hears_handler(client):
         'vilmibm says, "i\'m so hungry i could eat some delicious pasta"',
     ])
 
+@pytest.mark.asyncio
+async def test_sees_handler(client):
+    vil = await client.setup_user('vilmibm')
+
+    await client.assert_next('STATE', 'STATE')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
+    spaghetti = GameObject.create_scripted_object(
+        vil, 'vilmibm/spaghetti', 'item', {
+            'name': 'spaghetti',
+            'description': 'a plate of spaghetti'})
+    spaghetti.save()
+    GameWorld.put_into(foyer, spaghetti)
+    new_code = '''
+        (incantation by vilmibm
+          (has {"name" "spaghetti"
+                "description" "a plate of spaghetti"})
+          (sees "*slurp*"
+            (does "shivers nervously")))
+    '''.rstrip().lstrip()
+
+    revision_payload = dict(
+        shortname='vilmibm/spaghetti',
+        code=new_code,
+        current_rev=spaghetti.script_revision.id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'STATE', 'STATE','OBJECT'])
+
+    await client.send("COMMAND emote slurps some ramen", ['COMMAND OK'])
+
+    # TODO the order remains weird, but i noticed in the dev server that the ordering is as expected
+    # for third party watchers
+
+    await client.assert_any_order([
+        '{magenta}vilmibm slurps some ramen{/}',
+        'STATE',
+        '{magenta}spaghetti shivers nervously{/}',
+    ])
