@@ -264,3 +264,10 @@ class TestRandomNumber(TildemushUnitTestCase):
             result = random_number(30, 60)
             assert result >= 30
             assert result <= 60
+
+    def test_bad_range(self):
+        result = None
+        for _ in range(100):
+            result = random_number(100, 90)
+            assert result >= 90
+            assert result <= 100
