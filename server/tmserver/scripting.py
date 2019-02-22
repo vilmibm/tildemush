@@ -116,13 +116,50 @@ class ProxyGameObject:
 #
 # - what happens when the server restarts?
 #   - nothing, really. the scheduler is started and acts as normal. there will be a thundering herd
-#   of unrun tasks at first which might end up being a problem, but i can worry about that later;
-#   one tactic is to just set last_run to be the moment the scheduler starts.
+#     of unrun tasks at first which might end up being a problem, but i can worry about that later;
+#     one tactic is to just set last_run to be the moment the scheduler starts.
+
 # - what about variable intervals?
-#  - TODO
+#  - this is hard to support since it means also supporting a reference to arbitrary code that will
+#    evaluate into an interval and re-running it each time the job runs. for the intial support of
+#    (every) i'm more comfortable supporting a compile time interval. a hacky way to support this
+#    could be having (every) report what the *next* interval is every time it is evaluated but i
+#    don't want to depend on that.
+
 # - how will callback hashing work?
-#  - TODO
-# - TODO i'm sure there are more
+#  - I don't ever want a hash across the whole (incantation) as the data section doesn't correspond
+#    to revisions. i think i want a hash of everything in (every...). MD5 is what i'd usually use. i'm
+#    concerned about a higher collision rate for smaller strings but until that starts happening i
+#    want to use something very standard.
+
+# - should hash just be the callback id?
+#  - this is kind of instinct but i'm thinking no. ID can be UUID and hash is a seperate concept.
+
+# - how does the scheduler run?
+#  - can use the async loop or just run a loop in a thread. for conceptual simplicity i think i'll
+#    just use async. in general i want to be taking better advantage of async stuff anyway.
+
+# - are you going to end up leaking memory like crazy as objects with scheduled tasks get reified
+#   every minute?
+#   - probably ugh i'd like to audit the GameObject lifecycle.
+#   - i'll need to study RAM usage over time to really understand it, but right now there shouldn't
+#     be risk to constantly re-evaluate the WITCH code. it's already happening pretty much every time
+#     anything happens on the server (probably causing a lot of the latency) and when i optimize it
+#     it'll optimize for (every) usage as well as regular action dispatching.
+#
+# - how are tasks stopped?
+#   - by deleting them from the WITCH code. upon compilation, after registering callbacks for the
+#     current revision all rows for any older revision are deleted.
+#
+# development plan
+#
+# - [ ] add model
+# - [ ] write and test the add_scheduled_action helper
+# - [ ] add (every) macro
+# - [ ] add scheduler loop
+# - [ ] add server start-up behavior (setting last run)
+# - [ ] implement and test (every) hashing
+# - [ ] tie is all together as needed
 # ODOT
 
 class WitchInterpreter:
