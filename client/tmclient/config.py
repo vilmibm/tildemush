@@ -18,6 +18,7 @@ class Config:
     def __init__(self, path=DEFAULT_CONFIG_PATH):
         self.path = path
         ensure_config_file(path)
+        os.chmod(path, 0o600)
         self._data = CONFIG_DEFAULTS
         self.read()
 
