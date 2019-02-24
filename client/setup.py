@@ -19,10 +19,9 @@ setup(
     # TODO we use a forked urwid that patches a bug which causes errors to be swallowed
     #      when using asyncio+urwid. Hopefully we can switch back to the main urwid before 
     #      too long.
-    dependency_links=['git+https://github.com/tildetown/urwid.git#egg=urwid-3.0.0'],
     install_requires=[
         'click==6.7',
-        'urwid==3.0.0',
+        'urwid @ https://api.github.com/repos/tildetown/urwid/tarball',
         'websockets==6.0.0',
     ],
     extras_require={
