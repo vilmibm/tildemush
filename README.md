@@ -32,7 +32,7 @@ This instance is volatile (ie it's liable to go down or have its database wiped 
 * `python -m virtualenv venv` - create a virtualenv in the project directory
 * `source venv/bin/activate`
 * `cd server && pip install -e ".[testing]" && cd ..`
-* `cd client && pip install --process-dependency-links -e ".[testing]" && cd ..`
+* `cd client && pip install -e ".[testing]" && cd ..`
 * setup `postgres` (see below)
 
 ### postgres setup (Arch linux)
