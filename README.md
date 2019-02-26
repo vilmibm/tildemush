@@ -40,7 +40,7 @@ This instance is volatile (ie it's liable to go down or have its database wiped 
 [https://wiki.archlinux.org/index.php/PostgreSQL](https://wiki.archlinux.org/index.php/PostgreSQL)
 
 * `sudo su postgres`
-* `initdb --locale $LANG -E UTF8 -D '/var/lib/postgres/data'`
+* `initdb --locale $LANG -E UTF8 -D '/var/lib/postgres/data'` - note: if that fails you may need to give the postgres user a password with `sudo passwd postgres`
 * `sudo systemctl enable postgresql` - configure postgres service to start on boot
 * `sudo systemctl start postgresql.service` - start postgres service
 * `createuser tildemush -W` (will prompt for password, use `tildemush`)
