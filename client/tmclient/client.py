@@ -65,8 +65,6 @@ class Client:
         await self.connection.send('REFRESH')
 
     async def register(self, username, password):
-        # hash on client side to avoid plaintext passwords
-        password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         await self.connection.send('REGISTER {}:{}'.format(username, password))
         response = await self.connection.recv()
         if response == 'REGISTER OK':

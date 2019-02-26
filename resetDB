@@ -1,0 +1,5 @@
+#!./venv/bin/python
+
+import server.tmserver.migrations
+server.tmserver.migrations.reset_db()
+print("db reset!")
