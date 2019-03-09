@@ -112,6 +112,13 @@ class ScriptRevision(BaseModel):
     code = pw.TextField()
     script = pw.ForeignKeyField(Script)
 
+    def __lt__(self, other_revision):
+        return self.created_at < other_revision.created_at
+
+    def __gt__(self, other_revision):
+        return self.created_at > other_revision.created_at
+
+
 @pre_save(sender=ScriptRevision)
 def pre_scriptrev_save(cls, instance, created):
     instance.code = instance.code.strip()
