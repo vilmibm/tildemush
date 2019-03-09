@@ -378,10 +378,20 @@ class LastSeen(BaseModel):
     user_account = pw.ForeignKeyField(UserAccount)
     room = pw.ForeignKeyField(GameObject)
 
+
 class Log(BaseModel):
     env = pw.CharField()
     level = pw.CharField()
     raw = pw.CharField()
 
 
-MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission, Editing, LastSeen]
+class ScheduledTask(BaseModel):
+    obj = pw.ForeignKeyField(GameObject)
+    revision = pw.ForeignKeyField(ScriptRevision)
+    interval = pw.IntegerField() # seconds
+    last_run = pw.DateTimeField(default=datetime.utcnow)
+    cbhash = pw.TextField()
+
+
+MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission, Editing,
+          LastSeen, ScheduledTask]
