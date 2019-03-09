@@ -1,3 +1,4 @@
+from hashlib import md5
 import itertools
 import re
 
@@ -7,7 +8,7 @@ from .config import get_db
 from .constants import DIRECTIONS, REVERSE_DIRS
 from .errors import RevisionError, WitchError, ClientError, UserError
 from .mapping import render_map
-from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing, LastSeen
+from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing, LastSeen, ScheduledTask
 from .util import strip_color_codes, split_args, ARG_RE
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -892,3 +893,29 @@ class GameWorld:
     @classmethod
     def handle_map(cls, player_obj):
         return render_map(cls, player_obj.room, distance=2)
+
+    @classmethod
+    def add_scheduled_task(cls, obj, interval, units, cb):
+        """This method expects to be called in a transaction; specifically,
+        one that is wrapping any changes to an object's code and revision."""
+        seconds = None
+        if units == 'hours':
+            seconds = interval * 60 * 60
+        elif units == 'minutes':
+            seconds = interval * 60
+        else:
+            raise ValueError(f'Got illegal value for units: {units}. Expected hours or minutes.')
+
+        cbhash = md5(cb.__code__.co_code).hexdigest()
+        if ScheduledTask.select().where(
+                obj=obj,
+                cbhash=cbhash,
+                revision=obj.revision,
+                interval=seconds).count() > 0:
+            return
+
+        ScheduledTask.create(
+                obj=obj,
+                cbhash=cbhash,
+                revision=obj.revision,
+                interval=seconds)

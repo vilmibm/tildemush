@@ -342,6 +342,9 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         return self.author == target_obj.author\
                or getattr(target_obj.perms, perm) == Permission.WORLD
 
+    def prune_scheduled_tasks(self):
+        ScheduledTask.delete().where(ScheduledTask.revision < self.latest_script_rev).execute()
+
     def __str__(self):
         return self.name
 

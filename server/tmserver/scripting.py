@@ -178,6 +178,10 @@ class WitchInterpreter:
             nonlocal script_engine
             script_engine.add_provides_handler(action, callback)
 
+        def add_scheduled_task(interval, units, cb):
+            nonlocal receiver_model
+            GameWorld.add_scheduled_task(receiver_model, interval, units, cb)
+
         def set_data(key, value):
             nonlocal receiver_model
             if len(receiver_model.editing_set) == 0:
@@ -245,6 +249,7 @@ class WitchInterpreter:
                 open=witch_open,
                 split_args=split_args,
                 random_number=random_number,
+                add_scheduled_task=add_scheduled_task,
                 add_provides_handler=add_provides_handler,
                 add_hears_handler=add_hears_handler,
                 add_sees_handler=add_sees_handler,
@@ -439,6 +444,7 @@ class ScriptedObjectMixin:
                     try:
                         self.script_revision = latest_rev
                         self.init_scripting()
+                        self.prune_scheduled_tasks()
                     except WitchError as e:
                         self.script_revision = current_rev
                         # TODO #180 log
