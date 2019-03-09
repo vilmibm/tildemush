@@ -27,6 +27,17 @@
        (setv from-me? (= this sender))
        ~@actions)))
 
+(defmacro every [interval unit &rest actions]
+  `(do
+    (if (or (not (= '~unit 'hours))
+            (not (= '~unit 'minutes)))
+      ; TODO WitchCompilationException
+      (raise (Exception "Unit must be hours or minutes.")) )
+    (add-scheduled-task ~interval (str '~unit)
+     (fn [this]
+       (setv noop 0)
+       ~@actions))))
+
 ; You'll note the weird (setv noop) in the next two macros. This is a hideous
 ; hack. If given only a single form, Hy's (fn) uses a Lambda AST node. Given
 ; multiple forms, it creates a named function. asteval doesn't support Lambda at
