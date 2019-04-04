@@ -268,7 +268,13 @@ class GameServer:
         # documentation
         self.loop.run_until_complete(
             ws.serve(self.handle_connection, self.bind, self.port, loop=self.loop))
+        self.loop.run_until_complete(
+            self.scheduled_task_runner(self.loop))
         self.loop.run_forever()
+
+    async def scheduled_task_runner(self, loop):
+        # TODO wait until i have access to async docs
+        pass
 
     def _get_ws_server(self):
         return ws.serve(self.handle_connection, self.bind, self.port, loop=self.loop)

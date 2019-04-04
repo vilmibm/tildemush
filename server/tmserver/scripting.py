@@ -153,9 +153,9 @@ class ProxyGameObject:
 #
 # development plan
 #
-# - [ ] add model
-# - [ ] write and test the add_scheduled_action helper
-# - [ ] add (every) macro
+# - [x] add model
+# - [x] write the add_scheduled_action helper
+# - [x] add (every) macro
 # - [ ] add scheduler loop
 # - [ ] add server start-up behavior (setting last run)
 # - [ ] implement and test (every) hashing

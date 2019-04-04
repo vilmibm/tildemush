@@ -395,6 +395,12 @@ class ScheduledTask(BaseModel):
     last_run = pw.DateTimeField(default=datetime.utcnow)
     cbhash = pw.TextField()
 
+    # I want some protection against a long running or stuck job. perhaps a field like last_elapsed;
+    # it's nil'd at the start of a task execution? that is trying to pack too much info into one
+    # field; how would i know when a task has never been run? i guess if last_run is nil...
+    #
+    # i'm essentially rebuilding something like celery. should i just use celery?
+
 
 MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission, Editing,
           LastSeen, ScheduledTask]
