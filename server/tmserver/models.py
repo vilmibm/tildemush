@@ -400,7 +400,24 @@ class ScheduledTask(BaseModel):
     # field; how would i know when a task has never been run? i guess if last_run is nil...
     #
     # i'm essentially rebuilding something like celery. should i just use celery?
-
+    #
+    # no; because the code is going to have to be hot reloaded. celery needs to reboot workers to
+    # pull in the new tasks. i want to avoid that.
+    #
+    # so what are the bronze path cases i'm concerned about?
+    #
+    # - task fails repeatedly
+    #   - by "fail" i mean "throws an exception." it's going to be impossible to tell if a task is
+    #   throwing an exception *every* time or intermittently without a lot of analysis; i think a
+    #   perpetually failing task just needs to be clearly logged and accepted. it can be manually
+    #   cleared out if an admin desires.
+    # - task has infinite loop
+    #   - tasks are called with a timeout -- they have to run within 45 seconds. a perpetually
+    #   timing out task, i think, is essentially just the previous acceptably-infinite failure case.
+    # - task is started but is already running
+    #   - i think if last_run is set at the *start* of the callback, this is avoided. the timeout is
+    #   less than the interval
+    #  
 
 MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission, Editing,
           LastSeen, ScheduledTask]
