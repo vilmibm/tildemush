@@ -19,9 +19,7 @@ setup(
     install_requires=[
         'click==6.7',
         'peewee==3.1.1',
-        # TODO we may want psycopg2 (ie not binary) once they release 2.8. i'm
-        # not sure.
-        'psycopg2-binary==2.7.4',
+        'psycopg2-binary==2.8.2',
         'websockets==6.0.0',
         'bcrypt==3.1.4',
         'hy==0.15.0',

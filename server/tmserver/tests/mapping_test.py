@@ -1,9 +1,15 @@
+import sys
+
 from unittest.mock import Mock
 from ..migrations import reset_db
 from ..models import GameObject
 from ..world import GameWorld
 from ..mapping import from_room, graph_easy
 from .tm_test_case import TildemushUnitTestCase
+
+import pytest
+
+OSX = sys.platform == 'darwin'
 
 RENDERED_MAP = '''                      ┌────────────────┐         ┌─────────────┐  north   ┌───────────┐  north   ┌───────────────────────┐
                       │ Small Bedroom  │         │   Kitchen   │ ───────> │ Rear Lawn │ ───────> │        Forest         │
@@ -126,10 +132,12 @@ class TestMapping(TildemushUnitTestCase):
                 cls.god, name,
                 '{} god/{} TODO is desc optional?'.format(direction, target))
 
+    @pytest.mark.skipif(OSX, reason="TODO boxgraph not compiled for OSX")
     def test_from_room_bad_distance(self):
         with self.assertRaisesRegex(ValueError, 'greater than 0'):
             from_room(GameWorld, self.foyer, -1)
 
+    @pytest.mark.skipif(OSX, reason="TODO boxgraph not compiled for OSX")
     def test_from_room_max_distance(self):
         mapfile = from_room(GameWorld, self.foyer, 100)
         expected = '''
@@ -166,6 +174,7 @@ class TestMapping(TildemushUnitTestCase):
 [ Master Bedroom ] -- west --> [ West Lawn ]'''.lstrip()
         assert sorted(expected.split('\n')) == sorted(mapfile.split('\n'))
 
+    @pytest.mark.skipif(OSX, reason="TODO boxgraph not compiled for OSX")
     def test_from_room_zero_distance(self):
         mapfile = from_room(GameWorld, self.foyer, distance=0)
         expected = '''
@@ -177,6 +186,7 @@ class TestMapping(TildemushUnitTestCase):
 [ Foyer ] -- south --> [ Front Lawn ]'''.lstrip()
         assert sorted(expected.split('\n')) == sorted(mapfile.split('\n'))
 
+    @pytest.mark.skipif(OSX, reason="TODO boxgraph not compiled for OSX")
     def test_boxgraph(self):
         mapfile = from_room(GameWorld, self.foyer, distance=2)
         rendered = graph_easy(mapfile)
