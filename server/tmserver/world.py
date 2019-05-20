@@ -1,3 +1,4 @@
+from datetime import datetime
 from hashlib import md5
 import itertools
 import re
@@ -898,11 +899,11 @@ class GameWorld:
     def add_scheduled_task(cls, obj, interval, units, cb):
         """This method expects to be called in a transaction; specifically,
         one that is wrapping any changes to an object's code and revision."""
-        seconds = None
+        pg_interval = None
         if units == 'hours':
-            seconds = interval * 60 * 60
+            pg_interval = f'{interval} H'
         elif units == 'minutes':
-            seconds = interval * 60
+            pg_interval = f'{interval} M'
         else:
             raise ValueError(f'Got illegal value for units: {units}. Expected hours or minutes.')
 
@@ -911,11 +912,26 @@ class GameWorld:
                 obj=obj,
                 cbhash=cbhash,
                 revision=obj.revision,
-                interval=seconds).count() > 0:
+                interval=pg_interval).count() > 0:
             return
 
         ScheduledTask.create(
                 obj=obj,
                 cbhash=cbhash,
                 revision=obj.revision,
-                interval=seconds)
+                interval=pg_interval)
+
+    @classmethod
+    def next_run_tasks(cls):
+        return ScheduledTask.select().where(
+                ScheduledTask.last_run+ScheduledTask.interval <= datetime.utcnow())
+
+    @classmethod
+    def run_scheduled_task(cls, task):
+        # TODO find and run CB
+        # I haven't actually planned this out. I'm thinking that add_scheduled_task should also add
+        # the task to an in-memory dict of cbs; this way when we re-evaluate the code here we won't
+        # re-add it to the db (bc hashing) but it'll go in the in-memory store. Next step is to do
+        # the in-memory store. that can even be stored at the game world level..? think that
+        # through, it might be premature optimization
+        pass

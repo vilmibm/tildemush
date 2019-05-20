@@ -6,7 +6,7 @@ import bcrypt
 import peewee as pw
 from hy.contrib.hy_repr import hy_repr
 from playhouse.signals import Model, pre_save, post_save
-from playhouse.postgres_ext import JSONField
+from playhouse.postgres_ext import JSONField, IntervalField
 
 from . import config
 from .errors import UserValidationError, ClientError
@@ -391,7 +391,7 @@ class Log(BaseModel):
 class ScheduledTask(BaseModel):
     obj = pw.ForeignKeyField(GameObject)
     revision = pw.ForeignKeyField(ScriptRevision)
-    interval = pw.IntegerField() # seconds
+    interval = IntervalField() # seconds
     last_run = pw.DateTimeField(default=datetime.utcnow)
     cbhash = pw.TextField()
 
