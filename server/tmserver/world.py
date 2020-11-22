@@ -1,3 +1,5 @@
+from datetime import datetime
+from hashlib import md5
 import itertools
 import re
 
@@ -7,7 +9,7 @@ from .config import get_db
 from .constants import DIRECTIONS, REVERSE_DIRS
 from .errors import RevisionError, WitchError, ClientError, UserError
 from .mapping import render_map
-from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing, LastSeen
+from .models import Contains, GameObject, Script, ScriptRevision, Permission, Editing, LastSeen, ScheduledTask
 from .util import strip_color_codes, split_args, ARG_RE
 
 OBJECT_DENIED = 'You grab a hold of {} but no matter how hard you pull it stays rooted in place.'
@@ -892,3 +894,44 @@ class GameWorld:
     @classmethod
     def handle_map(cls, player_obj):
         return render_map(cls, player_obj.room, distance=2)
+
+    @classmethod
+    def add_scheduled_task(cls, obj, interval, units, cb):
+        """This method expects to be called in a transaction; specifically,
+        one that is wrapping any changes to an object's code and revision."""
+        pg_interval = None
+        if units == 'hours':
+            pg_interval = f'{interval} H'
+        elif units == 'minutes':
+            pg_interval = f'{interval} M'
+        else:
+            raise ValueError(f'Got illegal value for units: {units}. Expected hours or minutes.')
+
+        cbhash = md5(cb.__code__.co_code).hexdigest()
+        if ScheduledTask.select().where(
+                obj=obj,
+                cbhash=cbhash,
+                revision=obj.revision,
+                interval=pg_interval).count() > 0:
+            return
+
+        ScheduledTask.create(
+                obj=obj,
+                cbhash=cbhash,
+                revision=obj.revision,
+                interval=pg_interval)
+
+    @classmethod
+    def next_run_tasks(cls):
+        return ScheduledTask.select().where(
+                ScheduledTask.last_run+ScheduledTask.interval <= datetime.utcnow())
+
+    @classmethod
+    def run_scheduled_task(cls, task):
+        # TODO find and run CB
+        # I haven't actually planned this out. I'm thinking that add_scheduled_task should also add
+        # the task to an in-memory dict of cbs; this way when we re-evaluate the code here we won't
+        # re-add it to the db (bc hashing) but it'll go in the in-memory store. Next step is to do
+        # the in-memory store. that can even be stored at the game world level..? think that
+        # through, it might be premature optimization
+        pass

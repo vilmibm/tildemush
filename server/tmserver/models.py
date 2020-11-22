@@ -6,7 +6,7 @@ import bcrypt
 import peewee as pw
 from hy.contrib.hy_repr import hy_repr
 from playhouse.signals import Model, pre_save, post_save
-from playhouse.postgres_ext import JSONField
+from playhouse.postgres_ext import JSONField, IntervalField
 
 from . import config
 from .errors import UserValidationError, ClientError
@@ -111,6 +111,13 @@ class Script(BaseModel):
 class ScriptRevision(BaseModel):
     code = pw.TextField()
     script = pw.ForeignKeyField(Script)
+
+    def __lt__(self, other_revision):
+        return self.created_at < other_revision.created_at
+
+    def __gt__(self, other_revision):
+        return self.created_at > other_revision.created_at
+
 
 @pre_save(sender=ScriptRevision)
 def pre_scriptrev_save(cls, instance, created):
@@ -335,6 +342,9 @@ class GameObject(BaseModel, ScriptedObjectMixin):
         return self.author == target_obj.author\
                or getattr(target_obj.perms, perm) == Permission.WORLD
 
+    def prune_scheduled_tasks(self):
+        ScheduledTask.delete().where(ScheduledTask.revision < self.latest_script_rev).execute()
+
     def __str__(self):
         return self.name
 
@@ -371,10 +381,43 @@ class LastSeen(BaseModel):
     user_account = pw.ForeignKeyField(UserAccount)
     room = pw.ForeignKeyField(GameObject)
 
+
 class Log(BaseModel):
     env = pw.CharField()
     level = pw.CharField()
     raw = pw.CharField()
 
 
-MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission, Editing, LastSeen]
+class ScheduledTask(BaseModel):
+    obj = pw.ForeignKeyField(GameObject)
+    revision = pw.ForeignKeyField(ScriptRevision)
+    interval = IntervalField() # seconds
+    last_run = pw.DateTimeField(default=datetime.utcnow)
+    cbhash = pw.TextField()
+
+    # I want some protection against a long running or stuck job. perhaps a field like last_elapsed;
+    # it's nil'd at the start of a task execution? that is trying to pack too much info into one
+    # field; how would i know when a task has never been run? i guess if last_run is nil...
+    #
+    # i'm essentially rebuilding something like celery. should i just use celery?
+    #
+    # no; because the code is going to have to be hot reloaded. celery needs to reboot workers to
+    # pull in the new tasks. i want to avoid that.
+    #
+    # so what are the bronze path cases i'm concerned about?
+    #
+    # - task fails repeatedly
+    #   - by "fail" i mean "throws an exception." it's going to be impossible to tell if a task is
+    #   throwing an exception *every* time or intermittently without a lot of analysis; i think a
+    #   perpetually failing task just needs to be clearly logged and accepted. it can be manually
+    #   cleared out if an admin desires.
+    # - task has infinite loop
+    #   - tasks are called with a timeout -- they have to run within 45 seconds. a perpetually
+    #   timing out task, i think, is essentially just the previous acceptably-infinite failure case.
+    # - task is started but is already running
+    #   - i think if last_run is set at the *start* of the callback, this is avoided. the timeout is
+    #   less than the interval
+    #  
+
+MODELS = [UserAccount, Log, GameObject, Contains, Script, ScriptRevision, Permission, Editing,
+          LastSeen, ScheduledTask]

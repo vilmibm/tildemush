@@ -268,7 +268,20 @@ class GameServer:
         # documentation
         self.loop.run_until_complete(
             ws.serve(self.handle_connection, self.bind, self.port, loop=self.loop))
+        self.loop.run_until_complete(
+            self.scheduled_task_runner(self.loop))
         self.loop.run_forever()
+
+    async def scheduled_task_runner(self, loop):
+        # This is bad design and I'd like to refactor it. I just want to see something working,
+        # though.
+        while True:
+            # TODO look for and execute shared tasks
+            tasks_to_run = self.game_world.next_run_tasks()
+            for task in tasks_to_run:
+                self.game_world.run_scheduled_task(task)
+            await asyncio.sleep(60)
+
 
     def _get_ws_server(self):
         return ws.serve(self.handle_connection, self.bind, self.port, loop=self.loop)

@@ -80,6 +80,88 @@ class ProxyGameObject:
     def __eq__(self, other):
         return self.id == other.id
 
+# TODO
+# (every) macro
+# 
+# this macro is invoked like:
+# (every (random-number)
+#   (does "dances"))
+# 
+# when compiled, a helper (add-scheduled-callback) is called.
+# this helper is responsible for storing a row via the ScheduledCallback model as well as storing
+# the callback in memory with a generated callback_id.
+# if add-scheduled-callback sees that a row exists such that:
+# - the revision ID matches the current object revision
+# - the hash of the callback matches the current callback's hash
+# then it does nothing
+#
+# the row is something like:
+# - last_run timestamp
+# - callback_id
+# - callback hash
+# - object id
+# - interval in minutes
+# - revision_id
+# 
+# a scheduler loop runs every minute, looking for rows such that:
+#
+# last_run + interval <= now
+#
+# the scheduler then does some stuff.
+# - grabs the associated object
+# - compiles the witch code
+# - runs the callback ID'd by callback_id
+#
+# questsions / scenarios
+#
+# - what happens when the server restarts?
+#   - nothing, really. the scheduler is started and acts as normal. there will be a thundering herd
+#     of unrun tasks at first which might end up being a problem, but i can worry about that later;
+#     one tactic is to just set last_run to be the moment the scheduler starts.
+
+# - what about variable intervals?
+#  - this is hard to support since it means also supporting a reference to arbitrary code that will
+#    evaluate into an interval and re-running it each time the job runs. for the intial support of
+#    (every) i'm more comfortable supporting a compile time interval. a hacky way to support this
+#    could be having (every) report what the *next* interval is every time it is evaluated but i
+#    don't want to depend on that.
+
+# - how will callback hashing work?
+#  - I don't ever want a hash across the whole (incantation) as the data section doesn't correspond
+#    to revisions. i think i want a hash of everything in (every...). MD5 is what i'd usually use. i'm
+#    concerned about a higher collision rate for smaller strings but until that starts happening i
+#    want to use something very standard.
+
+# - should hash just be the callback id?
+#  - this is kind of instinct but i'm thinking no. ID can be UUID and hash is a seperate concept.
+
+# - how does the scheduler run?
+#  - can use the async loop or just run a loop in a thread. for conceptual simplicity i think i'll
+#    just use async. in general i want to be taking better advantage of async stuff anyway.
+
+# - are you going to end up leaking memory like crazy as objects with scheduled tasks get reified
+#   every minute?
+#   - probably ugh i'd like to audit the GameObject lifecycle.
+#   - i'll need to study RAM usage over time to really understand it, but right now there shouldn't
+#     be risk to constantly re-evaluate the WITCH code. it's already happening pretty much every time
+#     anything happens on the server (probably causing a lot of the latency) and when i optimize it
+#     it'll optimize for (every) usage as well as regular action dispatching.
+#
+# - how are tasks stopped?
+#   - by deleting them from the WITCH code. upon compilation, after registering callbacks for the
+#     current revision all rows for any older revision are deleted.
+#
+# development plan
+#
+# - [x] add model
+# - [x] write the add_scheduled_action helper
+# - [x] add (every) macro
+# - [ ] add scheduler loop
+# - [ ] add server start-up behavior (setting last run)
+# - [ ] implement and test (every) hashing
+# - [ ] tie is all together as needed
+# ODOT
+
 class WitchInterpreter:
     def __init__(self, receiver_model):
         script_engine = ScriptEngine(receiver_model)
@@ -95,6 +177,10 @@ class WitchInterpreter:
         def add_provides_handler(action, callback):
             nonlocal script_engine
             script_engine.add_provides_handler(action, callback)
+
+        def add_scheduled_task(interval, units, cb):
+            nonlocal receiver_model
+            GameWorld.add_scheduled_task(receiver_model, interval, units, cb)
 
         def set_data(key, value):
             nonlocal receiver_model
@@ -163,6 +249,7 @@ class WitchInterpreter:
                 open=witch_open,
                 split_args=split_args,
                 random_number=random_number,
+                add_scheduled_task=add_scheduled_task,
                 add_provides_handler=add_provides_handler,
                 add_hears_handler=add_hears_handler,
                 add_sees_handler=add_sees_handler,
@@ -357,6 +444,7 @@ class ScriptedObjectMixin:
                     try:
                         self.script_revision = latest_rev
                         self.init_scripting()
+                        self.prune_scheduled_tasks()
                     except WitchError as e:
                         self.script_revision = current_rev
                         # TODO #180 log

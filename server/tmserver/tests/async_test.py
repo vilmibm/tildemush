@@ -8,7 +8,7 @@ import websockets
 
 from ..core import GameServer
 from ..migrations import reset_db
-from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing, LastSeen, Permission
+from ..models import UserAccount, Script, GameObject, ScriptRevision, Editing, LastSeen, Permission, ScheduledTask
 from ..world import GameWorld
 
 class Client:
@@ -1247,3 +1247,33 @@ async def test_random_number(client):
         'STATE',
         'slot machine says, "you got 6 6 6"',
     ])
+
+@pytest.mark.asyncio
+async def test_every(client):
+    vil = await client.setup_user('vilmibm')
+    await client.assert_next('STATE', 'STATE')
+    foyer = GameObject.get(GameObject.shortname=='god/foyer')
+    clock = GameObject.create_scripted_object(
+        vil, 'vilmibm/grandfather-clock', 'item', {
+            'name': 'grandfather clock',
+            'description': 'stately, old, and encased in wood.'})
+    clock.save()
+    GameWorld.put_into(foyer, clock)
+    new_code = '''
+        (incantation by vilmibm
+          (has {"name" "grandfather clock"
+                "description" "stately, old, and encased in wood."})
+          (every 15 minutes
+            (does "chimes softly)))
+    '''.rstrip().lstrip()
+    revision_payload = dict(
+        shortname='vilmibm/grandfather-clock',
+        code=new_code,
+        current_rev=machine.script_revision.id)
+
+    await client.send('REVISION {}'.format(json.dumps(revision_payload)), ['STATE', 'STATE', 'STATE','OBJECT'])
+
+    task = ScheduledTask.get(obj=clock)[0]
+
+    # TODO test further once loop exists and can be run from tests?
+
