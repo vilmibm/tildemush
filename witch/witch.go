@@ -199,3 +199,42 @@ func lexPop(l *Lexer) stateFn {
 	l.emit(itemPop)
 	return lexText
 }
+
+/*
+very not real:
+
+Expr -> Comment | PushOrPop
+PushOrPop -> Push | Pop
+Pop -> "moon"
+Push -> "sun" Int | Op
+Op -> +
+Int -> -?0-9*
+
+# cool program
+sun sun sun moon moon
+
+"tree" is a list of nodes in this simple language.
+
+[Comment, Push, Push, Push, Moon, Moon]
+
+
+I think the fact that the token stream /is/ a parse tree given my toy example is confusing me. I
+have found a few resources on writing parsers and I think it might be easier to follow them if the
+token stream != parse tree.
+
+I could thus make my language slightly more complicated by pushing values (integers positive or negative) and operators (just +):
+
+valid program that computes 19:
+sun 10 sun 10 sun + moon sun -1 sun + moon
+
+token stream: PUSH INT PUSH INT PUSH OP POP PUSH INT PUSH OP POP
+parse tree: [PUSH(10), PUSH(10), PUSH(+), POP, PUSH(-1), PUSH(+), POP]
+
+
+invalid, since ints can't follow ints:
+sun 10 10 10 moon + +
+
+invalid, since sun requires an argument:
+sun sun sun 10 moon
+
+*/
