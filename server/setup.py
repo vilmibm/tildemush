@@ -20,7 +20,7 @@ setup(
         'click==6.7',
         'peewee==3.1.1',
         'psycopg2-binary==2.8.2',
-        'websockets==6.0.0',
+        'websockets==9.1',
         'bcrypt==3.1.4',
         'hy==0.15.0',
         'python-slugify==1.2.5',
